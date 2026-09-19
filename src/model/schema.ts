@@ -12,6 +12,7 @@ const base = {
 
 const cardSchema = z.discriminatedUnion('type', [
   z.object({ ...base, type: z.literal('note'), md: z.string(), color: z.string().optional() }),
+  z.object({ ...base, type: z.literal('text'), text: z.string(), style: z.enum(['title', 'body']) }),
   z.object({
     ...base,
     type: z.literal('todo'),

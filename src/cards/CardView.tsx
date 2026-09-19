@@ -2,6 +2,7 @@ import { memo } from 'react'
 import type { Card } from '../model/types'
 import { CardShell } from '../canvas/CardShell'
 import { NoteCard } from './NoteCard'
+import { TextCard } from './TextCard'
 import { TodoCard } from './TodoCard'
 import { LinkCard } from './LinkCard'
 import { BoardCard } from './BoardCard'
@@ -27,6 +28,12 @@ export const CardView = memo(function CardView({ card, boardId, readOnly, select
       return (
         <CardShell {...common} scale={scale} className="bg-paper text-ink">
           <NoteCard {...common} card={card} />
+        </CardShell>
+      )
+    case 'text':
+      return (
+        <CardShell {...common} scale={scale} bare>
+          <TextCard {...common} card={card} />
         </CardShell>
       )
     case 'todo':

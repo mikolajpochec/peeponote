@@ -16,10 +16,12 @@ interface Props {
   scale: () => number
   children: ReactNode
   className?: string
+  /** no paper/frame: used for free-floating text */
+  bare?: boolean
   onOpen?: () => void
 }
 
-export const CardShell = memo(function CardShell({ card, boardId, selected, readOnly, scale, children, className = '', onOpen }: Props) {
+export const CardShell = memo(function CardShell({ card, boardId, selected, readOnly, scale, children, className = '', bare = false, onOpen }: Props) {
   const select = useWorkspace((s) => s.select)
   const moveCards = useWorkspace((s) => s.moveCards)
   const updateCard = useWorkspace((s) => s.updateCard)
@@ -78,8 +80,12 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
   return (
     <div
       data-card={card.id}
-      className={`absolute group rounded-xl shadow-lg shadow-black/30 select-none ${
-        selected ? 'ring-2 ring-frog-300 ring-offset-2 ring-offset-swamp-800' : 'ring-1 ring-black/20'
+      className={`absolute group rounded-xl select-none ${bare ? '' : 'shadow-lg shadow-black/30'} ${
+        selected
+          ? 'ring-2 ring-frog-300 ring-offset-2 ring-offset-swamp-800'
+          : bare
+            ? 'ring-1 ring-transparent hover:ring-frog-300/40'
+            : 'ring-1 ring-black/20'
       } ${className}`}
       style={{ left: card.x, top: card.y, width: card.w, height: card.h, zIndex: card.z }}
       onPointerDown={onDragStart}

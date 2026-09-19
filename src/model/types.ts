@@ -24,6 +24,12 @@ export interface NoteCard extends CardBase {
   color?: string
 }
 
+export interface TextCard extends CardBase {
+  type: 'text'
+  text: string
+  style: 'title' | 'body'
+}
+
 export interface TodoItem {
   id: string
   text: string
@@ -58,7 +64,7 @@ export interface AssetCard extends CardBase {
   frame?: { w: number; h: number }
 }
 
-export type Card = NoteCard | TodoCard | LinkCard | BoardCard | AssetCard
+export type Card = NoteCard | TextCard | TodoCard | LinkCard | BoardCard | AssetCard
 export type CardType = Card['type']
 
 export interface Board {

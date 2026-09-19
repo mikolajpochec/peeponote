@@ -8,7 +8,7 @@ Runs as a static web app, installs as a PWA, and needs no backend.
 ## What it does
 
 - **Boards** — infinite pan/zoom canvas, nested boards, sidebar tree, breadcrumbs.
-- **Cards** — markdown notes, to-do lists, links, sub-boards, and **assets**.
+- **Cards** — titles & free text, markdown notes, to-do lists, links, sub-boards, and **assets**. Add them from the floating palette (click, or drag onto the board).
 - **Assets** — drop any file. Every asset card has a preview and a ⬇ button that downloads the original bytes.
   - images (photos) · **textures/spritesheets** (pixel-perfect, checkerboard, frame stepper) · audio · video
   - **3D models** (`.glb .gltf .obj .stl .fbx`, orbit controls, animation playback) · fonts (live specimen)

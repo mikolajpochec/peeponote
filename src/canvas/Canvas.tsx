@@ -6,6 +6,7 @@ import { CardView } from '../cards/CardView'
 import { screenToBoard, useViewport, zoomAt } from './viewport'
 import { Peepo } from '../ui/Peepo'
 import { autoEdit } from '../cards/autoEdit'
+import { Palette, TOOL_MIME, placeTool, toolById } from '../ui/Palette'
 
 interface Marquee {
   x0: number
@@ -152,6 +153,12 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     if (readOnly) return
     const rect = ref.current!.getBoundingClientRect()
     const p = screenToBoard(vp, e.clientX, e.clientY, rect)
+    const toolId = e.dataTransfer.getData(TOOL_MIME)
+    if (toolId) {
+      const tool = toolById(toolId)
+      if (tool) placeTool(board.id, tool, { x: p.x - tool.w / 2, y: p.y - tool.h / 2 })
+      return
+    }
     const files = [...e.dataTransfer.files]
     if (files.length) {
       await addAssets(board.id, files, { x: p.x, y: p.y })
@@ -205,6 +212,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
           <div className="text-sm">Double-click to write a note · drop files anywhere · use the toolbar</div>
         </div>
       )}
+      {!readOnly && <Palette board={board} />}
       <div className="pointer-events-none absolute bottom-2 right-3 rounded bg-black/30 px-2 py-0.5 text-[11px] text-frog-200/70">
         {Math.round(vp.scale * 100)}%
       </div>

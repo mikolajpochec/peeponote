@@ -1,9 +1,7 @@
-import { useRef, useState } from 'react'
-import type { Board, Card } from '../model/types'
-import { newId } from '../model/types'
+import { useState } from 'react'
+import type { Board } from '../model/types'
 import { selectBoards, selectDirty, useWorkspace } from '../store/workspace'
 import { useSettings } from '../store/settings'
-import { useViewport } from '../canvas/viewport'
 import { Peepo } from './Peepo'
 
 export function TopBar({ onToggleHistory, historyOpen, onOpenSettings }: { onToggleHistory: () => void; historyOpen: boolean; onOpenSettings: () => void }) {
@@ -40,8 +38,6 @@ export function TopBar({ onToggleHistory, historyOpen, onOpenSettings }: { onTog
           </span>
         ))}
       </nav>
-      <div className="mx-2 h-6 w-px bg-white/10" />
-      {board && !readOnly && <Toolbar board={board} />}
       <div className="flex-1" />
       <SaveBar />
       <button
@@ -55,71 +51,6 @@ export function TopBar({ onToggleHistory, historyOpen, onOpenSettings }: { onTog
         ⚙
       </button>
     </header>
-  )
-}
-
-function centerOfView(boardId: string): { x: number; y: number } {
-  const vp = useViewport.getState().get(boardId)
-  const el = document.querySelector('.canvas-bg') as HTMLElement | null
-  const w = el?.clientWidth ?? 800
-  const h = el?.clientHeight ?? 600
-  return { x: (w / 2 - vp.x) / vp.scale, y: (h / 2 - vp.y) / vp.scale }
-}
-
-function Toolbar({ board }: { board: Board }) {
-  const addCard = useWorkspace((s) => s.addCard)
-  const createBoard = useWorkspace((s) => s.createBoard)
-  const addAssets = useWorkspace((s) => s.addAssets)
-  const select = useWorkspace((s) => s.select)
-  const fileInput = useRef<HTMLInputElement>(null)
-
-  const place = (w: number, h: number) => {
-    const c = centerOfView(board.id)
-    const jitter = () => (Math.random() - 0.5) * 60
-    return { x: Math.round(c.x - w / 2 + jitter()), y: Math.round(c.y - h / 2 + jitter()), z: board.cards.reduce((m, k) => Math.max(m, k.z), 0) + 1 }
-  }
-  const add = (card: Card) => {
-    addCard(board.id, card)
-    select([card.id])
-  }
-
-  const btn = 'rounded-md bg-swamp-700 px-2 py-1 text-[13px] font-semibold text-frog-100 hover:bg-frog-700 hover:text-white'
-  return (
-    <div className="flex items-center gap-1">
-      <button className={btn} title="Note" onClick={() => add({ id: newId(), type: 'note', ...place(220, 120), w: 220, h: 120, md: '' })}>
-        📝 Note
-      </button>
-      <button className={btn} title="To-do" onClick={() => add({ id: newId(), type: 'todo', ...place(240, 200), w: 240, h: 200, title: '', items: [] })}>
-        ☑ To-do
-      </button>
-      <button className={btn} title="Link" onClick={() => add({ id: newId(), type: 'link', ...place(260, 90), w: 260, h: 90, url: '', title: '' })}>
-        🔗 Link
-      </button>
-      <button
-        className={btn}
-        title="Sub-board"
-        onClick={() => {
-          const p = place(200, 140)
-          createBoard(board.id, 'New board', p)
-        }}
-      >
-        🐸 Board
-      </button>
-      <button className={btn} title="Upload files (or just drop them on the canvas)" onClick={() => fileInput.current?.click()}>
-        📎 File
-      </button>
-      <input
-        ref={fileInput}
-        type="file"
-        multiple
-        className="hidden"
-        onChange={async (e) => {
-          const files = [...(e.target.files ?? [])]
-          e.target.value = ''
-          if (files.length) await addAssets(board.id, files, place(280, 280))
-        }}
-      />
-    </div>
   )
 }
 
