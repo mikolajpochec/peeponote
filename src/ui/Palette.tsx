@@ -22,8 +22,8 @@ interface Tool {
 }
 
 export const TOOLS: Tool[] = [
-  { id: 'title', label: 'Title', icon: 'T', hint: 'Big heading text', w: 320, h: 56, autoEdit: true, make: (b) => ({ ...b, type: 'text', text: '', style: 'title' }) },
-  { id: 'text', label: 'Text', icon: '¶', hint: 'Plain paragraph', w: 260, h: 80, autoEdit: true, make: (b) => ({ ...b, type: 'text', text: '', style: 'body' }) },
+  { id: 'title', label: 'Title', icon: 'T', hint: 'Big heading text', w: 320, h: 56, autoEdit: true, make: (b) => ({ ...b, type: 'text', text: '', variant: 'title' }) },
+  { id: 'text', label: 'Text', icon: '¶', hint: 'Plain paragraph', w: 260, h: 80, autoEdit: true, make: (b) => ({ ...b, type: 'text', text: '', variant: 'body' }) },
   { id: 'note', label: 'Note', icon: '📝', hint: 'Markdown note card', w: 220, h: 120, autoEdit: true, make: (b) => ({ ...b, type: 'note', md: '' }) },
   { id: 'todo', label: 'To-do', icon: '☑', hint: 'Checklist', w: 240, h: 200, make: (b) => ({ ...b, type: 'todo', title: '', items: [] }) },
   { id: 'link', label: 'Link', icon: '🔗', hint: 'Bookmark a URL', w: 260, h: 90, make: (b) => ({ ...b, type: 'link', url: '', title: '' }) },

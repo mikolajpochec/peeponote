@@ -13,6 +13,7 @@ Runs as a static web app, installs as a PWA, and needs no backend.
   - images (photos) · **textures/spritesheets** (pixel-perfect, checkerboard, frame stepper) · audio · video
   - **3D models** (`.glb .gltf .obj .stl .fbx`, orbit controls, animation playback) · fonts (live specimen)
   - shaders / scripts / configs (`.glsl .frag .vert .wgsl .lua .gd …`) · data (`.json .yaml .csv .tmx .tscn …`) · anything else (generic card)
+- **Styling** — select anything to get a style bar: fill, text color, border, font size/family (sans/serif/mono/hand), bold/italic, alignment, corner radius, opacity. Works on multi-select. Connectors get color/width/dashed; boards get a background color and a dot-grid toggle (🎨 in the top bar).
 - **Connectors** — hover/select a card, drag from one of its 4 anchor points onto another card (snaps to the facing side) or into empty space. Select a line to flip arrowheads, delete, or drag its ends elsewhere.
 - **Git** — edits are written to the working tree as you go (uncommitted changes survive a refresh); every save is a commit. History panel lets you peek at any old version and restore it. Push/pull to any git-over-HTTPS remote.
 

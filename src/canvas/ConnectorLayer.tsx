@@ -3,6 +3,8 @@ import type { Anchor, ArrowStyle, Board, Card, Connector, Side } from '../model/
 import { SIDES } from '../model/types'
 import { useWorkspace } from '../store/workspace'
 import { anchorPoint, bezierMid, connectorPath, sidePoint, type Pt } from './connectors'
+import { ColorPicker } from '../ui/ColorPicker'
+import { INKS } from './styles'
 
 export interface DraftConnector {
   /** the end that stays put */
@@ -82,8 +84,9 @@ export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard,
               <path
                 d={d}
                 fill="none"
-                stroke={sel ? STROKE_SEL : STROKE}
-                strokeWidth={sel ? 3 : 2}
+                stroke={k.style?.color ?? (sel ? STROKE_SEL : STROKE)}
+                strokeWidth={(k.style?.width ?? 2) + (sel ? 1 : 0)}
+                strokeDasharray={k.style?.dashed ? '8 6' : undefined}
                 strokeLinecap="round"
                 markerEnd={k.arrows === 'end' || k.arrows === 'both' ? 'url(#pn-arrow)' : undefined}
                 markerStart={k.arrows === 'start' || k.arrows === 'both' ? 'url(#pn-arrow)' : undefined}
@@ -161,6 +164,9 @@ export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard,
 function ConnectorToolbar({ boardId, connector, at, inv }: { boardId: string; connector: Connector; at: Pt; inv: number }) {
   const updateConnector = useWorkspace((s) => s.updateConnector)
   const removeConnectors = useWorkspace((s) => s.removeConnectors)
+  const styleConnectors = useWorkspace((s) => s.styleConnectors)
+  const st = connector.style ?? {}
+  const width = st.width ?? 2
   const opts: { v: ArrowStyle; label: string; title: string }[] = [
     { v: 'end', label: '→', title: 'Arrow at end' },
     { v: 'start', label: '←', title: 'Arrow at start' },
@@ -184,6 +190,23 @@ function ConnectorToolbar({ boardId, connector, at, inv }: { boardId: string; co
           {o.label}
         </button>
       ))}
+      <span className="mx-0.5 h-4 w-px bg-white/10" />
+      <ColorPicker title="Line color" value={st.color} fallback="#8ac47e" swatches={INKS} onChange={(color) => styleConnectors(boardId, [connector.id], { color })} />
+      <button
+        title={`Line width: ${width}`}
+        onClick={() => styleConnectors(boardId, [connector.id], { width: width >= 6 ? undefined : width + 1 })}
+        className="flex h-6 w-6 items-center justify-center rounded text-frog-100 hover:bg-white/10"
+      >
+        <span className="block w-3.5 rounded-full bg-current" style={{ height: Math.min(6, width) }} />
+      </button>
+      <button
+        title="Dashed"
+        onClick={() => styleConnectors(boardId, [connector.id], { dashed: st.dashed ? undefined : true })}
+        className={`h-6 w-6 rounded text-[13px] ${st.dashed ? 'bg-frog-600 text-white' : 'text-frog-100 hover:bg-white/10'}`}
+      >
+        ┄
+      </button>
+      <span className="mx-0.5 h-4 w-px bg-white/10" />
       <button title="Delete (Del)" onClick={() => removeConnectors(boardId, [connector.id])} className="h-6 w-6 rounded text-[12px] text-frog-200 hover:bg-red-700 hover:text-white">
         ✕
       </button>

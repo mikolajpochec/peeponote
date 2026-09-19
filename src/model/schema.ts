@@ -1,6 +1,19 @@
 import { z } from 'zod'
 import type { Board, WorkspaceMeta } from './types'
 
+const cardStyleSchema = z.object({
+  bg: z.string().optional(),
+  fg: z.string().optional(),
+  fontSize: z.number().optional(),
+  font: z.enum(['sans', 'serif', 'mono', 'hand']).optional(),
+  bold: z.boolean().optional(),
+  italic: z.boolean().optional(),
+  align: z.enum(['left', 'center', 'right']).optional(),
+  border: z.string().optional(),
+  radius: z.number().optional(),
+  opacity: z.number().optional(),
+})
+
 const base = {
   id: z.string(),
   x: z.number(),
@@ -8,11 +21,12 @@ const base = {
   w: z.number(),
   h: z.number(),
   z: z.number().default(0),
+  style: cardStyleSchema.optional(),
 }
 
 const cardSchema = z.discriminatedUnion('type', [
   z.object({ ...base, type: z.literal('note'), md: z.string(), color: z.string().optional() }),
-  z.object({ ...base, type: z.literal('text'), text: z.string(), style: z.enum(['title', 'body']), autoSize: z.boolean().optional() }),
+  z.object({ ...base, type: z.literal('text'), text: z.string(), variant: z.enum(['title', 'body']), autoSize: z.boolean().optional() }),
   z.object({
     ...base,
     type: z.literal('todo'),
@@ -46,6 +60,7 @@ const connectorSchema = z.object({
   from: anchorSchema,
   to: anchorSchema,
   arrows: z.enum(['end', 'start', 'both', 'none']).default('end'),
+  style: z.object({ color: z.string().optional(), width: z.number().optional(), dashed: z.boolean().optional() }).optional(),
 })
 
 export const boardSchema = z.object({
@@ -55,6 +70,7 @@ export const boardSchema = z.object({
   createdAt: z.string(),
   cards: z.array(cardSchema),
   connectors: z.array(connectorSchema).default([]),
+  style: z.object({ bg: z.string().optional(), dots: z.boolean().optional() }).optional(),
 })
 
 export const workspaceSchema = z.object({
@@ -63,8 +79,23 @@ export const workspaceSchema = z.object({
   rootBoardId: z.string(),
 })
 
+/** Older files stored the text variant under `style`. */
+function migrate(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') return raw
+  const b = raw as { cards?: Record<string, unknown>[] }
+  if (Array.isArray(b.cards)) {
+    for (const c of b.cards) {
+      if (c.type === 'text' && typeof c.style === 'string') {
+        c.variant = c.style
+        delete c.style
+      }
+    }
+  }
+  return raw
+}
+
 export function parseBoard(json: string): Board {
-  return boardSchema.parse(JSON.parse(json)) as Board
+  return boardSchema.parse(migrate(JSON.parse(json))) as Board
 }
 
 export function parseWorkspace(json: string): WorkspaceMeta {

@@ -5,6 +5,7 @@ import { useWorkspace } from '../store/workspace'
 import { useSettings } from '../store/settings'
 import { isInteractiveTarget, useDrag } from './useDrag'
 import { setGlobalCursor } from './cursor'
+import { cardStyles } from './styles'
 
 export const GRID = 20
 export const MIN_W = 120
@@ -89,6 +90,8 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
     scale,
   )
 
+  const styles = cardStyles(card)
+
   return (
     <div
       data-card={card.id}
@@ -99,7 +102,7 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
             ? 'ring-1 ring-transparent hover:ring-frog-300/40'
             : 'ring-1 ring-black/20'
       } ${className}`}
-      style={{ left: card.x, top: card.y, width: card.w, height: card.h, zIndex: card.z }}
+      style={{ left: card.x, top: card.y, width: card.w, height: card.h, zIndex: card.z, ...styles.shell }}
       onPointerDown={onDragStart}
       onDoubleClick={(e) => {
         if (isInteractiveTarget(e as unknown as PointerEvent)) return
@@ -109,7 +112,9 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
       }}
     >
       <EditRequestContext.Provider value={editTick}>
-        <div className="h-full w-full overflow-hidden rounded-xl">{children}</div>
+        <div className="h-full w-full overflow-hidden rounded-xl" style={styles.inner}>
+          {children}
+        </div>
       </EditRequestContext.Provider>
       {!readOnly && (
         <>

@@ -10,6 +10,7 @@ import { Peepo } from '../ui/Peepo'
 import { autoEdit } from '../cards/autoEdit'
 import { setGlobalCursor } from './cursor'
 import { Palette, TOOL_MIME, placeTool, toolById } from '../ui/Palette'
+import { StyleBar } from '../ui/StyleBar'
 
 interface Marquee {
   x0: number
@@ -229,11 +230,30 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     }
   }
 
+  // style bar floats (unscaled) above the selected cards
+  const selectedCards = board.cards.filter((c) => selection.has(c.id))
+  let styleBarPos: { x: number; y: number; below: boolean } | null = null
+  if (!readOnly && !draft && !marquee && selectedCards.length) {
+    const minX = Math.min(...selectedCards.map((c) => c.x))
+    const maxX = Math.max(...selectedCards.map((c) => c.x + c.w))
+    const minY = Math.min(...selectedCards.map((c) => c.y))
+    const maxY = Math.max(...selectedCards.map((c) => c.y + c.h))
+    const sx = vp.x + ((minX + maxX) / 2) * vp.scale
+    const top = vp.y + minY * vp.scale - 12
+    const below = top < 56
+    styleBarPos = { x: sx, y: below ? vp.y + maxY * vp.scale + 12 : top, below }
+  }
+
   return (
     <div
       ref={ref}
       className={`canvas-bg relative h-full w-full overflow-hidden touch-none ${dragOver ? 'outline outline-4 -outline-offset-4 outline-frog-300/60' : ''}`}
-      style={{ backgroundSize: `${24 * vp.scale}px ${24 * vp.scale}px`, backgroundPosition: `${vp.x}px ${vp.y}px` }}
+      style={{
+        backgroundSize: `${24 * vp.scale}px ${24 * vp.scale}px`,
+        backgroundPosition: `${vp.x}px ${vp.y}px`,
+        backgroundColor: board.style?.bg,
+        backgroundImage: board.style?.dots === false ? 'none' : undefined,
+      }}
       onPointerDown={onBackgroundPointerDown}
       onPointerMove={(e) => {
         if (draft) return
@@ -291,6 +311,18 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         </div>
       )}
       {!readOnly && <Palette board={board} />}
+      {styleBarPos && (
+        <div
+          className="absolute z-30"
+          style={{
+            left: Math.max(180, Math.min(styleBarPos.x, (ref.current?.clientWidth ?? 800) - 180)),
+            top: styleBarPos.y,
+            transform: styleBarPos.below ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
+          }}
+        >
+          <StyleBar boardId={board.id} cards={selectedCards} />
+        </div>
+      )}
       <div className="pointer-events-none absolute bottom-2 right-3 rounded bg-black/30 px-2 py-0.5 text-[11px] text-frog-200/70">
         {Math.round(vp.scale * 100)}%
       </div>

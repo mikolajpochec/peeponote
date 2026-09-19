@@ -3,12 +3,14 @@ import type { Board } from '../model/types'
 import { selectBoards, selectDirty, useWorkspace } from '../store/workspace'
 import { useSettings } from '../store/settings'
 import { Peepo } from './Peepo'
+import { ColorPicker } from './ColorPicker'
 
 export function TopBar({ onToggleHistory, historyOpen, onOpenSettings }: { onToggleHistory: () => void; historyOpen: boolean; onOpenSettings: () => void }) {
   const boards = useWorkspace(selectBoards)
   const currentId = useWorkspace((s) => s.currentBoardId)
   const navigate = useWorkspace((s) => s.navigate)
   const renameBoard = useWorkspace((s) => s.renameBoard)
+  const setBoardStyle = useWorkspace((s) => s.setBoardStyle)
   const viewingRef = useWorkspace((s) => s.viewingRef)
   const board = currentId ? boards[currentId] : undefined
   const readOnly = !!viewingRef
@@ -38,6 +40,25 @@ export function TopBar({ onToggleHistory, historyOpen, onOpenSettings }: { onTog
           </span>
         ))}
       </nav>
+      {board && !readOnly && (
+        <div className="ml-1 flex items-center gap-0.5 rounded-lg bg-swamp-700/60 px-1" title="Board style">
+          <ColorPicker
+            title="Board background"
+            icon="◼"
+            value={board.style?.bg}
+            fallback="#171f18"
+            swatches={['#171f18', '#101610', '#1c2a1e', '#2a3a2c', '#1e1b2e', '#2a1f1f', '#fbf8ef', '#eef7ec', '#e7e5e4', '#fff3b0', '#dbeafe', '#fce7f3']}
+            onChange={(bg) => setBoardStyle(board.id, { bg })}
+          />
+          <button
+            title="Toggle dot grid"
+            onClick={() => setBoardStyle(board.id, { dots: board.style?.dots === false ? undefined : false })}
+            className={`h-7 w-7 rounded-md text-[13px] ${board.style?.dots === false ? 'text-frog-200/40' : 'text-frog-100'} hover:bg-white/10`}
+          >
+            ⁘
+          </button>
+        </div>
+      )}
       <div className="flex-1" />
       <SaveBar />
       <button

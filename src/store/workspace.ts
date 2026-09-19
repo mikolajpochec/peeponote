@@ -5,7 +5,10 @@ import {
   writeBytes, writeText, type PeepoFS,
 } from '../fs'
 import * as repo from '../git/repo'
-import { ASSETS_DIR, BOARDS_DIR, WORKSPACE_FILE, boardPath, newId, type Board, type Card, type Connector, type WorkspaceMeta } from '../model/types'
+import {
+  ASSETS_DIR, BOARDS_DIR, WORKSPACE_FILE, boardPath, newId,
+  type Board, type BoardStyle, type Card, type CardStyle, type Connector, type ConnectorStyle, type WorkspaceMeta,
+} from '../model/types'
 import { parseBoard, parseWorkspace } from '../model/schema'
 import { detectKind } from '../model/assetKind'
 import { useSettings } from './settings'
@@ -57,6 +60,9 @@ interface WorkspaceState {
   bringToFront: (boardId: string, cardId: string) => void
   createBoard: (parentId: string, name: string, at: { x: number; y: number }) => string
   renameBoard: (boardId: string, name: string) => void
+  styleCards: (boardId: string, ids: string[], patch: Partial<CardStyle>) => void
+  styleConnectors: (boardId: string, ids: string[], patch: Partial<ConnectorStyle>) => void
+  setBoardStyle: (boardId: string, patch: Partial<BoardStyle>) => void
   addConnector: (boardId: string, c: Connector) => void
   updateConnector: (boardId: string, id: string, patch: Partial<Connector>) => void
   removeConnectors: (boardId: string, ids: string[]) => void
@@ -331,6 +337,18 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
 
     renameBoard: (boardId, name) => mutateBoard(boardId, (b) => ({ ...b, name })),
 
+    styleCards: (boardId, ids, patch) =>
+      mutateBoard(boardId, (b) => ({
+        ...b,
+        cards: b.cards.map((c) => (ids.includes(c.id) ? ({ ...c, style: mergeStyle(c.style, patch) } as Card) : c)),
+      })),
+    styleConnectors: (boardId, ids, patch) =>
+      mutateBoard(boardId, (b) => ({
+        ...b,
+        connectors: b.connectors.map((k) => (ids.includes(k.id) ? { ...k, style: mergeStyle(k.style, patch) } : k)),
+      })),
+    setBoardStyle: (boardId, patch) => mutateBoard(boardId, (b) => ({ ...b, style: mergeStyle(b.style, patch) })),
+
     addConnector: (boardId, c) => mutateBoard(boardId, (b) => ({ ...b, connectors: [...b.connectors, c] })),
     updateConnector: (boardId, id, patch) =>
       mutateBoard(boardId, (b) => ({ ...b, connectors: b.connectors.map((k) => (k.id === id ? { ...k, ...patch } : k)) })),
@@ -565,6 +583,16 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     },
   }
 })
+
+/** Merge a style patch; `undefined` values delete keys, empty result becomes undefined. */
+function mergeStyle<T extends object>(cur: T | undefined, patch: Partial<T>): T | undefined {
+  const next = { ...(cur ?? {}) } as Record<string, unknown>
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === undefined) delete next[k]
+    else next[k] = v
+  }
+  return Object.keys(next).length ? (next as T) : undefined
+}
 
 function defaultMessage(c: repo.ChangeSummary) {
   const parts: string[] = []

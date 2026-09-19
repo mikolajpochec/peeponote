@@ -19,14 +19,12 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
   const ta = useRef<HTMLTextAreaElement>(null)
   const view = useRef<HTMLDivElement>(null)
   const measure = useRef<HTMLDivElement>(null)
-  const isTitle = card.style === 'title'
+  const isTitle = card.variant === 'title'
   const auto = card.autoSize !== false
   const maxW = isTitle ? 640 : 420
   const shown = editing ? draft : card.text
   const placeholder = isTitle ? 'Title' : 'Text'
-  const cls = isTitle
-    ? 'text-[28px] font-black leading-tight tracking-tight text-frog-50'
-    : 'text-[15px] leading-snug text-frog-100'
+  const cls = isTitle ? 'leading-tight tracking-tight' : 'leading-snug'
 
   useEffect(() => {
     if (editing) {
@@ -87,7 +85,8 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
           e.stopPropagation()
         }}
           placeholder={placeholder}
-          className={`h-full w-full resize-none overflow-hidden bg-frog-300/10 p-2 outline-none placeholder:text-frog-200/30 ${cls}`}
+          className={`h-full w-full resize-none overflow-hidden bg-frog-300/10 p-2 text-inherit outline-none placeholder:text-frog-200/30 ${cls}`}
+          style={{ font: 'inherit', color: 'inherit', textAlign: 'inherit' }}
         />
       </>
     )

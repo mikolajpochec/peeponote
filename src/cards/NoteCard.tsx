@@ -50,20 +50,21 @@ export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
           e.stopPropagation()
         }}
         placeholder="Write markdown… (Esc or ⌘⏎ to finish)"
-        className="h-full w-full resize-none bg-paper p-3 font-sans text-[14px] leading-snug text-ink outline-none"
+        className="h-full w-full resize-none bg-transparent p-3 leading-snug outline-none placeholder:opacity-40"
+        style={{ font: 'inherit', color: 'inherit', textAlign: 'inherit' }}
       />
     )
   }
 
   return (
     <div
-      className="prose-note h-full w-full overflow-auto p-3 text-[14px] leading-snug scrollbar-thin"
+      className="prose-note h-full w-full overflow-auto p-3 leading-snug scrollbar-thin"
       style={{ background: card.color }}
     >
       {card.md.trim() ? (
         <Markdown>{card.md}</Markdown>
       ) : (
-        <span className="text-ink/40">{readOnly ? 'Empty note' : 'Double-click to write…'}</span>
+        <span className="opacity-40">{readOnly ? 'Empty note' : 'Double-click to write…'}</span>
       )}
     </div>
   )

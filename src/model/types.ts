@@ -9,6 +9,34 @@ export type AssetKind =
   | 'data'
   | 'other'
 
+export type FontFamily = 'sans' | 'serif' | 'mono' | 'hand'
+export type TextAlign = 'left' | 'center' | 'right'
+
+/** Visual overrides; every field optional, absent = type default */
+export interface CardStyle {
+  bg?: string
+  fg?: string
+  fontSize?: number
+  font?: FontFamily
+  bold?: boolean
+  italic?: boolean
+  align?: TextAlign
+  border?: string
+  radius?: number
+  opacity?: number
+}
+
+export interface ConnectorStyle {
+  color?: string
+  width?: number
+  dashed?: boolean
+}
+
+export interface BoardStyle {
+  bg?: string
+  dots?: boolean
+}
+
 export interface CardBase {
   id: string
   x: number
@@ -16,6 +44,7 @@ export interface CardBase {
   w: number
   h: number
   z: number
+  style?: CardStyle
 }
 
 export interface NoteCard extends CardBase {
@@ -27,7 +56,7 @@ export interface NoteCard extends CardBase {
 export interface TextCard extends CardBase {
   type: 'text'
   text: string
-  style: 'title' | 'body'
+  variant: 'title' | 'body'
   /** size follows content until the user resizes by hand (default true) */
   autoSize?: boolean
 }
@@ -83,6 +112,7 @@ export interface Connector {
   from: Anchor
   to: Anchor
   arrows: ArrowStyle
+  style?: ConnectorStyle
 }
 
 export interface Board {
@@ -92,6 +122,7 @@ export interface Board {
   createdAt: string
   cards: Card[]
   connectors: Connector[]
+  style?: BoardStyle
 }
 
 export interface WorkspaceMeta {

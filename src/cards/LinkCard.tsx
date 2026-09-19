@@ -29,7 +29,7 @@ export function LinkCard({ card, boardId, readOnly }: CardProps<LinkCardT>) {
           value={card.title}
           placeholder={host || 'Title'}
           onChange={(e) => updateCard(boardId, card.id, { title: e.target.value })}
-          className="min-w-0 bg-transparent text-[14px] font-bold outline-none placeholder:text-ink/40"
+          className="min-w-0 bg-transparent text-[1em] font-bold outline-none placeholder:opacity-50"
         />
         <input
           data-nodrag
@@ -37,7 +37,7 @@ export function LinkCard({ card, boardId, readOnly }: CardProps<LinkCardT>) {
           value={card.url}
           placeholder="https://…"
           onChange={(e) => updateCard(boardId, card.id, { url: e.target.value })}
-          className="min-w-0 bg-transparent text-[12px] text-ink/60 outline-none"
+          className="min-w-0 bg-transparent text-[0.86em] opacity-70 outline-none"
         />
         {card.url && (
           <a
@@ -45,7 +45,7 @@ export function LinkCard({ card, boardId, readOnly }: CardProps<LinkCardT>) {
             href={card.url}
             target="_blank"
             rel="noreferrer noopener"
-            className="mt-auto self-start text-[12px] font-semibold text-frog-600 hover:underline"
+            className="mt-auto self-start text-[0.86em] font-semibold text-frog-600 hover:underline"
           >
             Open ↗
           </a>

@@ -32,7 +32,7 @@ export const CardView = memo(function CardView({ card, boardId, readOnly, select
       )
     case 'text':
       return (
-        <CardShell {...common} scale={scale} bare>
+        <CardShell {...common} scale={scale} bare className={card.variant === 'title' ? 'text-frog-50' : 'text-frog-100'}>
           <TextCard {...common} card={card} />
         </CardShell>
       )

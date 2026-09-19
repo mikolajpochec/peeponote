@@ -13,22 +13,22 @@ export function TodoCard({ card, boardId, readOnly }: CardProps<TodoCardT>) {
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-ink/10 px-3 py-2">
+      <div className="flex items-center gap-2 border-b border-current/10 px-3 py-2">
         <input
           data-nodrag
           readOnly={readOnly}
           value={card.title}
           placeholder="To-do"
           onChange={(e) => updateCard(boardId, card.id, { title: e.target.value })}
-          className="min-w-0 flex-1 bg-transparent text-[14px] font-extrabold outline-none placeholder:text-ink/30"
+          className="min-w-0 flex-1 bg-transparent text-[1em] font-extrabold outline-none placeholder:opacity-40"
         />
-        <span className="text-[11px] text-ink/50">
+        <span className="text-[0.8em] opacity-60">
           {done}/{card.items.length}
         </span>
       </div>
       <ul className="flex-1 overflow-auto px-2 py-1 scrollbar-thin">
         {card.items.map((it) => (
-          <li key={it.id} className="group/item flex items-start gap-2 px-1 py-0.5 text-[13px]">
+          <li key={it.id} className="group/item flex items-start gap-2 px-1 py-0.5 text-[0.93em]">
             <input
               data-nodrag
               type="checkbox"
@@ -42,13 +42,13 @@ export function TodoCard({ card, boardId, readOnly }: CardProps<TodoCardT>) {
               readOnly={readOnly}
               value={it.text}
               onChange={(e) => setItems(card.items.map((x) => (x.id === it.id ? { ...x, text: e.target.value } : x)))}
-              className={`min-w-0 flex-1 bg-transparent outline-none ${it.done ? 'line-through text-ink/40' : ''}`}
+              className={`min-w-0 flex-1 bg-transparent outline-none ${it.done ? 'line-through opacity-50' : ''}`}
             />
             {!readOnly && (
               <button
                 data-nodrag
                 onClick={() => setItems(card.items.filter((x) => x.id !== it.id))}
-                className="hidden text-ink/40 group-hover/item:block hover:text-red-600"
+                className="hidden opacity-50 group-hover/item:block hover:text-red-600 hover:opacity-100"
               >
                 ✕
               </button>
@@ -58,7 +58,7 @@ export function TodoCard({ card, boardId, readOnly }: CardProps<TodoCardT>) {
       </ul>
       {!readOnly && (
         <form
-          className="border-t border-ink/10 px-3 py-1.5"
+          className="border-t border-current/10 px-3 py-1.5"
           onSubmit={(e) => {
             e.preventDefault()
             if (!newText.trim()) return
@@ -71,7 +71,7 @@ export function TodoCard({ card, boardId, readOnly }: CardProps<TodoCardT>) {
             value={newText}
             onChange={(e) => setNewText(e.target.value)}
             placeholder="+ add item"
-            className="w-full bg-transparent text-[13px] outline-none placeholder:text-ink/30"
+            className="w-full bg-transparent text-[0.93em] outline-none placeholder:opacity-40"
           />
         </form>
       )}
