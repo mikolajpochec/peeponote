@@ -45,7 +45,7 @@ export function LinkCard({ card, boardId, readOnly }: CardProps<LinkCardT>) {
             href={card.url}
             target="_blank"
             rel="noreferrer noopener"
-            className="mt-auto self-start text-[0.86em] font-semibold text-frog-600 hover:underline"
+            className="mt-auto self-start text-[0.86em] font-semibold underline opacity-80 hover:opacity-100"
           >
             Open ↗
           </a>

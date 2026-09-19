@@ -42,7 +42,7 @@ html, body, #root {
 .canvas-bg {
   background-color: var(--color-swamp-800);
   background-image:
-    radial-gradient(circle at 1px 1px, rgba(138, 196, 126, 0.16) 1px, transparent 0);
+    radial-gradient(circle at 1px 1px, var(--board-dot, rgba(138, 196, 126, 0.16)) 1px, transparent 0);
 }
 
 .checker {

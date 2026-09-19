@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import type { Card, CardStyle, FontFamily } from '../model/types'
+import type { Board, Card, CardStyle, FontFamily } from '../model/types'
 
 export const FONT_FAMILY: Record<FontFamily, string> = {
   sans: 'var(--font-sans)',
@@ -43,7 +43,8 @@ export function cardStyles(card: Card): { shell: CSSProperties; inner: CSSProper
   const inner: CSSProperties = {
     borderRadius: radius,
     background: s.bg,
-    color: s.fg,
+    // explicit text color, else auto-contrast against a custom fill, else the board ink for free text
+    color: s.fg ?? (s.bg ? contrast(s.bg) : card.type === 'text' ? 'var(--board-fg)' : undefined),
     fontSize: s.fontSize ?? defaultFontSize(card),
     fontFamily: s.font ? FONT_FAMILY[s.font] : undefined,
     fontWeight: s.bold !== undefined || card.type === 'text' ? (bold ? 800 : 400) : undefined,
@@ -51,4 +52,38 @@ export function cardStyles(card: Card): { shell: CSSProperties; inner: CSSProper
     textAlign: s.align,
   }
   return { shell, inner }
+}
+
+/** Relative luminance 0..1 of a #rrggbb color (null when not parseable). */
+export function luminance(c: string | undefined): number | null {
+  const m = c && /^#([0-9a-f]{6})$/i.exec(c.trim())
+  if (!m) return null
+  const n = parseInt(m[1], 16)
+  return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255
+}
+
+export function isLight(c: string | undefined): boolean {
+  const l = luminance(c)
+  return l !== null && l > 0.6
+}
+
+/** Ink color that reads on the given background. */
+export function contrast(bg: string): string {
+  return isLight(bg) ? '#1b1d1a' : '#ffffff'
+}
+
+export const DEFAULT_BOARD_BG = '#171f18'
+
+/** CSS variables that adapt canvas chrome (text, lines, dots, handles) to the board background. */
+export function boardVars(board: Board): Record<string, string> {
+  const bg = board.style?.bg ?? DEFAULT_BOARD_BG
+  const light = isLight(bg)
+  return {
+    '--board-bg': bg,
+    '--board-fg': light ? '#1b1d1a' : '#eef7ec',
+    '--board-fg-muted': light ? 'rgba(27, 29, 26, 0.55)' : 'rgba(238, 247, 236, 0.55)',
+    '--board-line': light ? '#3d7030' : '#8ac47e',
+    '--board-line-sel': light ? '#1b1d1a' : '#d6ebd1',
+    '--board-dot': light ? 'rgba(27, 29, 26, 0.18)' : 'rgba(138, 196, 126, 0.16)',
+  }
 }

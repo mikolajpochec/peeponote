@@ -11,6 +11,7 @@ import { autoEdit } from '../cards/autoEdit'
 import { setGlobalCursor } from './cursor'
 import { Palette, TOOL_MIME, placeTool, toolById } from '../ui/Palette'
 import { StyleBar } from '../ui/StyleBar'
+import { boardVars } from './styles'
 
 interface Marquee {
   x0: number
@@ -249,9 +250,10 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       ref={ref}
       className={`canvas-bg relative h-full w-full overflow-hidden touch-none ${dragOver ? 'outline outline-4 -outline-offset-4 outline-frog-300/60' : ''}`}
       style={{
+        ...boardVars(board),
         backgroundSize: `${24 * vp.scale}px ${24 * vp.scale}px`,
         backgroundPosition: `${vp.x}px ${vp.y}px`,
-        backgroundColor: board.style?.bg,
+        backgroundColor: 'var(--board-bg)',
         backgroundImage: board.style?.dots === false ? 'none' : undefined,
       }}
       onPointerDown={onBackgroundPointerDown}
@@ -293,8 +295,10 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         ))}
         {marquee && (
           <div
-            className="absolute border border-frog-300 bg-frog-300/10"
+            className="absolute border"
             style={{
+              borderColor: 'var(--board-line)',
+              background: 'color-mix(in srgb, var(--board-line) 12%, transparent)',
               left: Math.min(marquee.x0, marquee.x1),
               top: Math.min(marquee.y0, marquee.y1),
               width: Math.abs(marquee.x1 - marquee.x0),
@@ -304,7 +308,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         )}
       </div>
       {board.cards.length === 0 && (
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 text-frog-200/70">
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3" style={{ color: 'var(--board-fg-muted)' }}>
           <Peepo name="peepoSit" size={96} className="peepo-bounce opacity-80" />
           <div className="text-lg font-bold">Empty board. peepoSit</div>
           <div className="text-sm">Double-click to write a note · drop files anywhere · use the toolbar</div>
@@ -323,7 +327,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
           <StyleBar boardId={board.id} cards={selectedCards} />
         </div>
       )}
-      <div className="pointer-events-none absolute bottom-2 right-3 rounded bg-black/30 px-2 py-0.5 text-[11px] text-frog-200/70">
+      <div className="pointer-events-none absolute bottom-2 right-3 rounded px-2 py-0.5 text-[11px]" style={{ color: 'var(--board-fg-muted)', background: 'color-mix(in srgb, var(--board-fg) 8%, transparent)' }}>
         {Math.round(vp.scale * 100)}%
       </div>
     </div>

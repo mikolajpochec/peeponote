@@ -27,8 +27,8 @@ interface Props {
   onSelect: (id: string, additive: boolean) => void
 }
 
-const STROKE = '#8ac47e'
-const STROKE_SEL = '#d6ebd1'
+const STROKE = 'var(--board-line)'
+const STROKE_SEL = 'var(--board-line-sel)'
 
 export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard, draft, onAnchorDown, onEndpointDown, onSelect }: Props) {
   const cards = useMemo(() => new Map(board.cards.map((c) => [c.id, c])), [board.cards])
@@ -84,7 +84,7 @@ export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard,
               <path
                 d={d}
                 fill="none"
-                stroke={k.style?.color ?? (sel ? STROKE_SEL : STROKE)}
+                style={{ stroke: k.style?.color ?? (sel ? STROKE_SEL : STROKE) }}
                 strokeWidth={(k.style?.width ?? 2) + (sel ? 1 : 0)}
                 strokeDasharray={k.style?.dashed ? '8 6' : undefined}
                 strokeLinecap="round"
@@ -98,7 +98,7 @@ export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard,
           <path
             d={connectorPath(draftA.pt, draftA.side, draft.moving, null)}
             fill="none"
-            stroke={STROKE_SEL}
+            style={{ stroke: STROKE_SEL }}
             strokeWidth={2}
             strokeDasharray="6 4"
             markerEnd="url(#pn-arrow)"
@@ -117,8 +117,10 @@ export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard,
               data-card={c.id}
               title="Drag to connect"
               onPointerDown={(e) => onAnchorDown(e, { cardId: c.id, side })}
-              className="absolute rounded-full border-2 border-frog-300 bg-swamp-800 hover:bg-frog-300 hover:scale-125 transition-transform"
+              className="absolute rounded-full border-2 hover:scale-125 transition-transform"
               style={{
+                borderColor: 'var(--board-line)',
+                background: 'var(--board-bg)',
                 left: p.x,
                 top: p.y,
                 width: 12,
@@ -148,8 +150,8 @@ export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard,
                       data-nodrag
                       title="Drag to reattach"
                       onPointerDown={(e) => onEndpointDown(e, k, end)}
-                      className="absolute rounded-full bg-frog-100 ring-2 ring-frog-500"
-                      style={{ left: p.x, top: p.y, width: 12, height: 12, transform: `translate(-50%, -50%) scale(${inv})`, zIndex: 100001, cursor: 'move' }}
+                      className="absolute rounded-full ring-2"
+                      style={{ background: 'var(--board-line-sel)', ['--tw-ring-color' as string]: 'var(--board-line)', left: p.x, top: p.y, width: 12, height: 12, transform: `translate(-50%, -50%) scale(${inv})`, zIndex: 100001, cursor: 'move' }}
                     />
                   )
                 })}

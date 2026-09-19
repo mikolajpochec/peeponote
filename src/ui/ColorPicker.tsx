@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { contrast } from '../canvas/styles'
 
 interface Props {
   value: string | undefined
@@ -77,12 +78,4 @@ export function ColorPicker({ value, swatches, onChange, title, fallback, icon }
 
 function toHex(c: string): string {
   return /^#[0-9a-f]{6}$/i.test(c) ? c : '#888888'
-}
-
-export function contrast(bg: string): string {
-  const m = /^#([0-9a-f]{6})$/i.exec(bg)
-  if (!m) return '#fff'
-  const n = parseInt(m[1], 16)
-  const l = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255
-  return l > 0.6 ? '#1b1d1a' : '#fff'
 }

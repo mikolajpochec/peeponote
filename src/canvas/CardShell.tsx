@@ -96,13 +96,20 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
     <div
       data-card={card.id}
       className={`absolute group rounded-xl select-none ${readOnly ? '' : 'cursor-grab'} ${bare ? '' : 'shadow-lg shadow-black/30'} ${
-        selected
-          ? 'ring-2 ring-frog-300 ring-offset-2 ring-offset-swamp-800'
-          : bare
-            ? 'ring-1 ring-transparent hover:ring-frog-300/40'
-            : 'ring-1 ring-black/20'
+        selected ? 'ring-2 ring-offset-2' : bare ? 'ring-1 ring-transparent hover:ring-(--board-line)/40' : 'ring-1'
       } ${className}`}
-      style={{ left: card.x, top: card.y, width: card.w, height: card.h, zIndex: card.z, ...styles.shell }}
+      style={{
+        left: card.x,
+        top: card.y,
+        width: card.w,
+        height: card.h,
+        zIndex: card.z,
+        ...styles.shell,
+        ...({
+          '--tw-ring-color': selected ? 'var(--board-line-sel)' : bare ? undefined : 'rgba(0,0,0,0.2)',
+          '--tw-ring-offset-color': 'var(--board-bg)',
+        } as React.CSSProperties),
+      }}
       onPointerDown={onDragStart}
       onDoubleClick={(e) => {
         if (isInteractiveTarget(e as unknown as PointerEvent)) return
