@@ -1,9 +1,9 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-frog-50: #eef7ec;
-  --color-frog-100: #d6ebd1;
-  --color-frog-200: #b3d9aa;
+  --color-frog-50: #f1f3f5;
+  --color-frog-100: #d5d9de;
+  --color-frog-200: #a9b0b8;
   --color-frog-300: #8ac47e;
   --color-frog-400: #5d9b4c;
   --color-frog-500: #4a8a3a;
@@ -12,11 +12,11 @@
   --color-frog-800: #24401e;
   --color-frog-900: #1c2a1e;
   --color-frog-950: #121a13;
-  --color-swamp-900: #101610;
-  --color-swamp-800: #171f18;
-  --color-swamp-700: #1f2a21;
-  --color-swamp-600: #2a3a2c;
-  --color-swamp-500: #3a4f3d;
+  --color-swamp-900: #0f1113;
+  --color-swamp-800: #15181c;
+  --color-swamp-700: #1d2126;
+  --color-swamp-600: #282d34;
+  --color-swamp-500: #373d46;
   --color-paper: #fbf8ef;
   --color-ink: #1b1d1a;
   --font-sans: 'Nunito', ui-rounded, system-ui, -apple-system, 'Segoe UI', sans-serif;

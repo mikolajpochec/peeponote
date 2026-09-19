@@ -15,8 +15,8 @@ export default defineConfig({
         name: 'peeponote',
         short_name: 'peeponote',
         description: 'Git-backed visual boards. Save = commit. Yeet = push. peepoHappy',
-        theme_color: '#1c2a1e',
-        background_color: '#1c2a1e',
+        theme_color: '#0f1113',
+        background_color: '#0f1113',
         display: 'standalone',
         start_url: './',
         icons: [

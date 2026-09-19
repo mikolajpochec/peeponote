@@ -185,8 +185,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           <div className="flex flex-wrap items-center gap-2">
             {(
               [
-                ['peepo', 'Peepo'],
                 ['dark', 'Dark'],
+                ['peepo', 'Peepo'],
               ] as [ThemeName, string][]
             ).map(([name, title]) => {
               const t = THEMES[name]

@@ -24,7 +24,7 @@ export const THEMES: Record<ThemeName, Theme> = {
   },
 }
 
-export const resolveTheme = (name: ThemeName): Theme => THEMES[name] ?? THEMES.peepo
+export const resolveTheme = (name: ThemeName): Theme => THEMES[name] ?? THEMES.dark
 
 /** Write the theme into the CSS variables Tailwind utilities read. */
 export function applyTheme(theme: Theme) {

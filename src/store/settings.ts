@@ -24,7 +24,7 @@ export const useSettings = create<Settings>()(
       username: '',
       corsProxy: DEFAULT_CORS_PROXY,
       autoPush: false,
-      theme: 'peepo',
+      theme: 'dark',
       set: (patch) => set(patch),
     }),
     { name: 'peeponote-settings' },

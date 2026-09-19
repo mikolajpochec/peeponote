@@ -72,7 +72,7 @@ export function contrast(bg: string): string {
   return isLight(bg) ? '#1b1d1a' : '#ffffff'
 }
 
-export const DEFAULT_BOARD_BG = '#171f18'
+export const DEFAULT_BOARD_BG = '#15181c'
 
 /** CSS variables that adapt canvas chrome (text, lines, dots, handles) to the board background. */
 export function boardVars(board: Board, defaultBg = DEFAULT_BOARD_BG): Record<string, string> {
