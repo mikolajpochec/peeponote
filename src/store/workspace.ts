@@ -1,0 +1,531 @@
+import { create } from 'zustand'
+import type { ReadCommitResult } from 'isomorphic-git'
+import {
+  abs, exists, mountLast, pickFolder, readBytes, readText, requestFolderPermission, useBrowserStorage,
+  writeBytes, writeText, type PeepoFS,
+} from '../fs'
+import * as repo from '../git/repo'
+import { ASSETS_DIR, BOARDS_DIR, WORKSPACE_FILE, boardPath, newId, type Board, type Card, type WorkspaceMeta } from '../model/types'
+import { parseBoard, parseWorkspace } from '../model/schema'
+import { detectKind } from '../model/assetKind'
+import { useSettings } from './settings'
+import { toast } from './toast'
+
+export type Busy = 'saving' | 'pushing' | 'pulling' | 'cloning' | 'loading' | null
+
+interface WorkspaceState {
+  fs: PeepoFS | null
+  status: 'booting' | 'needs-permission' | 'ready' | 'error'
+  pendingHandle: FileSystemDirectoryHandle | null
+  error: string | null
+
+  meta: WorkspaceMeta | null
+  boards: Record<string, Board>
+  currentBoardId: string | null
+  dirtyBoards: Set<string>
+  deletedBoards: Set<string>
+  assetsTouched: boolean
+  selection: Set<string>
+  busy: Busy
+  remoteUrl: string | null
+  head: ReadCommitResult | null
+  commits: ReadCommitResult[]
+  /** when set, we're read-only viewing an old commit */
+  viewingRef: string | null
+  viewingBoards: Record<string, Board>
+
+  // lifecycle
+  boot: () => Promise<void>
+  grantFolder: () => Promise<void>
+  switchToFolder: () => Promise<void>
+  switchToBrowser: () => Promise<void>
+  cloneInto: (url: string) => Promise<void>
+
+  // navigation / selection
+  navigate: (boardId: string) => void
+  select: (ids: string[], additive?: boolean) => void
+  clearSelection: () => void
+
+  // editing
+  addCard: (boardId: string, card: Card) => void
+  updateCard: (boardId: string, cardId: string, patch: Partial<Card>) => void
+  moveCards: (boardId: string, deltas: Record<string, { x: number; y: number }>) => void
+  removeCards: (boardId: string, ids: string[]) => void
+  bringToFront: (boardId: string, cardId: string) => void
+  createBoard: (parentId: string, name: string, at: { x: number; y: number }) => string
+  renameBoard: (boardId: string, name: string) => void
+  addAssets: (boardId: string, files: File[], at: { x: number; y: number }) => Promise<void>
+
+  // git
+  save: (message?: string) => Promise<boolean>
+  push: () => Promise<boolean>
+  pull: () => Promise<void>
+  setRemote: (url: string) => Promise<void>
+  refreshGit: () => Promise<void>
+  viewCommit: (oid: string | null) => Promise<void>
+  restoreCommit: (oid: string) => Promise<void>
+}
+
+const isDirty = (s: Pick<WorkspaceState, 'dirtyBoards' | 'deletedBoards' | 'assetsTouched'>) =>
+  s.dirtyBoards.size > 0 || s.deletedBoards.size > 0 || s.assetsTouched
+
+export const selectDirty = (s: WorkspaceState) => isDirty(s)
+
+function identity() {
+  const s = useSettings.getState()
+  return { name: s.authorName, email: s.authorEmail }
+}
+function remoteAuth() {
+  const s = useSettings.getState()
+  return { token: s.token, username: s.username, corsProxy: s.corsProxy }
+}
+
+async function loadBoards(fs: PeepoFS): Promise<{ meta: WorkspaceMeta; boards: Record<string, Board> }> {
+  const meta = parseWorkspace(await readText(fs, abs(fs, WORKSPACE_FILE)))
+  const boards: Record<string, Board> = {}
+  const dir = abs(fs, BOARDS_DIR)
+  if (await exists(fs, dir)) {
+    for (const f of await fs.promises.readdir(dir)) {
+      if (!f.endsWith('.json')) continue
+      try {
+        const b = parseBoard(await readText(fs, `${dir}/${f}`))
+        boards[b.id] = b
+      } catch (e) {
+        console.warn('bad board file', f, e)
+      }
+    }
+  }
+  return { meta, boards }
+}
+
+async function seedWorkspace(fs: PeepoFS): Promise<void> {
+  const rootId = newId()
+  const meta: WorkspaceMeta = { version: 1, name: 'peeponote', rootBoardId: rootId }
+  const root: Board = { id: rootId, name: 'Home', parentId: null, createdAt: new Date().toISOString(), cards: [] }
+  await writeText(fs, abs(fs, WORKSPACE_FILE), JSON.stringify(meta, null, 2))
+  await writeText(fs, abs(fs, boardPath(rootId)), JSON.stringify(root, null, 2))
+  await writeText(fs, abs(fs, '.gitignore'), '.DS_Store\n')
+  await writeText(
+    fs,
+    abs(fs, 'README.md'),
+    '# peeponote board\n\nThis repository is a [peeponote](https://github.com/) workspace. Boards live in `boards/`, files in `assets/`.\n',
+  )
+}
+
+async function sha1Short(buf: ArrayBuffer): Promise<string> {
+  const d = await crypto.subtle.digest('SHA-1', buf)
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 8)
+}
+
+function safeName(name: string) {
+  return name.replace(/[^\w.\-]+/g, '_')
+}
+
+export const useWorkspace = create<WorkspaceState>((set, get) => {
+  async function openFs(fs: PeepoFS) {
+    set({ busy: 'loading', fs, status: 'ready', error: null, viewingRef: null, viewingBoards: {} })
+    try {
+      if (!(await repo.isRepo(fs))) {
+        await repo.initRepo(fs)
+      }
+      if (!(await exists(fs, abs(fs, WORKSPACE_FILE)))) {
+        await seedWorkspace(fs)
+        await repo.stageAll(fs)
+        await repo.commit(fs, 'peepoHey initial board', identity())
+      }
+      const { meta, boards } = await loadBoards(fs)
+      set({
+        meta,
+        boards,
+        currentBoardId: meta.rootBoardId,
+        dirtyBoards: new Set(),
+        deletedBoards: new Set(),
+        assetsTouched: false,
+        selection: new Set(),
+      })
+      await get().refreshGit()
+    } catch (e) {
+      console.error(e)
+      set({ status: 'error', error: (e as Error).message })
+    } finally {
+      set({ busy: null })
+    }
+  }
+
+  function mutateBoard(boardId: string, fn: (b: Board) => Board) {
+    const b = get().boards[boardId]
+    if (!b || get().viewingRef) return
+    const next = fn(b)
+    const dirtyBoards = new Set(get().dirtyBoards)
+    dirtyBoards.add(boardId)
+    set({ boards: { ...get().boards, [boardId]: next }, dirtyBoards })
+  }
+
+  return {
+    fs: null,
+    status: 'booting',
+    pendingHandle: null,
+    error: null,
+    meta: null,
+    boards: {},
+    currentBoardId: null,
+    dirtyBoards: new Set(),
+    deletedBoards: new Set(),
+    assetsTouched: false,
+    selection: new Set(),
+    busy: null,
+    remoteUrl: null,
+    head: null,
+    commits: [],
+    viewingRef: null,
+    viewingBoards: {},
+
+    boot: async () => {
+      try {
+        const m = await mountLast()
+        if (m.status === 'needs-permission') {
+          set({ status: 'needs-permission', pendingHandle: m.handle })
+          return
+        }
+        await openFs(m.fs)
+      } catch (e) {
+        set({ status: 'error', error: (e as Error).message })
+      }
+    },
+
+    grantFolder: async () => {
+      const h = get().pendingHandle
+      if (!h) return
+      const fs = await requestFolderPermission(h)
+      if (fs) await openFs(fs)
+      else toast.err('Folder access denied', 'peepoSad')
+    },
+
+    switchToFolder: async () => {
+      const fs = await pickFolder()
+      if (!fs) return
+      await openFs(fs)
+      toast.ok(`Mounted folder. Real .git on disk now.`, 'peepoPog')
+    },
+
+    switchToBrowser: async () => {
+      const fs = await useBrowserStorage()
+      await openFs(fs)
+      toast.ok('Using browser storage', 'peepoSit')
+    },
+
+    cloneInto: async (url) => {
+      const fs = get().fs
+      if (!fs) return
+      set({ busy: 'cloning' })
+      try {
+        if (await repo.isRepo(fs)) throw new Error('This storage already has a repo. Pick an empty folder or wipe browser storage first.')
+        await repo.clone(fs, url, remoteAuth())
+        toast.ok('Cloned! peepoPog', 'peepoPog')
+        await openFs(fs)
+      } catch (e) {
+        toast.err(`Clone failed: ${(e as Error).message}`)
+      } finally {
+        set({ busy: null })
+      }
+    },
+
+    navigate: (boardId) => set({ currentBoardId: boardId, selection: new Set() }),
+    select: (ids, additive) =>
+      set((s) => {
+        const sel = additive ? new Set(s.selection) : new Set<string>()
+        for (const id of ids) sel.add(id)
+        return { selection: sel }
+      }),
+    clearSelection: () => set({ selection: new Set() }),
+
+    addCard: (boardId, card) => mutateBoard(boardId, (b) => ({ ...b, cards: [...b.cards, card] })),
+
+    updateCard: (boardId, cardId, patch) =>
+      mutateBoard(boardId, (b) => ({
+        ...b,
+        cards: b.cards.map((c) => (c.id === cardId ? ({ ...c, ...patch } as Card) : c)),
+      })),
+
+    moveCards: (boardId, deltas) =>
+      mutateBoard(boardId, (b) => ({
+        ...b,
+        cards: b.cards.map((c) => {
+          const d = deltas[c.id]
+          return d ? { ...c, x: c.x + d.x, y: c.y + d.y } : c
+        }),
+      })),
+
+    removeCards: (boardId, ids) => {
+      const b = get().boards[boardId]
+      if (!b) return
+      const removed = b.cards.filter((c) => ids.includes(c.id))
+      // recursively delete nested boards
+      const deleted = new Set(get().deletedBoards)
+      const boards = { ...get().boards }
+      const dirtyBoards = new Set(get().dirtyBoards)
+      const rm = (id: string) => {
+        const nb = boards[id]
+        if (!nb) return
+        for (const c of nb.cards) if (c.type === 'board') rm(c.boardId)
+        delete boards[id]
+        deleted.add(id)
+        dirtyBoards.delete(id)
+      }
+      for (const c of removed) if (c.type === 'board') rm(c.boardId)
+      const assetsTouched = get().assetsTouched || removed.some((c) => c.type === 'asset')
+      boards[boardId] = { ...b, cards: b.cards.filter((c) => !ids.includes(c.id)) }
+      dirtyBoards.add(boardId)
+      set({ boards, deletedBoards: deleted, dirtyBoards, assetsTouched, selection: new Set() })
+    },
+
+    bringToFront: (boardId, cardId) =>
+      mutateBoard(boardId, (b) => {
+        const maxZ = b.cards.reduce((m, c) => Math.max(m, c.z), 0)
+        const card = b.cards.find((c) => c.id === cardId)
+        if (!card || card.z === maxZ) return b
+        return { ...b, cards: b.cards.map((c) => (c.id === cardId ? { ...c, z: maxZ + 1 } : c)) }
+      }),
+
+    createBoard: (parentId, name, at) => {
+      const id = newId()
+      const board: Board = { id, name, parentId, createdAt: new Date().toISOString(), cards: [] }
+      const parent = get().boards[parentId]
+      const z = parent ? parent.cards.reduce((m, c) => Math.max(m, c.z), 0) + 1 : 1
+      const dirtyBoards = new Set(get().dirtyBoards)
+      dirtyBoards.add(id)
+      set({ boards: { ...get().boards, [id]: board }, dirtyBoards })
+      mutateBoard(parentId, (b) => ({
+        ...b,
+        cards: [...b.cards, { id: newId(), type: 'board', boardId: id, x: at.x, y: at.y, w: 200, h: 140, z }],
+      }))
+      return id
+    },
+
+    renameBoard: (boardId, name) => mutateBoard(boardId, (b) => ({ ...b, name })),
+
+    addAssets: async (boardId, files, at) => {
+      const fs = get().fs
+      if (!fs || get().viewingRef) return
+      let dx = 0
+      for (const file of files) {
+        const buf = await file.arrayBuffer()
+        const hash = await sha1Short(buf)
+        const path = `${ASSETS_DIR}/${hash}-${safeName(file.name)}`
+        await writeBytes(fs, abs(fs, path), new Uint8Array(buf))
+        const kind = detectKind(file.name, file.type)
+        const size = kind === 'audio' ? { w: 300, h: 130 } : kind === 'code' || kind === 'data' ? { w: 320, h: 260 } : { w: 280, h: 280 }
+        const b = get().boards[boardId]
+        const z = b ? b.cards.reduce((m, c) => Math.max(m, c.z), 0) + 1 : 1
+        get().addCard(boardId, {
+          id: newId(),
+          type: 'asset',
+          x: at.x + dx,
+          y: at.y,
+          ...size,
+          z,
+          path,
+          name: file.name,
+          mime: file.type,
+          size: file.size,
+          kind,
+        })
+        dx += size.w + 20
+      }
+      set({ assetsTouched: true })
+    },
+
+    save: async (message) => {
+      const { fs, boards, dirtyBoards, deletedBoards } = get()
+      if (!fs || get().viewingRef) return false
+      if (!isDirty(get())) {
+        toast.info('Nothing to save. peepoSit', 'peepoSit')
+        return false
+      }
+      set({ busy: 'saving' })
+      try {
+        for (const id of dirtyBoards) {
+          const b = boards[id]
+          if (b) await writeText(fs, abs(fs, boardPath(id)), JSON.stringify(b, null, 2))
+        }
+        for (const id of deletedBoards) {
+          const p = abs(fs, boardPath(id))
+          if (await exists(fs, p)) await fs.promises.unlink(p)
+        }
+        // garbage-collect unreferenced assets
+        const referenced = new Set<string>()
+        for (const b of Object.values(boards)) for (const c of b.cards) if (c.type === 'asset') referenced.add(c.path)
+        const assetsDir = abs(fs, ASSETS_DIR)
+        if (await exists(fs, assetsDir)) {
+          for (const f of await fs.promises.readdir(assetsDir)) {
+            if (!referenced.has(`${ASSETS_DIR}/${f}`)) await fs.promises.unlink(`${assetsDir}/${f}`)
+          }
+        }
+        const changes = await repo.stageAll(fs)
+        const n = changes.added.length + changes.modified.length + changes.deleted.length
+        if (n === 0) {
+          set({ dirtyBoards: new Set(), deletedBoards: new Set(), assetsTouched: false })
+          toast.info('No changes in the tree. peepoSit', 'peepoSit')
+          return false
+        }
+        const msg = message?.trim() || defaultMessage(changes)
+        await repo.commit(fs, msg, identity())
+        set({ dirtyBoards: new Set(), deletedBoards: new Set(), assetsTouched: false })
+        await get().refreshGit()
+        toast.ok(`Committed: ${msg}`, 'peepoClap')
+        if (useSettings.getState().autoPush && get().remoteUrl) {
+          await get().push()
+        }
+        return true
+      } catch (e) {
+        console.error(e)
+        toast.err(`Save failed: ${(e as Error).message}`)
+        return false
+      } finally {
+        set({ busy: null })
+      }
+    },
+
+    push: async () => {
+      const fs = get().fs
+      if (!fs) return false
+      if (!get().remoteUrl) {
+        toast.err('No remote configured. Open settings. monkaS', 'monkaS')
+        return false
+      }
+      if (!useSettings.getState().token) {
+        toast.err('No access token set. Open settings. monkaS', 'monkaS')
+        return false
+      }
+      set({ busy: 'pushing' })
+      try {
+        await repo.push(fs, remoteAuth())
+        toast.ok('Yeeted to remote! peepoRun', 'peepoRun')
+        return true
+      } catch (e) {
+        console.error(e)
+        toast.err(`Push failed: ${(e as Error).message}`)
+        return false
+      } finally {
+        set({ busy: null })
+      }
+    },
+
+    pull: async () => {
+      const fs = get().fs
+      if (!fs || !get().remoteUrl) return
+      if (isDirty(get())) {
+        toast.err('Save first, then pull. peepoShy', 'peepoShy')
+        return
+      }
+      set({ busy: 'pulling' })
+      try {
+        await repo.pull(fs, remoteAuth(), identity())
+        const { meta, boards } = await loadBoards(fs)
+        const cur = get().currentBoardId
+        set({ meta, boards, currentBoardId: cur && boards[cur] ? cur : meta.rootBoardId })
+        await get().refreshGit()
+        toast.ok('Pulled latest. peepoGlad', 'peepoGlad')
+      } catch (e) {
+        console.error(e)
+        toast.err(`Pull failed: ${(e as Error).message}`)
+      } finally {
+        set({ busy: null })
+      }
+    },
+
+    setRemote: async (url) => {
+      const fs = get().fs
+      if (!fs) return
+      await repo.setRemoteUrl(fs, url)
+      set({ remoteUrl: url.trim() || null })
+    },
+
+    refreshGit: async () => {
+      const fs = get().fs
+      if (!fs) return
+      const [commits, remoteUrl] = await Promise.all([repo.log(fs), repo.getRemoteUrl(fs)])
+      set({ commits, head: commits[0] ?? null, remoteUrl })
+    },
+
+    viewCommit: async (oid) => {
+      const fs = get().fs
+      if (!fs) return
+      if (!oid) {
+        set({ viewingRef: null, viewingBoards: {}, selection: new Set() })
+        return
+      }
+      set({ busy: 'loading' })
+      try {
+        const files = await repo.listFilesAt(fs, oid)
+        const boards: Record<string, Board> = {}
+        for (const f of files) {
+          if (!f.startsWith(`${BOARDS_DIR}/`) || !f.endsWith('.json')) continue
+          try {
+            const b = parseBoard(await repo.readTextAt(fs, oid, f))
+            boards[b.id] = b
+          } catch {
+            /* skip */
+          }
+        }
+        const cur = get().currentBoardId
+        const meta = get().meta
+        set({
+          viewingRef: oid,
+          viewingBoards: boards,
+          selection: new Set(),
+          currentBoardId: cur && boards[cur] ? cur : meta && boards[meta.rootBoardId] ? meta.rootBoardId : Object.keys(boards)[0] ?? cur,
+        })
+      } catch (e) {
+        toast.err(`Could not load commit: ${(e as Error).message}`)
+      } finally {
+        set({ busy: null })
+      }
+    },
+
+    restoreCommit: async (oid) => {
+      const fs = get().fs
+      if (!fs) return
+      set({ busy: 'loading' })
+      try {
+        await repo.hardResetTo(fs, oid)
+        const { meta, boards } = await loadBoards(fs)
+        set({
+          meta,
+          boards,
+          viewingRef: null,
+          viewingBoards: {},
+          dirtyBoards: new Set(),
+          deletedBoards: new Set(),
+          assetsTouched: false,
+          currentBoardId: meta.rootBoardId,
+        })
+        await get().refreshGit()
+        toast.ok('Restored. Time travel complete. peepoPog', 'peepoPog')
+      } catch (e) {
+        toast.err(`Restore failed: ${(e as Error).message}`)
+      } finally {
+        set({ busy: null })
+      }
+    },
+  }
+})
+
+function defaultMessage(c: repo.ChangeSummary) {
+  const parts: string[] = []
+  if (c.added.length) parts.push(`add ${c.added.length}`)
+  if (c.modified.length) parts.push(`update ${c.modified.length}`)
+  if (c.deleted.length) parts.push(`remove ${c.deleted.length}`)
+  return `peepoSave: ${parts.join(', ')} file${c.added.length + c.modified.length + c.deleted.length === 1 ? '' : 's'}`
+}
+
+/** Boards as currently displayed (live or historical) */
+export const selectBoards = (s: WorkspaceState) => (s.viewingRef ? s.viewingBoards : s.boards)
+
+/** Read raw bytes for an asset path, honoring history view. */
+export async function readAssetBytes(path: string): Promise<Uint8Array> {
+  const { fs, viewingRef } = useWorkspace.getState()
+  if (!fs) throw new Error('no fs')
+  if (viewingRef) return repo.readBlobAt(fs, viewingRef, path)
+  return readBytes(fs, abs(fs, path))
+}

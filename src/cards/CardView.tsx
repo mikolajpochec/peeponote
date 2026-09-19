@@ -1,0 +1,57 @@
+import { memo } from 'react'
+import type { Card } from '../model/types'
+import { CardShell } from '../canvas/CardShell'
+import { NoteCard } from './NoteCard'
+import { TodoCard } from './TodoCard'
+import { LinkCard } from './LinkCard'
+import { BoardCard } from './BoardCard'
+import { AssetCard } from './AssetCard'
+import { useWorkspace } from '../store/workspace'
+
+export interface CardProps<C extends Card = Card> {
+  card: C
+  boardId: string
+  readOnly: boolean
+  selected: boolean
+}
+
+interface Props extends CardProps {
+  scale: () => number
+}
+
+export const CardView = memo(function CardView({ card, boardId, readOnly, selected, scale }: Props) {
+  const navigate = useWorkspace((s) => s.navigate)
+  const common = { card, boardId, readOnly, selected }
+  switch (card.type) {
+    case 'note':
+      return (
+        <CardShell {...common} scale={scale} className="bg-paper text-ink">
+          <NoteCard {...common} card={card} />
+        </CardShell>
+      )
+    case 'todo':
+      return (
+        <CardShell {...common} scale={scale} className="bg-paper text-ink">
+          <TodoCard {...common} card={card} />
+        </CardShell>
+      )
+    case 'link':
+      return (
+        <CardShell {...common} scale={scale} className="bg-paper text-ink">
+          <LinkCard {...common} card={card} />
+        </CardShell>
+      )
+    case 'board':
+      return (
+        <CardShell {...common} scale={scale} className="bg-frog-600 text-frog-50" onOpen={() => navigate(card.boardId)}>
+          <BoardCard {...common} card={card} />
+        </CardShell>
+      )
+    case 'asset':
+      return (
+        <CardShell {...common} scale={scale} className="bg-swamp-700 text-frog-50">
+          <AssetCard {...common} card={card} />
+        </CardShell>
+      )
+  }
+})

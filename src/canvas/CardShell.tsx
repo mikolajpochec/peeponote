@@ -1,0 +1,117 @@
+import { memo, type ReactNode } from 'react'
+import type { Card } from '../model/types'
+import { useWorkspace } from '../store/workspace'
+import { useSettings } from '../store/settings'
+import { isInteractiveTarget, useDrag } from './useDrag'
+
+export const GRID = 20
+export const MIN_W = 120
+export const MIN_H = 60
+
+interface Props {
+  card: Card
+  boardId: string
+  selected: boolean
+  readOnly: boolean
+  scale: () => number
+  children: ReactNode
+  className?: string
+  onOpen?: () => void
+}
+
+export const CardShell = memo(function CardShell({ card, boardId, selected, readOnly, scale, children, className = '', onOpen }: Props) {
+  const select = useWorkspace((s) => s.select)
+  const moveCards = useWorkspace((s) => s.moveCards)
+  const updateCard = useWorkspace((s) => s.updateCard)
+  const bringToFront = useWorkspace((s) => s.bringToFront)
+  const removeCards = useWorkspace((s) => s.removeCards)
+
+  const onDragStart = useDrag(
+    {
+      onStart: (e) => {
+        if (isInteractiveTarget(e)) return false
+        e.stopPropagation()
+        const sel = useWorkspace.getState().selection
+        if (e.shiftKey) select([card.id], true)
+        else if (!sel.has(card.id)) select([card.id])
+        if (!readOnly) bringToFront(boardId, card.id)
+      },
+      onMove: (dx, dy) => {
+        if (readOnly) return
+        const sel = useWorkspace.getState().selection
+        const ids = sel.has(card.id) ? [...sel] : [card.id]
+        const deltas: Record<string, { x: number; y: number }> = {}
+        for (const id of ids) deltas[id] = { x: dx, y: dy }
+        moveCards(boardId, deltas)
+      },
+      onEnd: (moved) => {
+        if (!moved || readOnly) return
+        if (useSettings.getState().snapToGrid) {
+          const b = useWorkspace.getState().boards[boardId]
+          const sel = useWorkspace.getState().selection
+          const ids = sel.has(card.id) ? [...sel] : [card.id]
+          for (const id of ids) {
+            const c = b?.cards.find((x) => x.id === id)
+            if (c) updateCard(boardId, id, { x: Math.round(c.x / GRID) * GRID, y: Math.round(c.y / GRID) * GRID })
+          }
+        }
+      },
+    },
+    scale,
+  )
+
+  const onResizeStart = useDrag(
+    {
+      onStart: (e) => {
+        e.stopPropagation()
+        if (readOnly) return false
+      },
+      onMove: (dx, dy) => {
+        const c = useWorkspace.getState().boards[boardId]?.cards.find((x) => x.id === card.id)
+        if (!c) return
+        updateCard(boardId, card.id, { w: Math.max(MIN_W, c.w + dx), h: Math.max(MIN_H, c.h + dy) })
+      },
+    },
+    scale,
+  )
+
+  return (
+    <div
+      data-card={card.id}
+      className={`absolute group rounded-xl shadow-lg shadow-black/30 select-none ${
+        selected ? 'ring-2 ring-frog-300 ring-offset-2 ring-offset-swamp-800' : 'ring-1 ring-black/20'
+      } ${className}`}
+      style={{ left: card.x, top: card.y, width: card.w, height: card.h, zIndex: card.z }}
+      onPointerDown={onDragStart}
+      onDoubleClick={(e) => {
+        if (onOpen && !isInteractiveTarget(e as unknown as PointerEvent)) {
+          e.stopPropagation()
+          onOpen()
+        }
+      }}
+    >
+      <div className="h-full w-full overflow-hidden rounded-xl">{children}</div>
+      {!readOnly && (
+        <>
+          <button
+            data-nodrag
+            title="Delete (Del)"
+            onClick={(e) => {
+              e.stopPropagation()
+              removeCards(boardId, [card.id])
+            }}
+            className="absolute -right-2 -top-2 hidden h-6 w-6 items-center justify-center rounded-full bg-swamp-600 text-xs text-frog-100 shadow group-hover:flex hover:bg-red-700"
+          >
+            ✕
+          </button>
+          <div
+            data-nodrag
+            onPointerDown={onResizeStart}
+            className="absolute -bottom-1 -right-1 hidden h-4 w-4 cursor-nwse-resize rounded-sm bg-frog-300 group-hover:block"
+            style={{ display: selected ? 'block' : undefined }}
+          />
+        </>
+      )}
+    </div>
+  )
+})

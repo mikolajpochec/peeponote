@@ -1,0 +1,88 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-frog-50: #eef7ec;
+  --color-frog-100: #d6ebd1;
+  --color-frog-200: #b3d9aa;
+  --color-frog-300: #8ac47e;
+  --color-frog-400: #5d9b4c;
+  --color-frog-500: #4a8a3a;
+  --color-frog-600: #3d7030;
+  --color-frog-700: #2f5726;
+  --color-frog-800: #24401e;
+  --color-frog-900: #1c2a1e;
+  --color-frog-950: #121a13;
+  --color-swamp-900: #101610;
+  --color-swamp-800: #171f18;
+  --color-swamp-700: #1f2a21;
+  --color-swamp-600: #2a3a2c;
+  --color-swamp-500: #3a4f3d;
+  --color-paper: #fbf8ef;
+  --color-ink: #1b1d1a;
+  --font-sans: 'Nunito', ui-rounded, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'JetBrains Mono', Menlo, monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--color-swamp-900);
+  color: var(--color-frog-50);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+
+.canvas-bg {
+  background-color: var(--color-swamp-800);
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(138, 196, 126, 0.16) 1px, transparent 0);
+}
+
+.checker {
+  background-color: #2b2b2b;
+  background-image:
+    linear-gradient(45deg, #3a3a3a 25%, transparent 25%),
+    linear-gradient(-45deg, #3a3a3a 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #3a3a3a 75%),
+    linear-gradient(-45deg, transparent 75%, #3a3a3a 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+.pixelated { image-rendering: pixelated; }
+
+.prose-note :is(h1,h2,h3) { font-weight: 800; margin: 0.4em 0 0.2em; line-height: 1.2; }
+.prose-note h1 { font-size: 1.35em; }
+.prose-note h2 { font-size: 1.2em; }
+.prose-note h3 { font-size: 1.05em; }
+.prose-note p { margin: 0.3em 0; }
+.prose-note ul, .prose-note ol { padding-left: 1.3em; margin: 0.3em 0; }
+.prose-note ul { list-style: disc; }
+.prose-note ol { list-style: decimal; }
+.prose-note code { background: rgba(0,0,0,0.08); padding: 0 0.3em; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em; }
+.prose-note pre { background: rgba(0,0,0,0.08); padding: 0.5em; border-radius: 6px; overflow: auto; }
+.prose-note a { color: var(--color-frog-600); text-decoration: underline; }
+.prose-note blockquote { border-left: 3px solid var(--color-frog-300); padding-left: 0.6em; opacity: 0.85; margin: 0.3em 0; }
+.prose-note hr { border: 0; border-top: 1px solid rgba(0,0,0,0.15); margin: 0.5em 0; }
+
+.scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: var(--color-swamp-500); border-radius: 4px; }
+
+@keyframes peepo-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.peepo-bounce { animation: peepo-bounce 1.2s ease-in-out infinite; }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.toast-in { animation: toast-in 180ms ease-out; }

@@ -1,0 +1,112 @@
+import { useEffect, useState } from 'react'
+import { Canvas } from './canvas/Canvas'
+import { selectBoards, useWorkspace } from './store/workspace'
+import { Sidebar } from './ui/Sidebar'
+import { TopBar } from './ui/TopBar'
+import { HistoryPanel } from './ui/HistoryPanel'
+import { SettingsDialog } from './ui/SettingsDialog'
+import { Toasts } from './ui/Toasts'
+import { Peepo } from './ui/Peepo'
+import { BootScreen } from './ui/BootScreen'
+
+export default function App() {
+  const status = useWorkspace((s) => s.status)
+  const boot = useWorkspace((s) => s.boot)
+  const save = useWorkspace((s) => s.save)
+  const currentBoardId = useWorkspace((s) => s.currentBoardId)
+  const board = useWorkspace((s) => (s.currentBoardId ? selectBoards(s)[s.currentBoardId] : undefined))
+  const viewingRef = useWorkspace((s) => s.viewingRef)
+  const busy = useWorkspace((s) => s.busy)
+  const [showHistory, setShowHistory] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+
+  useEffect(() => {
+    boot()
+  }, [boot])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        save()
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === ',') {
+        e.preventDefault()
+        setShowSettings(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [save])
+
+  useEffect(() => {
+    const dirty = () => {
+      const s = useWorkspace.getState()
+      return s.dirtyBoards.size > 0 || s.deletedBoards.size > 0 || s.assetsTouched
+    }
+    const onUnload = (e: BeforeUnloadEvent) => {
+      if (dirty()) e.preventDefault()
+    }
+    window.addEventListener('beforeunload', onUnload)
+    return () => window.removeEventListener('beforeunload', onUnload)
+  }, [])
+
+  if (status !== 'ready') return <BootScreen onOpenSettings={() => setShowSettings(true)} />
+
+  return (
+    <div className="flex h-full w-full">
+      <Sidebar onOpenSettings={() => setShowSettings(true)} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <TopBar onToggleHistory={() => setShowHistory((v) => !v)} historyOpen={showHistory} onOpenSettings={() => setShowSettings(true)} />
+        <div className="relative flex min-h-0 flex-1">
+          <div className="relative min-w-0 flex-1">
+            {board && currentBoardId ? (
+              <Canvas key={`${board.id}:${viewingRef ?? 'live'}`} board={board} readOnly={!!viewingRef} />
+            ) : (
+              <div className="flex h-full items-center justify-center text-frog-200/60">Board not found</div>
+            )}
+            {viewingRef && <HistoryBanner />}
+            {busy && busy !== 'saving' && (
+              <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
+                <div className="flex items-center gap-2 rounded-full bg-swamp-600/90 px-3 py-1 text-sm shadow">
+                  <Peepo name={busy === 'pushing' ? 'peepoRun' : busy === 'cloning' ? 'peepoLeave' : 'peepoThink'} size={22} className="peepo-bounce" />
+                  {busy}…
+                </div>
+              </div>
+            )}
+          </div>
+          {showHistory && <HistoryPanel onClose={() => setShowHistory(false)} />}
+        </div>
+      </div>
+      {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
+      <Toasts />
+    </div>
+  )
+}
+
+function HistoryBanner() {
+  const viewingRef = useWorkspace((s) => s.viewingRef)
+  const viewCommit = useWorkspace((s) => s.viewCommit)
+  const restoreCommit = useWorkspace((s) => s.restoreCommit)
+  return (
+    <div className="absolute inset-x-0 bottom-4 flex justify-center">
+      <div className="flex items-center gap-3 rounded-xl border border-amber-400/40 bg-amber-900/80 px-4 py-2 text-sm text-amber-100 shadow-lg backdrop-blur">
+        <Peepo name="monkaS" size={24} />
+        <span>
+          Viewing commit <code className="font-mono">{viewingRef?.slice(0, 7)}</code> — read only
+        </span>
+        <button onClick={() => viewCommit(null)} className="rounded-md bg-white/10 px-2 py-1 font-semibold hover:bg-white/20">
+          Back to now
+        </button>
+        <button
+          onClick={() => {
+            if (confirm('Reset the board to this commit? Later commits will be dropped from this branch.')) restoreCommit(viewingRef!)
+          }}
+          className="rounded-md bg-amber-500 px-2 py-1 font-semibold text-black hover:bg-amber-400"
+        >
+          Restore this version
+        </button>
+      </div>
+    </div>
+  )
+}

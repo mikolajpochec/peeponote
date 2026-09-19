@@ -1,0 +1,74 @@
+{
+  "peepoHappy": {
+    "id": "01F6RC8C1G0003SBEQ3QZTEE99",
+    "animated": false
+  },
+  "peepoSad": {
+    "id": "01FAJVVKXG00093YGWG35VAPNZ",
+    "animated": false
+  },
+  "peepoClap": {
+    "id": "01F6NET6G00009JYTB75QDKV1S",
+    "animated": true
+  },
+  "peepoGiggles": {
+    "id": "01F6NTA4X80007X1R6PNS21T6E",
+    "animated": true
+  },
+  "peepoShy": {
+    "id": "01GK4EW2AG0004SH49XX2J74KJ",
+    "animated": true
+  },
+  "peepoLeave": {
+    "id": "01G4ZGET1R0003SYTMXJ2SQCGP",
+    "animated": true
+  },
+  "peepoRun": {
+    "id": "01F6Q045KR0005589X3BDQHRAY",
+    "animated": true
+  },
+  "peepoThink": {
+    "id": "01F84YS0W80006DA4ATKNFKPV0",
+    "animated": false
+  },
+  "peepoLove": {
+    "id": "01F6NPP6YG00013ACMMJP3W06V",
+    "animated": false
+  },
+  "peepoSit": {
+    "id": "01F9RVMY90000DNGANWDK1Q04G",
+    "animated": false
+  },
+  "peepoCheer": {
+    "id": "01GFKMBAHG0007SC7A230SCCYX",
+    "animated": true
+  },
+  "peepoHey": {
+    "id": "01F6NMMEER00015NVG2J8ZH77N",
+    "animated": true
+  },
+  "PepeHands": {
+    "id": "01F010G3WG0007E4VV006YKSKP",
+    "animated": false
+  },
+  "monkaS": {
+    "id": "01F78CHJ2G0005TDSTZFBDGMK4",
+    "animated": false
+  },
+  "FeelsOkayMan": {
+    "id": "01GCVYT9A00003A7ECGBKF849W",
+    "animated": false
+  },
+  "peepoGlad": {
+    "id": "01EZQGXQH80006H87W006ZVPGT",
+    "animated": false
+  },
+  "peepoSmash": {
+    "id": "01F6NVTBW8000BEKN8ZXWQXKG3",
+    "animated": true
+  },
+  "peepoPog": {
+    "id": "01F6MZRBHR000FD8P3PCS232JX",
+    "animated": false
+  }
+}
