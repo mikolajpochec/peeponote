@@ -4,6 +4,7 @@ import type { Card } from '../model/types'
 import { useWorkspace } from '../store/workspace'
 import { useSettings } from '../store/settings'
 import { isInteractiveTarget, useDrag } from './useDrag'
+import { setGlobalCursor } from './cursor'
 
 export const GRID = 20
 export const MIN_W = 120
@@ -42,6 +43,7 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
       },
       onMove: (dx, dy) => {
         if (readOnly) return
+        setGlobalCursor('grabbing')
         const sel = useWorkspace.getState().selection
         const ids = sel.has(card.id) ? [...sel] : [card.id]
         const deltas: Record<string, { x: number; y: number }> = {}
@@ -49,6 +51,7 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
         moveCards(boardId, deltas)
       },
       onEnd: (moved) => {
+        setGlobalCursor(null)
         if (!moved || readOnly) return
         if (useSettings.getState().snapToGrid) {
           const b = useWorkspace.getState().boards[boardId]
@@ -71,6 +74,7 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
         if (readOnly) return false
       },
       onMove: (dx, dy) => {
+        setGlobalCursor('nwse-resize')
         const c = useWorkspace.getState().boards[boardId]?.cards.find((x) => x.id === card.id)
         if (!c) return
         const minW = c.type === 'text' ? 60 : MIN_W
@@ -80,6 +84,7 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
         if (c.type === 'text' && c.autoSize !== false) (patch as Partial<Extract<Card, { type: 'text' }>>).autoSize = false
         updateCard(boardId, card.id, patch)
       },
+      onEnd: () => setGlobalCursor(null),
     },
     scale,
   )
@@ -87,7 +92,7 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
   return (
     <div
       data-card={card.id}
-      className={`absolute group rounded-xl select-none ${bare ? '' : 'shadow-lg shadow-black/30'} ${
+      className={`absolute group rounded-xl select-none ${readOnly ? '' : 'cursor-grab'} ${bare ? '' : 'shadow-lg shadow-black/30'} ${
         selected
           ? 'ring-2 ring-frog-300 ring-offset-2 ring-offset-swamp-800'
           : bare

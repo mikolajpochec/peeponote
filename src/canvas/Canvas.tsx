@@ -8,6 +8,7 @@ import { CardView } from '../cards/CardView'
 import { screenToBoard, useViewport, zoomAt } from './viewport'
 import { Peepo } from '../ui/Peepo'
 import { autoEdit } from '../cards/autoEdit'
+import { setGlobalCursor } from './cursor'
 import { Palette, TOOL_MIME, placeTool, toolById } from '../ui/Palette'
 
 interface Marquee {
@@ -117,6 +118,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
 
     const move = (ev: PointerEvent) => {
       moved = true
+      setGlobalCursor(pan ? 'grabbing' : 'crosshair')
       if (pan) {
         const cur = useViewport.getState().get(board.id)
         setVp(board.id, { ...cur, x: cur.x + ev.clientX - lx, y: cur.y + ev.clientY - ly })
@@ -131,6 +133,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       el.removeEventListener('pointermove', move)
       el.removeEventListener('pointerup', up)
       el.releasePointerCapture(ev.pointerId)
+      setGlobalCursor(null)
       setMarquee((m) => {
         if (m && moved && !pan) {
           const x0 = Math.min(m.x0, m.x1), x1 = Math.max(m.x0, m.x1)
@@ -157,8 +160,10 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     const toBoard = (ev: { clientX: number; clientY: number }) => screenToBoard(useViewport.getState().get(board.id), ev.clientX, ev.clientY, rect)
     setDraft({ fixed, moving: toBoard(e), editing })
 
+    setGlobalCursor('crosshair')
     const move = (ev: PointerEvent) => setDraft((d) => (d ? { ...d, moving: toBoard(ev) } : d))
     const up = (ev: PointerEvent) => {
+      setGlobalCursor(null)
       el.removeEventListener('pointermove', move)
       el.removeEventListener('pointerup', up)
       el.removeEventListener('pointercancel', up)

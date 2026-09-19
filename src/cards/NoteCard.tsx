@@ -57,7 +57,7 @@ export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
 
   return (
     <div
-      className="prose-note h-full w-full cursor-text overflow-auto p-3 text-[14px] leading-snug scrollbar-thin"
+      className="prose-note h-full w-full overflow-auto p-3 text-[14px] leading-snug scrollbar-thin"
       style={{ background: card.color }}
     >
       {card.md.trim() ? (

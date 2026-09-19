@@ -86,3 +86,8 @@ html, body, #root {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .toast-in { animation: toast-in 180ms ease-out; }
+
+/* cursors */
+button:not(:disabled), [role='button'] { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+input:read-only, textarea:read-only { cursor: default; }

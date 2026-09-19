@@ -96,7 +96,7 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
   return (
     <>
       {measurer}
-      <div ref={view} className={`h-full w-full cursor-text overflow-hidden whitespace-pre-wrap p-2 ${cls}`}>
+      <div ref={view} className={`h-full w-full overflow-hidden whitespace-pre-wrap p-2 ${cls}`}>
         {card.text || <span className="text-frog-200/30">{placeholder}</span>}
       </div>
     </>
