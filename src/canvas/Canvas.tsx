@@ -11,6 +11,10 @@ import { autoEdit } from '../cards/autoEdit'
 import { setGlobalCursor } from './cursor'
 import { Palette, TOOL_MIME, placeTool, toolById } from '../ui/Palette'
 import { StyleBar } from '../ui/StyleBar'
+import { ContextMenu, sep, type MenuItem } from '../ui/ContextMenu'
+import { TOOLS } from '../ui/Palette'
+import { copySelection, duplicateSelection, hasClipboard, pastePayload, readPayload } from './clipboard'
+import { downloadAsset } from '../cards/AssetCard'
 import { boardVars } from './styles'
 import { useSettings } from '../store/settings'
 import { resolveTheme } from '../theme/themes'
@@ -38,6 +42,10 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
   const [marquee, setMarquee] = useState<Marquee | null>(null)
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   const [draft, setDraft] = useState<DraftConnector | null>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number; at: { x: number; y: number }; cardId: string | null; connectorId: string | null } | null>(null)
+  const bringToFront = useWorkspace((s) => s.bringToFront)
+  const sendToBack = useWorkspace((s) => s.sendToBack)
+  const navigate = useWorkspace((s) => s.navigate)
   const [dragOver, setDragOver] = useState(false)
   const spaceHeld = useRef(false)
   const scale = useCallback(() => useViewport.getState().get(board.id).scale, [board.id])
@@ -93,7 +101,60 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         e.preventDefault()
         setVp(board.id, { x: 80, y: 80, scale: 1 })
       }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd' && !readOnly) {
+        e.preventDefault()
+        const live = useWorkspace.getState().boards[board.id]
+        const sel = useWorkspace.getState().selection
+        if (live && sel.size) duplicateSelection(live, sel)
+      }
     }
+    // system clipboard integration (fires for ⌘C/⌘X/⌘V outside inputs)
+    const onCopy = (e: ClipboardEvent) => {
+      if (isTyping()) return
+      const live = useWorkspace.getState().boards[board.id]
+      const sel = useWorkspace.getState().selection
+      if (!live || !sel.size) return
+      e.preventDefault()
+      copySelection(live, sel, e.clipboardData)
+    }
+    const onCut = (e: ClipboardEvent) => {
+      if (isTyping() || readOnly) return
+      const live = useWorkspace.getState().boards[board.id]
+      const sel = useWorkspace.getState().selection
+      if (!live || !sel.size) return
+      e.preventDefault()
+      const p = copySelection(live, sel, e.clipboardData)
+      removeCards(board.id, p.cards.map((c) => c.id))
+    }
+    const onPaste = (e: ClipboardEvent) => {
+      if (isTyping() || readOnly) return
+      const dt = e.clipboardData
+      const payload = dt?.types.includes('application/x-peeponote') ? readPayload(dt) : null
+      if (payload?.cards.length) {
+        e.preventDefault()
+        pastePayload(board.id, payload)
+        return
+      }
+      const files = [...(dt?.files ?? [])]
+      const c = viewCenter()
+      if (files.length) {
+        e.preventDefault()
+        void addAssets(board.id, files, { x: c.x - 140, y: c.y - 140 })
+        return
+      }
+      const text = dt?.getData('text/plain')?.trim()
+      if (text) {
+        e.preventDefault()
+        const z = (useWorkspace.getState().boards[board.id]?.cards ?? []).reduce((m, k) => Math.max(m, k.z), 0) + 1
+        const id = newId()
+        if (/^https?:\/\/\S+$/.test(text)) addCard(board.id, { id, type: 'link', x: c.x - 130, y: c.y - 45, w: 260, h: 90, z, url: text, title: '' })
+        else addCard(board.id, { id, type: 'note', x: c.x - 110, y: c.y - 60, w: 220, h: 120, z, md: text })
+        select([id])
+      }
+    }
+    document.addEventListener('copy', onCopy)
+    document.addEventListener('cut', onCut)
+    document.addEventListener('paste', onPaste)
     const up = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         spaceHeld.current = false
@@ -105,10 +166,99 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     return () => {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
+      document.removeEventListener('copy', onCopy)
+      document.removeEventListener('cut', onCut)
+      document.removeEventListener('paste', onPaste)
     }
-  }, [board.id, board.cards, board.connectors, readOnly, removeCards, removeConnectors, clearSelection, select, setVp])
+  }, [board.id, board.cards, board.connectors, readOnly, removeCards, removeConnectors, clearSelection, select, setVp, addAssets, addCard])
+
+  /** board coords at the middle of the visible canvas */
+  const viewCenter = () => {
+    const el = ref.current
+    const cur = useViewport.getState().get(board.id)
+    const w = el?.clientWidth ?? 800
+    const h = el?.clientHeight ?? 600
+    return { x: (w / 2 - cur.x) / cur.scale, y: (h / 2 - cur.y) / cur.scale }
+  }
+
+  const onContextMenu = (e: React.MouseEvent) => {
+    const t = e.target as HTMLElement
+    // let native menus work inside text fields
+    if (t.closest('input, textarea, [contenteditable="true"]')) return
+    e.preventDefault()
+    const rect = ref.current!.getBoundingClientRect()
+    const at = screenToBoard(useViewport.getState().get(board.id), e.clientX, e.clientY, rect)
+    const cardId = t.closest('[data-card]')?.getAttribute('data-card') ?? null
+    const connectorId = t.closest('[data-connector]')?.getAttribute('data-connector') ?? null
+    const sel = useWorkspace.getState().selection
+    if (cardId && !sel.has(cardId)) select([cardId])
+    if (connectorId && !sel.has(connectorId)) select([connectorId])
+    setMenu({ x: e.clientX, y: e.clientY, at, cardId, connectorId })
+  }
+
+  const menuItems = (): MenuItem[] => {
+    if (!menu) return []
+    const live = useWorkspace.getState().boards[board.id] ?? board
+    const sel = useWorkspace.getState().selection
+    const selCards = live.cards.filter((c) => sel.has(c.id))
+    const ids = selCards.map((c) => c.id)
+    const n = selCards.length
+    const paste: MenuItem = {
+      kind: 'item',
+      label: 'Paste here',
+      icon: '📋',
+      shortcut: '⌘V',
+      disabled: readOnly || !hasClipboard(),
+      onClick: () => {
+        const p = readPayload()
+        if (p) pastePayload(board.id, p, menu.at)
+      },
+    }
+    if (menu.connectorId) {
+      const k = live.connectors.find((x) => x.id === menu.connectorId)
+      return [
+        { kind: 'item', label: 'Flip direction', icon: '⇄', disabled: readOnly || !k, onClick: () => k && updateConnector(board.id, k.id, { from: k.to, to: k.from }) },
+        sep,
+        { kind: 'item', label: 'Delete', icon: '✕', shortcut: '⌫', danger: true, disabled: readOnly, onClick: () => removeConnectors(board.id, [menu.connectorId!]) },
+      ]
+    }
+    if (menu.cardId && n) {
+      const one = n === 1 ? selCards[0] : null
+      const items: MenuItem[] = []
+      if (one?.type === 'board') items.push({ kind: 'item', label: 'Open board', icon: '🐸', shortcut: 'dbl-click', onClick: () => navigate(one.boardId) }, sep)
+      if (one?.type === 'asset') items.push({ kind: 'item', label: 'Download original', icon: '⬇', onClick: () => void downloadAsset(one) }, sep)
+      items.push(
+        { kind: 'item', label: n > 1 ? `Copy ${n} items` : 'Copy', icon: '⧉', shortcut: '⌘C', onClick: () => copySelection(live, sel) },
+        { kind: 'item', label: 'Cut', icon: '✂', shortcut: '⌘X', disabled: readOnly, onClick: () => (copySelection(live, sel), removeCards(board.id, ids)) },
+        { kind: 'item', label: 'Duplicate', icon: '⊕', shortcut: '⌘D', disabled: readOnly, onClick: () => duplicateSelection(live, sel) },
+        paste,
+        sep,
+        { kind: 'item', label: 'Bring to front', icon: '⤒', disabled: readOnly, onClick: () => ids.forEach((id) => bringToFront(board.id, id)) },
+        { kind: 'item', label: 'Send to back', icon: '⤓', disabled: readOnly, onClick: () => sendToBack(board.id, ids) },
+        sep,
+        { kind: 'item', label: n > 1 ? `Delete ${n} items` : 'Delete', icon: '✕', shortcut: '⌫', danger: true, disabled: readOnly, onClick: () => removeCards(board.id, ids) },
+      )
+      return items
+    }
+    // empty canvas
+    return [
+      paste,
+      sep,
+      ...TOOLS.filter((t) => t.id !== 'file').map<MenuItem>((t) => ({
+        kind: 'item',
+        label: `Add ${t.label.toLowerCase()} here`,
+        icon: t.icon,
+        disabled: readOnly,
+        onClick: () => placeTool(board.id, t, { x: menu.at.x, y: menu.at.y }),
+      })),
+      sep,
+      { kind: 'item', label: 'Select all', icon: '▣', shortcut: '⌘A', onClick: () => select(live.cards.map((c) => c.id)) },
+      { kind: 'item', label: 'Reset view', icon: '⌖', shortcut: '⌘0', onClick: () => setVp(board.id, { x: 80, y: 80, scale: 1 }) },
+    ]
+  }
 
   const onBackgroundPointerDown = (e: React.PointerEvent) => {
+    if (e.button === 2) return // context menu
     if (e.target !== e.currentTarget && !(e.target as HTMLElement).dataset.layer) return
     const el = ref.current!
     const rect = el.getBoundingClientRect()
@@ -261,6 +411,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         backgroundImage: board.style?.dots === false ? 'none' : undefined,
       }}
       onPointerDown={onBackgroundPointerDown}
+      onContextMenu={onContextMenu}
       onPointerMove={(e) => {
         if (draft) return
         const id = (e.target as HTMLElement).closest?.('[data-card]')?.getAttribute('data-card') ?? null
@@ -319,6 +470,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         </div>
       )}
       {!readOnly && <Palette board={board} />}
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems()} onClose={() => setMenu(null)} />}
       {styleBarPos && (
         <div
           className="absolute z-30"

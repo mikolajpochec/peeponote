@@ -15,6 +15,8 @@ Runs as a static web app, installs as a PWA, and needs no backend.
   - shaders / scripts / configs (`.glsl .frag .vert .wgsl .lua .gd …`) · data (`.json .yaml .csv .tmx .tscn …`) · anything else (generic card)
 - **Styling** — select anything to get a style bar: fill, text color, border, font size/family (sans/serif/mono/hand), bold/italic, alignment, corner radius, opacity. Works on multi-select. Connectors get color/width/dashed; boards get a background color and a dot-grid toggle (🎨 in the top bar).
 - **Connectors** — hover/select a card, drag from one of its 4 anchor points onto another card (snaps to the facing side) or into empty space. Select a line to flip arrowheads, delete, or drag its ends elsewhere.
+- **Clipboard & context menu** — right-click anything: copy / cut / paste / duplicate (⌘C ⌘X ⌘V ⌘D, works across boards), bring to front / send to back, delete, add-here, select all. Pasting files, text or URLs from the system clipboard creates assets, notes or links.
+- **Export** — Settings → *Download repo as .zip*: the whole repo including `.git`, so unzipping gives a working clone.
 - **Git** — edits are written to the working tree as you go (uncommitted changes survive a refresh); every save is a commit. History panel lets you peek at any old version and restore it. Push/pull to any git-over-HTTPS remote.
 
 ## Storage modes

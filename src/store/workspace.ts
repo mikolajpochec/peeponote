@@ -60,6 +60,9 @@ interface WorkspaceState {
   moveCards: (boardId: string, deltas: Record<string, { x: number; y: number }>) => void
   removeCards: (boardId: string, ids: string[]) => void
   bringToFront: (boardId: string, cardId: string) => void
+  sendToBack: (boardId: string, ids: string[]) => void
+  /** insert ready-made cards + connectors (ids already fresh) */
+  insert: (boardId: string, cards: Card[], connectors: Connector[]) => void
   createBoard: (parentId: string, name: string, at: { x: number; y: number }) => string
   renameBoard: (boardId: string, name: string) => void
   /** shared workspace settings + name (committed) */
@@ -324,6 +327,24 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         if (!card || card.z === maxZ) return b
         return { ...b, cards: b.cards.map((c) => (c.id === cardId ? { ...c, z: maxZ + 1 } : c)) }
       }),
+
+    sendToBack: (boardId, ids) =>
+      mutateBoard(boardId, (b) => {
+        const minZ = b.cards.reduce((m, c) => Math.min(m, c.z), 0)
+        return { ...b, cards: b.cards.map((c) => (ids.includes(c.id) ? { ...c, z: minZ - ids.length + ids.indexOf(c.id) } : c)) }
+      }),
+
+    insert: (boardId, cards, connectors) => {
+      mutateBoard(boardId, (b) => {
+        const maxZ = b.cards.reduce((m, c) => Math.max(m, c.z), 0)
+        return {
+          ...b,
+          cards: [...b.cards, ...cards.map((c, i) => ({ ...c, z: maxZ + 1 + i }))],
+          connectors: [...b.connectors, ...connectors],
+        }
+      })
+      if (cards.some((c) => c.type === 'asset')) set({ assetsTouched: true, treeDirty: true })
+    },
 
     createBoard: (parentId, name, at) => {
       const id = newId()

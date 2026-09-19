@@ -71,6 +71,7 @@ export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard,
             <g key={k.id}>
               {/* fat invisible hit area */}
               <path
+                data-connector={k.id}
                 d={d}
                 fill="none"
                 stroke="transparent"

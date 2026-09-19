@@ -6,6 +6,7 @@ import { useSettings } from '../store/settings'
 import { useWorkspace } from '../store/workspace'
 import { toast } from '../store/toast'
 import { clearAssetCache } from '../cards/useAssetUrl'
+import { exportRepoZip } from '../git/exportZip'
 import { Peepo } from './Peepo'
 import { THEMES, type ThemeName } from '../theme/themes'
 
@@ -25,6 +26,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   const meta = useWorkspace((s) => s.meta)
   const updateMeta = useWorkspace((s) => s.updateMeta)
   const viewingRef = useWorkspace((s) => s.viewingRef)
+  const flush = useWorkspace((s) => s.flush)
+  const [zipping, setZipping] = useState(false)
   const [remote, setRemoteDraft] = useState(remoteUrl ?? '')
   const [cloneUrl, setCloneUrl] = useState('')
   const [showToken, setShowToken] = useState(false)
@@ -114,6 +117,28 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             <p className="mt-2 text-[11px] text-frog-200/50">
               A folder gives you a real <code>.git</code> you can use from a terminal. Browser storage lives in IndexedDB. Both are full git repos.
             </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-(--hair) pt-3">
+              <button
+                className={btn}
+                disabled={!fs || !!busy || zipping}
+                onClick={async () => {
+                  if (!fs) return
+                  setZipping(true)
+                  try {
+                    await flush()
+                    await exportRepoZip(fs, meta?.name)
+                    toast.ok('Zipped the whole repo. peepoPog', 'peepoPog')
+                  } catch (e) {
+                    toast.err(`Export failed: ${(e as Error).message}`)
+                  } finally {
+                    setZipping(false)
+                  }
+                }}
+              >
+                {zipping ? '⏳ Zipping…' : '🗜 Download repo as .zip'}
+              </button>
+              <span className="text-[11px] text-frog-200/50">Includes <code>.git</code> — unzip anywhere and it's a working clone with full history.</span>
+            </div>
           </div>
         </section>
 
