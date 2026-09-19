@@ -30,17 +30,17 @@ export function ColorPicker({ value, swatches, onChange, title, fallback, icon }
       <button
         title={title}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-white/10"
+        className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-(--hover-strong)"
       >
         <span
-          className="flex h-4.5 w-4.5 items-center justify-center rounded-full border border-white/40 text-[10px] font-black leading-none"
+          className="flex h-4.5 w-4.5 items-center justify-center rounded-full border border-(--hair) text-[10px] font-black leading-none"
           style={{ background: value ?? fallback, color: contrast(value ?? fallback) }}
         >
           {icon}
         </span>
       </button>
       {open && (
-        <div className="absolute left-1/2 top-full z-10 mt-1 w-44 -translate-x-1/2 rounded-lg border border-white/10 bg-swamp-900 p-2 shadow-2xl">
+        <div className="absolute left-1/2 top-full z-10 mt-1 w-44 -translate-x-1/2 rounded-lg border border-(--hair) bg-swamp-900 p-2 shadow-2xl">
           <div className="grid grid-cols-6 gap-1.5">
             {swatches.map((c) => (
               <button
@@ -50,13 +50,13 @@ export function ColorPicker({ value, swatches, onChange, title, fallback, icon }
                   onChange(c)
                   setOpen(false)
                 }}
-                className={`h-5 w-5 rounded-full border ${value === c ? 'border-frog-300 ring-2 ring-frog-300/50' : 'border-white/20'}`}
+                className={`h-5 w-5 rounded-full border ${value === c ? 'border-frog-300 ring-2 ring-frog-300/50' : 'border-(--hair)'}`}
                 style={{ background: c }}
               />
             ))}
           </div>
           <div className="mt-2 flex items-center gap-2 text-[11px] text-frog-200/80">
-            <label className="flex flex-1 cursor-pointer items-center gap-1.5 rounded-md bg-white/5 px-2 py-1 hover:bg-white/10">
+            <label className="flex flex-1 cursor-pointer items-center gap-1.5 rounded-md bg-(--hover) px-2 py-1 hover:bg-(--hover-strong)">
               <input type="color" value={toHex(value ?? fallback)} onChange={(e) => onChange(e.target.value)} className="h-4 w-4 cursor-pointer border-0 bg-transparent p-0" />
               custom
             </label>
@@ -65,7 +65,7 @@ export function ColorPicker({ value, swatches, onChange, title, fallback, icon }
                 onChange(undefined)
                 setOpen(false)
               }}
-              className="rounded-md bg-white/5 px-2 py-1 hover:bg-white/10"
+              className="rounded-md bg-(--hover) px-2 py-1 hover:bg-(--hover-strong)"
             >
               default
             </button>

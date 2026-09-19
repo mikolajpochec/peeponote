@@ -91,3 +91,6 @@ html, body, #root {
 button:not(:disabled), [role='button'] { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 input:read-only, textarea:read-only { cursor: default; }
+
+/* hairlines and hover tints */
+:root { --hair: rgba(255, 255, 255, 0.1); --hover: rgba(255, 255, 255, 0.08); --hover-strong: rgba(255, 255, 255, 0.16); }

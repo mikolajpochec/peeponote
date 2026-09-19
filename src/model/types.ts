@@ -125,10 +125,16 @@ export interface Board {
   style?: BoardStyle
 }
 
+/** Shared, committed workspace settings (everyone who clones gets these) */
+export interface WorkspaceSettings {
+  snapToGrid?: boolean
+}
+
 export interface WorkspaceMeta {
   version: 1
   name: string
   rootBoardId: string
+  settings?: WorkspaceSettings
 }
 
 export const WORKSPACE_FILE = 'peeponote.json'

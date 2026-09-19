@@ -22,8 +22,8 @@ export function HistoryPanel({ onClose }: { onClose: () => void }) {
   }, [refreshGit])
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col border-l border-white/10 bg-swamp-900">
-      <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2">
+    <aside className="flex w-80 shrink-0 flex-col border-l border-(--hair) bg-swamp-900">
+      <div className="flex items-center gap-2 border-b border-(--hair) px-3 py-2">
         <Peepo name="peepoThink" size={24} />
         <div className="flex-1 text-sm font-extrabold">History</div>
         <span className="text-[11px] text-frog-200/50">{commits.length} commits</span>
@@ -39,7 +39,7 @@ export function HistoryPanel({ onClose }: { onClose: () => void }) {
             <li key={c.oid}>
               <button
                 onClick={() => viewCommit(isHead ? null : c.oid)}
-                className={`flex w-full flex-col gap-0.5 border-b border-white/5 px-3 py-2 text-left hover:bg-swamp-700 ${active ? 'bg-frog-800/60' : ''}`}
+                className={`flex w-full flex-col gap-0.5 border-b border-(--hair) px-3 py-2 text-left hover:bg-swamp-700 ${active ? "bg-frog-700/40" : ""}`}
               >
                 <div className="flex items-center gap-2 text-[13px]">
                   <span className={`h-2 w-2 rounded-full ${isHead ? 'bg-frog-300' : 'bg-frog-200/30'}`} />
@@ -58,7 +58,7 @@ export function HistoryPanel({ onClose }: { onClose: () => void }) {
         })}
         {commits.length === 0 && <li className="p-4 text-sm text-frog-200/50">No commits yet. Hit peepoSave.</li>}
       </ul>
-      <div className="border-t border-white/10 p-2 text-[11px] text-frog-200/50">Click a commit to peek at that version. Restore from the banner.</div>
+      <div className="border-t border-(--hair) p-2 text-[11px] text-frog-200/50">Click a commit to peek at that version. Restore from the banner.</div>
     </aside>
   )
 }

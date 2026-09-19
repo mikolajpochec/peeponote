@@ -179,7 +179,7 @@ function ConnectorToolbar({ boardId, connector, at, inv }: { boardId: string; co
     <div
       data-nodrag
       onPointerDown={(e) => e.stopPropagation()}
-      className="absolute flex items-center gap-0.5 rounded-lg border border-white/10 bg-swamp-900/95 p-0.5 shadow-xl"
+      className="absolute flex items-center gap-0.5 rounded-lg border border-(--hair) bg-swamp-900/95 p-0.5 shadow-xl"
       style={{ left: at.x, top: at.y, transform: `translate(-50%, -140%) scale(${inv})`, transformOrigin: '50% 100%', zIndex: 100002 }}
     >
       {opts.map((o) => (
@@ -187,28 +187,28 @@ function ConnectorToolbar({ boardId, connector, at, inv }: { boardId: string; co
           key={o.v}
           title={o.title}
           onClick={() => updateConnector(boardId, connector.id, { arrows: o.v })}
-          className={`h-6 w-6 rounded text-[13px] font-bold ${connector.arrows === o.v ? 'bg-frog-600 text-white' : 'text-frog-100 hover:bg-white/10'}`}
+          className={`h-6 w-6 rounded text-[13px] font-bold ${connector.arrows === o.v ? 'bg-frog-600 text-white' : 'text-frog-100 hover:bg-(--hover-strong)'}`}
         >
           {o.label}
         </button>
       ))}
-      <span className="mx-0.5 h-4 w-px bg-white/10" />
+      <span className="mx-0.5 h-4 w-px bg-(--hover-strong)" />
       <ColorPicker title="Line color" value={st.color} fallback="#8ac47e" swatches={INKS} onChange={(color) => styleConnectors(boardId, [connector.id], { color })} />
       <button
         title={`Line width: ${width}`}
         onClick={() => styleConnectors(boardId, [connector.id], { width: width >= 6 ? undefined : width + 1 })}
-        className="flex h-6 w-6 items-center justify-center rounded text-frog-100 hover:bg-white/10"
+        className="flex h-6 w-6 items-center justify-center rounded text-frog-100 hover:bg-(--hover-strong)"
       >
         <span className="block w-3.5 rounded-full bg-current" style={{ height: Math.min(6, width) }} />
       </button>
       <button
         title="Dashed"
         onClick={() => styleConnectors(boardId, [connector.id], { dashed: st.dashed ? undefined : true })}
-        className={`h-6 w-6 rounded text-[13px] ${st.dashed ? 'bg-frog-600 text-white' : 'text-frog-100 hover:bg-white/10'}`}
+        className={`h-6 w-6 rounded text-[13px] ${st.dashed ? 'bg-frog-600 text-white' : 'text-frog-100 hover:bg-(--hover-strong)'}`}
       >
         ┄
       </button>
-      <span className="mx-0.5 h-4 w-px bg-white/10" />
+      <span className="mx-0.5 h-4 w-px bg-(--hover-strong)" />
       <button title="Delete (Del)" onClick={() => removeConnectors(boardId, [connector.id])} className="h-6 w-6 rounded text-[12px] text-frog-200 hover:bg-red-700 hover:text-white">
         ✕
       </button>

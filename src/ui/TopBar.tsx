@@ -4,6 +4,7 @@ import { selectBoards, selectDirty, useWorkspace } from '../store/workspace'
 import { useSettings } from '../store/settings'
 import { Peepo } from './Peepo'
 import { ColorPicker } from './ColorPicker'
+import { resolveTheme } from '../theme/themes'
 
 export function TopBar({ onToggleHistory, historyOpen, onOpenSettings }: { onToggleHistory: () => void; historyOpen: boolean; onOpenSettings: () => void }) {
   const boards = useWorkspace(selectBoards)
@@ -12,6 +13,7 @@ export function TopBar({ onToggleHistory, historyOpen, onOpenSettings }: { onTog
   const renameBoard = useWorkspace((s) => s.renameBoard)
   const setBoardStyle = useWorkspace((s) => s.setBoardStyle)
   const viewingRef = useWorkspace((s) => s.viewingRef)
+  const themeCanvas = useSettings((s) => resolveTheme(s.theme).canvas)
   const board = currentId ? boards[currentId] : undefined
   const readOnly = !!viewingRef
 
@@ -19,7 +21,7 @@ export function TopBar({ onToggleHistory, historyOpen, onOpenSettings }: { onTog
   for (let b = board; b; b = b.parentId ? boards[b.parentId] : undefined) crumbs.unshift(b)
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/10 bg-swamp-900 px-3">
+    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-(--hair) bg-swamp-900 px-3">
       <nav className="flex min-w-0 items-center gap-1 text-[13px]">
         {crumbs.map((b, i) => (
           <span key={b.id} className="flex items-center gap-1">
@@ -29,11 +31,11 @@ export function TopBar({ onToggleHistory, historyOpen, onOpenSettings }: { onTog
                 readOnly={readOnly}
                 value={b.name}
                 onChange={(e) => renameBoard(b.id, e.target.value)}
-                className="min-w-0 rounded bg-transparent px-1 font-extrabold outline-none hover:bg-white/5 focus:bg-white/10"
+                className="min-w-0 rounded bg-transparent px-1 font-extrabold outline-none hover:bg-(--hover) focus:bg-(--hover-strong)"
                 style={{ width: `${Math.max(4, b.name.length + 1)}ch` }}
               />
             ) : (
-              <button onClick={() => navigate(b.id)} className="rounded px-1 text-frog-200/80 hover:bg-white/5 hover:text-white">
+              <button onClick={() => navigate(b.id)} className="rounded px-1 text-frog-200/80 hover:bg-(--hover) hover:text-white">
                 {b.name || 'Untitled'}
               </button>
             )}
@@ -46,14 +48,14 @@ export function TopBar({ onToggleHistory, historyOpen, onOpenSettings }: { onTog
             title="Board background"
             icon="◼"
             value={board.style?.bg}
-            fallback="#171f18"
+            fallback={themeCanvas}
             swatches={['#171f18', '#101610', '#1c2a1e', '#2a3a2c', '#1e1b2e', '#2a1f1f', '#fbf8ef', '#eef7ec', '#e7e5e4', '#fff3b0', '#dbeafe', '#fce7f3']}
             onChange={(bg) => setBoardStyle(board.id, { bg })}
           />
           <button
             title="Toggle dot grid"
             onClick={() => setBoardStyle(board.id, { dots: board.style?.dots === false ? undefined : false })}
-            className={`h-7 w-7 rounded-md text-[13px] ${board.style?.dots === false ? 'text-frog-200/40' : 'text-frog-100'} hover:bg-white/10`}
+            className={`h-7 w-7 rounded-md text-[13px] ${board.style?.dots === false ? 'text-frog-200/40' : 'text-frog-100'} hover:bg-(--hover-strong)`}
           >
             ⁘
           </button>
@@ -64,11 +66,11 @@ export function TopBar({ onToggleHistory, historyOpen, onOpenSettings }: { onTog
       <button
         onClick={onToggleHistory}
         title="History"
-        className={`rounded-md px-2 py-1 text-[13px] font-semibold hover:bg-white/10 ${historyOpen ? 'bg-white/10' : ''}`}
+        className={`rounded-md px-2 py-1 text-[13px] font-semibold hover:bg-(--hover-strong) ${historyOpen ? 'bg-(--hover-strong)' : ''}`}
       >
         🕰 History
       </button>
-      <button onClick={onOpenSettings} title="Settings (⌘,)" className="rounded-md px-2 py-1 text-[13px] font-semibold hover:bg-white/10">
+      <button onClick={onOpenSettings} title="Settings (⌘,)" className="rounded-md px-2 py-1 text-[13px] font-semibold hover:bg-(--hover-strong)">
         ⚙
       </button>
     </header>

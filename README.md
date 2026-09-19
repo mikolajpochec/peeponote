@@ -36,6 +36,14 @@ assets/<sha1-8>-<name>   # binary assets, content-addressed prefix
 
 Unreferenced assets are garbage-collected on save.
 
+## Settings: repo vs. you
+
+| where | what | who sees it |
+| --- | --- | --- |
+| `peeponote.json` (committed) | workspace name, snap-to-grid | everyone who clones |
+| `.git/config` of this clone | remote URL | this clone only |
+| this browser's `localStorage` | theme (Peepo / Dark), author, token, proxy, auto-push, storage mode | you only |
+
 ## Remotes
 
 Browsers can't speak git smart-HTTP to GitHub directly (no CORS headers), so pushes go through a CORS proxy.

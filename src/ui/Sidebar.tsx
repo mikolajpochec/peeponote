@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Board } from '../model/types'
 import { selectBoards, useWorkspace } from '../store/workspace'
 import { Peepo } from './Peepo'
+import { contrast } from '../canvas/styles'
 
 export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const boards = useWorkspace(selectBoards)
@@ -16,7 +17,7 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
 
   if (collapsed) {
     return (
-      <div className="flex w-12 flex-col items-center gap-3 border-r border-white/10 bg-swamp-900 py-3">
+      <div className="flex w-12 flex-col items-center gap-3 border-r border-(--hair) bg-swamp-900 py-3">
         <button onClick={() => setCollapsed(false)} title="Expand">
           <Peepo name="peepoHappy" size={30} />
         </button>
@@ -25,11 +26,13 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
   }
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-white/10 bg-swamp-900">
+    <aside className="flex w-60 shrink-0 flex-col border-r border-(--hair) bg-swamp-900">
       <div className="flex items-center gap-2 px-3 py-3">
         <Peepo name="peepoHappy" size={34} />
         <div className="flex-1 leading-tight">
-          <div className="text-lg font-black tracking-tight">peeponote</div>
+          <div className="truncate text-lg font-black tracking-tight" title="peeponote">
+            {meta?.name || 'peeponote'}
+          </div>
           <div className="truncate text-[11px] text-frog-200/60">{fs?.label}</div>
         </div>
         <button onClick={() => setCollapsed(true)} className="text-frog-200/50 hover:text-frog-100" title="Collapse">
@@ -44,7 +47,7 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
           <div className="px-3 text-sm text-frog-200/50">no boards</div>
         )}
       </nav>
-      <div className="border-t border-white/10 p-2 text-[11px] text-frog-200/60">
+      <div className="border-t border-(--hair) p-2 text-[11px] text-frog-200/60">
         {head ? (
           <div className="truncate" title={head.commit.message}>
             <span className="font-mono text-frog-300">{head.oid.slice(0, 7)}</span> {head.commit.message.split('\n')[0]}
@@ -76,19 +79,25 @@ function BoardNode({
   const [open, setOpen] = useState(true)
   const children = board.cards.filter((c) => c.type === 'board').map((c) => (c.type === 'board' ? boards[c.boardId] : undefined)).filter(Boolean) as Board[]
   const active = board.id === current
+  const bg = board.style?.bg
   return (
     <div>
       <div
-        className={`flex items-center gap-1 rounded-md px-2 py-1 text-[13px] ${active ? 'bg-frog-700 font-bold text-white' : 'text-frog-100 hover:bg-swamp-700'}`}
-        style={{ paddingLeft: 8 + depth * 12 }}
+        className={`flex items-center gap-1 rounded-md px-2 py-1 text-[13px] ${active ? 'font-bold' : 'text-frog-100 hover:bg-swamp-700'} ${active && !bg ? 'bg-frog-700 text-white' : ''}`}
+        style={{
+          paddingLeft: 8 + depth * 12,
+          // the active row wears the board's own color
+          ...(active && bg ? { background: bg, color: contrast(bg), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.15)' } : {}),
+        }}
       >
         <button onClick={() => setOpen((o) => !o)} className={`w-4 text-[10px] text-frog-200/60 ${children.length ? '' : 'invisible'}`}>
           {open ? '▾' : '▸'}
         </button>
-        <button onClick={() => navigate(board.id)} className="min-w-0 flex-1 truncate text-left">
-          {board.name || 'Untitled'}
+        <button onClick={() => navigate(board.id)} className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-left">
+          {bg && !active && <span className="h-2 w-2 shrink-0 rounded-full ring-1 ring-black/20" style={{ background: bg }} />}
+          <span className="truncate">{board.name || 'Untitled'}</span>
         </button>
-        <span className="text-[10px] text-frog-200/40">{board.cards.length}</span>
+        <span className={`text-[10px] ${active && bg ? 'opacity-60' : 'text-frog-200/40'}`}>{board.cards.length}</span>
       </div>
       {open && children.map((c) => <BoardNode key={c.id} board={c} boards={boards} depth={depth + 1} current={current} navigate={navigate} />)}
     </div>

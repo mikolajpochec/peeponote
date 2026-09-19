@@ -2,7 +2,6 @@ import { memo, useState, type ReactNode } from 'react'
 import { EditRequestContext } from './editRequest'
 import type { Card } from '../model/types'
 import { useWorkspace } from '../store/workspace'
-import { useSettings } from '../store/settings'
 import { isInteractiveTarget, useDrag } from './useDrag'
 import { setGlobalCursor } from './cursor'
 import { cardStyles } from './styles'
@@ -54,7 +53,7 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
       onEnd: (moved) => {
         setGlobalCursor(null)
         if (!moved || readOnly) return
-        if (useSettings.getState().snapToGrid) {
+        if (useWorkspace.getState().meta?.settings?.snapToGrid) {
           const b = useWorkspace.getState().boards[boardId]
           const sel = useWorkspace.getState().selection
           const ids = sel.has(card.id) ? [...sel] : [card.id]

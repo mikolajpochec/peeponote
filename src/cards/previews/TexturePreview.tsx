@@ -53,7 +53,7 @@ export function TexturePreview({ card, boardId, readOnly }: { card: AssetCard; b
           </div>
         )}
       </div>
-      <div className="flex items-center gap-1.5 border-t border-white/10 px-2 py-1 text-[11px] text-frog-200/80" data-nodrag>
+      <div className="flex items-center gap-1.5 border-t border-(--hair) px-2 py-1 text-[11px] text-frog-200/80" data-nodrag>
         <span>frame</span>
         <input
           className="w-10 rounded bg-black/30 px-1 text-center outline-none"
@@ -76,16 +76,16 @@ export function TexturePreview({ card, boardId, readOnly }: { card: AssetCard; b
         />
         {sheet && (
           <>
-            <button className="rounded bg-white/10 px-1.5 hover:bg-white/20" onClick={() => setFrame((f) => (f - 1 + total) % total)}>
+            <button className="rounded bg-(--hover-strong) px-1.5 hover:bg-(--hover-strong)" onClick={() => setFrame((f) => (f - 1 + total) % total)}>
               ‹
             </button>
             <span className="tabular-nums">
               {frame + 1}/{total}
             </span>
-            <button className="rounded bg-white/10 px-1.5 hover:bg-white/20" onClick={() => setFrame((f) => (f + 1) % total)}>
+            <button className="rounded bg-(--hover-strong) px-1.5 hover:bg-(--hover-strong)" onClick={() => setFrame((f) => (f + 1) % total)}>
               ›
             </button>
-            <button className="ml-auto rounded bg-white/10 px-1.5 hover:bg-white/20" onClick={() => setZoom((z) => (z >= 8 ? 1 : z * 2))}>
+            <button className="ml-auto rounded bg-(--hover-strong) px-1.5 hover:bg-(--hover-strong)" onClick={() => setZoom((z) => (z >= 8 ? 1 : z * 2))}>
               {zoom}×
             </button>
           </>

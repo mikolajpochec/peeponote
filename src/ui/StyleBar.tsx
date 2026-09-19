@@ -7,7 +7,7 @@ import { ColorPicker } from './ColorPicker'
 const ALIGN_ICON: Record<TextAlign, string> = { left: '⫷', center: '☰', right: '⫸' }
 const FONTS: FontFamily[] = ['sans', 'serif', 'mono', 'hand']
 
-const btn = 'flex h-7 min-w-7 items-center justify-center rounded-md px-1 text-[13px] font-bold text-frog-100 hover:bg-white/10'
+const btn = 'flex h-7 min-w-7 items-center justify-center rounded-md px-1 text-[13px] font-bold text-frog-100 hover:bg-(--hover-strong)'
 const on = 'bg-frog-600 text-white hover:bg-frog-500'
 
 /** Floating toolbar for styling the selected cards. */
@@ -38,7 +38,7 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
       data-nodrag
       onPointerDown={(e) => e.stopPropagation()}
       onDoubleClick={(e) => e.stopPropagation()}
-      className="flex items-center gap-0.5 rounded-xl border border-white/10 bg-swamp-900/95 p-1 shadow-2xl shadow-black/50 backdrop-blur"
+      className="flex items-center gap-0.5 rounded-xl border border-(--hair) bg-swamp-900/95 p-1 shadow-2xl shadow-black/50 backdrop-blur"
     >
       <ColorPicker title="Fill" icon="◼" value={s.bg} fallback={first.type === 'text' ? '#00000000' : '#fbf8ef'} swatches={FILLS} onChange={(bg) => apply({ bg })} />
       <ColorPicker title="Text color" icon="A" value={s.fg} fallback="#1b1d1a" swatches={INKS} onChange={(fg) => apply({ fg })} />
@@ -131,12 +131,12 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
 }
 
 function Sep() {
-  return <span className="mx-0.5 h-5 w-px bg-white/10" />
+  return <span className="mx-0.5 h-5 w-px bg-(--hover-strong)" />
 }
 
 function Menu({ children, row }: { children: React.ReactNode; row?: boolean }) {
   return (
-    <div className={`absolute left-1/2 top-full z-10 mt-1 flex -translate-x-1/2 gap-0.5 rounded-lg border border-white/10 bg-swamp-900 p-1 shadow-2xl ${row ? '' : 'flex-col'}`}>
+    <div className={`absolute left-1/2 top-full z-10 mt-1 flex -translate-x-1/2 gap-0.5 rounded-lg border border-(--hair) bg-swamp-900 p-1 shadow-2xl ${row ? '' : 'flex-col'}`}>
       {children}
     </div>
   )
@@ -144,7 +144,7 @@ function Menu({ children, row }: { children: React.ReactNode; row?: boolean }) {
 
 function MenuItem({ children, active, onClick }: { children: React.ReactNode; active: boolean; onClick: () => void }) {
   return (
-    <button onClick={onClick} className={`rounded-md px-2 py-1 text-left text-[13px] whitespace-nowrap ${active ? on : 'text-frog-100 hover:bg-white/10'}`}>
+    <button onClick={onClick} className={`rounded-md px-2 py-1 text-left text-[13px] whitespace-nowrap ${active ? on : 'text-frog-100 hover:bg-(--hover-strong)'}`}>
       {children}
     </button>
   )

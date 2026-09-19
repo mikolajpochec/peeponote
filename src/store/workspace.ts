@@ -7,7 +7,7 @@ import {
 import * as repo from '../git/repo'
 import {
   ASSETS_DIR, BOARDS_DIR, WORKSPACE_FILE, boardPath, newId,
-  type Board, type BoardStyle, type Card, type CardStyle, type Connector, type ConnectorStyle, type WorkspaceMeta,
+  type Board, type BoardStyle, type Card, type CardStyle, type Connector, type ConnectorStyle, type WorkspaceMeta, type WorkspaceSettings,
 } from '../model/types'
 import { parseBoard, parseWorkspace } from '../model/schema'
 import { detectKind } from '../model/assetKind'
@@ -29,6 +29,8 @@ interface WorkspaceState {
   dirtyBoards: Set<string>
   deletedBoards: Set<string>
   assetsTouched: boolean
+  /** peeponote.json edited in memory, not yet written */
+  metaDirty: boolean
   /** working tree differs from HEAD (uncommitted changes, survives reloads) */
   treeDirty: boolean
   selection: Set<string>
@@ -60,6 +62,8 @@ interface WorkspaceState {
   bringToFront: (boardId: string, cardId: string) => void
   createBoard: (parentId: string, name: string, at: { x: number; y: number }) => string
   renameBoard: (boardId: string, name: string) => void
+  /** shared workspace settings + name (committed) */
+  updateMeta: (patch: { name?: string; settings?: Partial<WorkspaceSettings> }) => void
   styleCards: (boardId: string, ids: string[], patch: Partial<CardStyle>) => void
   styleConnectors: (boardId: string, ids: string[], patch: Partial<ConnectorStyle>) => void
   setBoardStyle: (boardId: string, patch: Partial<BoardStyle>) => void
@@ -82,8 +86,8 @@ interface WorkspaceState {
   restoreCommit: (oid: string) => Promise<void>
 }
 
-const isDirty = (s: Pick<WorkspaceState, 'dirtyBoards' | 'deletedBoards' | 'assetsTouched' | 'treeDirty'>) =>
-  s.dirtyBoards.size > 0 || s.deletedBoards.size > 0 || s.assetsTouched || s.treeDirty
+const isDirty = (s: Pick<WorkspaceState, 'dirtyBoards' | 'deletedBoards' | 'assetsTouched' | 'treeDirty' | 'metaDirty'>) =>
+  s.dirtyBoards.size > 0 || s.deletedBoards.size > 0 || s.assetsTouched || s.treeDirty || s.metaDirty
 
 export const selectDirty = (s: WorkspaceState) => isDirty(s)
 
@@ -157,6 +161,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         dirtyBoards: new Set(),
         deletedBoards: new Set(),
         assetsTouched: false,
+        metaDirty: false,
         treeDirty: await repo.hasChanges(fs),
         selection: new Set(),
       })
@@ -196,6 +201,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     dirtyBoards: new Set(),
     deletedBoards: new Set(),
     assetsTouched: false,
+    metaDirty: false,
     treeDirty: false,
     selection: new Set(),
     busy: null,
@@ -337,6 +343,14 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
 
     renameBoard: (boardId, name) => mutateBoard(boardId, (b) => ({ ...b, name })),
 
+    updateMeta: (patch) => {
+      const meta = get().meta
+      if (!meta || get().viewingRef) return
+      const settings = { ...(meta.settings ?? {}), ...(patch.settings ?? {}) }
+      set({ meta: { ...meta, ...(patch.name !== undefined ? { name: patch.name } : {}), settings }, metaDirty: true })
+      scheduleFlush()
+    },
+
     styleCards: (boardId, ids, patch) =>
       mutateBoard(boardId, (b) => ({
         ...b,
@@ -390,8 +404,12 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
 
     flush: async () => {
       clearTimeout(flushTimer)
-      const { fs, boards, dirtyBoards, deletedBoards } = get()
-      if (!fs || get().viewingRef || (dirtyBoards.size === 0 && deletedBoards.size === 0)) return
+      const { fs, boards, dirtyBoards, deletedBoards, meta, metaDirty } = get()
+      if (!fs || get().viewingRef || (dirtyBoards.size === 0 && deletedBoards.size === 0 && !metaDirty)) return
+      if (metaDirty && meta) {
+        await writeText(fs, abs(fs, WORKSPACE_FILE), JSON.stringify(meta, null, 2))
+        if (get().meta === meta) set({ metaDirty: false })
+      }
       const written: [string, Board][] = []
       for (const id of dirtyBoards) {
         const b = boards[id]
@@ -436,13 +454,13 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         const changes = await repo.stageAll(fs)
         const n = changes.added.length + changes.modified.length + changes.deleted.length
         if (n === 0) {
-          set({ dirtyBoards: new Set(), deletedBoards: new Set(), assetsTouched: false, treeDirty: false })
+          set({ dirtyBoards: new Set(), deletedBoards: new Set(), assetsTouched: false, metaDirty: false, treeDirty: false })
           toast.info('No changes in the tree. peepoSit', 'peepoSit')
           return false
         }
         const msg = message?.trim() || defaultMessage(changes)
         await repo.commit(fs, msg, identity())
-        set({ dirtyBoards: new Set(), deletedBoards: new Set(), assetsTouched: false, treeDirty: false })
+        set({ dirtyBoards: new Set(), deletedBoards: new Set(), assetsTouched: false, metaDirty: false, treeDirty: false })
         await get().refreshGit()
         toast.ok(`Committed: ${msg}`, 'peepoClap')
         if (useSettings.getState().autoPush && get().remoteUrl) {
@@ -570,6 +588,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
           dirtyBoards: new Set(),
           deletedBoards: new Set(),
           assetsTouched: false,
+          metaDirty: false,
           treeDirty: false,
           currentBoardId: meta.rootBoardId,
         })

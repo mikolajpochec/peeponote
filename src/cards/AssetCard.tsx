@@ -47,7 +47,7 @@ export function AssetCard({ card, boardId, readOnly }: CardProps<AssetCardT>) {
   const updateCard = useWorkspace((s) => s.updateCard)
   return (
     <div className="flex h-full w-full flex-col">
-      <div className="flex items-center gap-2 border-b border-white/10 px-2.5 py-1.5">
+      <div className="flex items-center gap-2 border-b border-(--hair) px-2.5 py-1.5">
         <span className="text-[13px]" title={KIND_LABEL[card.kind]}>
           {KIND_ICON[card.kind]}
         </span>
@@ -59,7 +59,7 @@ export function AssetCard({ card, boardId, readOnly }: CardProps<AssetCardT>) {
           title={card.path}
           className="min-w-0 flex-1 truncate bg-transparent text-[13px] font-bold outline-none"
         />
-        <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-frog-200">
+        <span className="shrink-0 rounded bg-(--hover-strong) px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-frog-200">
           {KIND_LABEL[card.kind]}
         </span>
         <button

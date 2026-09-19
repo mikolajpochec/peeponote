@@ -8,6 +8,8 @@ import { SettingsDialog } from './ui/SettingsDialog'
 import { Toasts } from './ui/Toasts'
 import { Peepo } from './ui/Peepo'
 import { BootScreen } from './ui/BootScreen'
+import { useSettings } from './store/settings'
+import { applyTheme, resolveTheme } from './theme/themes'
 
 export default function App() {
   const status = useWorkspace((s) => s.status)
@@ -23,6 +25,9 @@ export default function App() {
   useEffect(() => {
     boot()
   }, [boot])
+
+  const themeName = useSettings((s) => s.theme)
+  useEffect(() => applyTheme(resolveTheme(themeName)), [themeName])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -116,7 +121,7 @@ function HistoryBanner() {
         <span>
           Viewing commit <code className="font-mono">{viewingRef?.slice(0, 7)}</code> — read only
         </span>
-        <button onClick={() => viewCommit(null)} className="rounded-md bg-white/10 px-2 py-1 font-semibold hover:bg-white/20">
+        <button onClick={() => viewCommit(null)} className="rounded-md bg-(--hover-strong) px-2 py-1 font-semibold hover:bg-(--hover-strong)">
           Back to now
         </button>
         <button

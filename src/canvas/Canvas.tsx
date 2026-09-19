@@ -12,6 +12,8 @@ import { setGlobalCursor } from './cursor'
 import { Palette, TOOL_MIME, placeTool, toolById } from '../ui/Palette'
 import { StyleBar } from '../ui/StyleBar'
 import { boardVars } from './styles'
+import { useSettings } from '../store/settings'
+import { resolveTheme } from '../theme/themes'
 
 interface Marquee {
   x0: number
@@ -231,6 +233,8 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     }
   }
 
+  const theme = useSettings((s) => resolveTheme(s.theme))
+
   // style bar floats (unscaled) above the selected cards
   const selectedCards = board.cards.filter((c) => selection.has(c.id))
   let styleBarPos: { x: number; y: number; below: boolean } | null = null
@@ -250,7 +254,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       ref={ref}
       className={`canvas-bg relative h-full w-full overflow-hidden touch-none ${dragOver ? 'outline outline-4 -outline-offset-4 outline-frog-300/60' : ''}`}
       style={{
-        ...boardVars(board),
+        ...boardVars(board, theme.canvas),
         backgroundSize: `${24 * vp.scale}px ${24 * vp.scale}px`,
         backgroundPosition: `${vp.x}px ${vp.y}px`,
         backgroundColor: 'var(--board-bg)',

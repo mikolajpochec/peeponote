@@ -7,6 +7,7 @@ import { useWorkspace } from '../store/workspace'
 import { toast } from '../store/toast'
 import { clearAssetCache } from '../cards/useAssetUrl'
 import { Peepo } from './Peepo'
+import { THEMES, type ThemeName } from '../theme/themes'
 
 const field = 'w-full rounded-md bg-swamp-700 px-2 py-1.5 text-[13px] outline-none focus:ring-1 focus:ring-frog-400 placeholder:text-frog-200/30'
 const label = 'text-[11px] font-bold uppercase tracking-wider text-frog-200/60'
@@ -21,6 +22,9 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   const switchToBrowser = useWorkspace((s) => s.switchToBrowser)
   const cloneInto = useWorkspace((s) => s.cloneInto)
   const busy = useWorkspace((s) => s.busy)
+  const meta = useWorkspace((s) => s.meta)
+  const updateMeta = useWorkspace((s) => s.updateMeta)
+  const viewingRef = useWorkspace((s) => s.viewingRef)
   const [remote, setRemoteDraft] = useState(remoteUrl ?? '')
   const [cloneUrl, setCloneUrl] = useState('')
   const [showToken, setShowToken] = useState(false)
@@ -39,17 +43,45 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div className="max-h-full w-full max-w-xl overflow-auto rounded-2xl border border-white/10 bg-swamp-800 p-5 shadow-2xl scrollbar-thin" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-full w-full max-w-xl overflow-auto rounded-2xl border border-(--hair) bg-swamp-800 p-5 shadow-2xl scrollbar-thin" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center gap-3">
           <Peepo name="peepoShy" size={40} />
           <div className="flex-1">
             <div className="text-xl font-black">Settings</div>
-            <div className="text-[12px] text-frog-200/60">Stored in this browser only. Your token never leaves it (except to the git host).</div>
+            <div className="text-[12px] text-frog-200/60">Two kinds of settings: shared ones travel with the repo, personal ones stay in this browser.</div>
           </div>
           <button onClick={onClose} className="text-frog-200/60 hover:text-white">
             ✕
           </button>
         </div>
+
+        <GroupHeader title="This workspace" hint="Saved in peeponote.json — committed and shared with everyone who clones the repo." tone="repo" />
+
+        <section className="mb-5 space-y-2">
+          <div className={label}>Name</div>
+          <input
+            className={field}
+            placeholder="peeponote"
+            value={meta?.name ?? ''}
+            disabled={!meta || !!viewingRef}
+            onChange={(e) => updateMeta({ name: e.target.value })}
+          />
+          <label className="flex items-center gap-2 text-[13px]">
+            <input
+              type="checkbox"
+              checked={!!meta?.settings?.snapToGrid}
+              disabled={!meta || !!viewingRef}
+              onChange={(e) => updateMeta({ settings: { snapToGrid: e.target.checked } })}
+              className="accent-frog-500"
+            />
+            Snap cards to grid
+          </label>
+          <p className="text-[11px] text-frog-200/50">
+            The remote URL is also repo-level, but lives in <code>.git/config</code> of this clone — it's set below and never committed.
+          </p>
+        </section>
+
+        <GroupHeader title="You" hint="Stored in this browser's localStorage only. Never written to the repo; your token only ever goes to the git host." tone="user" />
 
         <section className="mb-5 space-y-2">
           <div className={label}>Storage</div>
@@ -148,16 +180,57 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           <p className="text-[11px] text-frog-200/50">Only into empty storage: wipe the browser repo or pick an empty folder first.</p>
         </section>
 
-        <section className="space-y-2">
-          <div className={label}>Canvas</div>
-          <label className="flex items-center gap-2 text-[13px]">
-            <input type="checkbox" checked={settings.snapToGrid} onChange={(e) => settings.set({ snapToGrid: e.target.checked })} className="accent-frog-500" />
-            Snap cards to grid
-          </label>
-          <p className="text-[11px] text-frog-200/50">
-            Shortcuts: ⌘S save · ⌘A select all · ⌘0 reset zoom · Space/Alt+drag or middle-mouse pans · ⌘/Ctrl+wheel zooms · Del deletes · double-click writes a note
-          </p>
+        <section className="mb-5 space-y-2">
+          <div className={label}>Theme</div>
+          <div className="flex flex-wrap items-center gap-2">
+            {(
+              [
+                ['peepo', 'Peepo'],
+                ['dark', 'Dark'],
+              ] as [ThemeName, string][]
+            ).map(([name, title]) => {
+              const t = THEMES[name]
+              return (
+                <button
+                  key={name}
+                  onClick={() => settings.set({ theme: name })}
+                  className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold ring-1 ${
+                    settings.theme === name ? 'ring-frog-400 bg-frog-700/40' : 'ring-(--hair) hover:bg-(--hover)'
+                  }`}
+                >
+                  <span className="flex overflow-hidden rounded-md ring-1 ring-black/20">
+                    <span className="h-5 w-3" style={{ background: t.swamp[900] }} />
+                    <span className="h-5 w-3" style={{ background: t.swamp[700] }} />
+                    <span className="h-5 w-3" style={{ background: t.frog[400] }} />
+                  </span>
+                  {title}
+                </button>
+              )
+            })}
+          </div>
         </section>
+
+        <p className="text-[11px] text-frog-200/50">
+          Shortcuts: ⌘S save · ⌘A select all · ⌘0 reset zoom · Space/Alt+drag or middle-mouse pans · ⌘/Ctrl+wheel zooms · Del deletes · double-click writes a note
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function GroupHeader({ title, hint, tone }: { title: string; hint: string; tone: 'repo' | 'user' }) {
+  return (
+    <div className="mb-3 mt-1 flex items-start gap-2 border-t border-(--hair) pt-4 first:mt-0 first:border-0 first:pt-0">
+      <span
+        className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+          tone === 'repo' ? 'bg-frog-700/50 text-frog-100' : 'bg-swamp-600 text-frog-100'
+        }`}
+      >
+        {tone === 'repo' ? 'repo' : 'local'}
+      </span>
+      <div>
+        <div className="text-[14px] font-extrabold">{title}</div>
+        <div className="text-[11px] text-frog-200/50">{hint}</div>
       </div>
     </div>
   )

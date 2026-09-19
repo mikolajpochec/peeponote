@@ -15,7 +15,7 @@ export function Toasts() {
               ? 'bg-red-950/95 text-red-100 ring-red-500/40'
               : t.kind === 'ok'
                 ? 'bg-frog-800/95 text-frog-50 ring-frog-400/40'
-                : 'bg-swamp-600/95 text-frog-100 ring-white/10'
+                : 'bg-swamp-600/95 text-frog-100 ring-(--hair)'
           }`}
         >
           <Peepo name={t.peepo} size={26} />
