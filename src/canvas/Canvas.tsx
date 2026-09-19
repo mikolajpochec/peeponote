@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Board } from '../model/types'
+import type { Anchor, Board, Connector } from '../model/types'
 import { newId } from '../model/types'
+import { ConnectorLayer, type DraftConnector } from './ConnectorLayer'
+import { anchorForDrop, anchorPoint } from './connectors'
 import { useWorkspace } from '../store/workspace'
 import { CardView } from '../cards/CardView'
 import { screenToBoard, useViewport, zoomAt } from './viewport'
@@ -25,7 +27,12 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
   const addCard = useWorkspace((s) => s.addCard)
   const removeCards = useWorkspace((s) => s.removeCards)
   const addAssets = useWorkspace((s) => s.addAssets)
+  const addConnector = useWorkspace((s) => s.addConnector)
+  const updateConnector = useWorkspace((s) => s.updateConnector)
+  const removeConnectors = useWorkspace((s) => s.removeConnectors)
   const [marquee, setMarquee] = useState<Marquee | null>(null)
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null)
+  const [draft, setDraft] = useState<DraftConnector | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const spaceHeld = useRef(false)
   const scale = useCallback(() => useViewport.getState().get(board.id).scale, [board.id])
@@ -66,7 +73,10 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         const sel = useWorkspace.getState().selection
         if (sel.size) {
           e.preventDefault()
-          removeCards(board.id, [...sel])
+          const cardIds = board.cards.filter((c) => sel.has(c.id)).map((c) => c.id)
+          const connIds = board.connectors.filter((k) => sel.has(k.id)).map((k) => k.id)
+          if (connIds.length) removeConnectors(board.id, connIds)
+          if (cardIds.length) removeCards(board.id, cardIds)
         }
       }
       if (e.key === 'Escape') clearSelection()
@@ -91,7 +101,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
     }
-  }, [board.id, board.cards, readOnly, removeCards, clearSelection, select, setVp])
+  }, [board.id, board.cards, board.connectors, readOnly, removeCards, removeConnectors, clearSelection, select, setVp])
 
   const onBackgroundPointerDown = (e: React.PointerEvent) => {
     if (e.target !== e.currentTarget && !(e.target as HTMLElement).dataset.layer) return
@@ -133,6 +143,49 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     }
     el.addEventListener('pointermove', move)
     el.addEventListener('pointerup', up)
+  }
+
+  /** Drag a connector end (new or existing) until pointer-up, then glue it to a card side or a free point. */
+  const startConnectorDrag = (e: React.PointerEvent, fixed: Anchor, editing?: DraftConnector['editing'], excludeCard?: string) => {
+    if (readOnly || e.button !== 0) return
+    e.stopPropagation()
+    e.preventDefault()
+    const el = ref.current!
+    const rect = el.getBoundingClientRect()
+    el.setPointerCapture(e.pointerId)
+    const start = { x: e.clientX, y: e.clientY }
+    const toBoard = (ev: { clientX: number; clientY: number }) => screenToBoard(useViewport.getState().get(board.id), ev.clientX, ev.clientY, rect)
+    setDraft({ fixed, moving: toBoard(e), editing })
+
+    const move = (ev: PointerEvent) => setDraft((d) => (d ? { ...d, moving: toBoard(ev) } : d))
+    const up = (ev: PointerEvent) => {
+      el.removeEventListener('pointermove', move)
+      el.removeEventListener('pointerup', up)
+      el.removeEventListener('pointercancel', up)
+      try {
+        el.releasePointerCapture(ev.pointerId)
+      } catch {
+        /* released */
+      }
+      setDraft(null)
+      if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 8) return // just a click
+      const live = useWorkspace.getState().boards[board.id]
+      if (!live) return
+      const cards = new Map(live.cards.map((c) => [c.id, c]))
+      const fixedPt = anchorPoint(fixed, cards)?.pt ?? toBoard(ev)
+      const dropped = anchorForDrop(live, toBoard(ev), fixedPt, excludeCard)
+      if (editing) {
+        updateConnector(board.id, editing.id, { [editing.end]: dropped } as Partial<Connector>)
+        select([editing.id])
+      } else {
+        const id = newId()
+        addConnector(board.id, { id, from: fixed, to: dropped, arrows: 'end' })
+        select([id])
+      }
+    }
+    el.addEventListener('pointermove', move)
+    el.addEventListener('pointerup', up)
+    el.addEventListener('pointercancel', up)
   }
 
   const onDoubleClick = (e: React.MouseEvent) => {
@@ -177,6 +230,12 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       className={`canvas-bg relative h-full w-full overflow-hidden touch-none ${dragOver ? 'outline outline-4 -outline-offset-4 outline-frog-300/60' : ''}`}
       style={{ backgroundSize: `${24 * vp.scale}px ${24 * vp.scale}px`, backgroundPosition: `${vp.x}px ${vp.y}px` }}
       onPointerDown={onBackgroundPointerDown}
+      onPointerMove={(e) => {
+        if (draft) return
+        const id = (e.target as HTMLElement).closest?.('[data-card]')?.getAttribute('data-card') ?? null
+        if (id !== hoveredCard) setHoveredCard(id)
+      }}
+      onPointerLeave={() => setHoveredCard(null)}
       onDoubleClick={onDoubleClick}
       onDragOver={(e) => {
         e.preventDefault()
@@ -190,6 +249,20 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         className="absolute left-0 top-0 origin-top-left"
         style={{ transform: `translate(${vp.x}px, ${vp.y}px) scale(${vp.scale})`, width: 1, height: 1 }}
       >
+        <ConnectorLayer
+          board={board}
+          scale={vp.scale}
+          readOnly={readOnly}
+          selection={selection}
+          hoveredCard={hoveredCard}
+          draft={draft}
+          onAnchorDown={(e, anchor) => startConnectorDrag(e, anchor, undefined, 'cardId' in anchor ? anchor.cardId : undefined)}
+          onEndpointDown={(e, k, end) => {
+            const fixed = end === 'from' ? k.to : k.from
+            startConnectorDrag(e, fixed, { id: k.id, end }, 'cardId' in fixed ? fixed.cardId : undefined)
+          }}
+          onSelect={(id, additive) => select([id], additive)}
+        />
         {board.cards.map((card) => (
           <CardView key={card.id} card={card} boardId={board.id} selected={selection.has(card.id)} readOnly={readOnly} scale={scale} />
         ))}

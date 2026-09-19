@@ -39,16 +39,15 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [save])
 
+  // edits are written to the working tree continuously; make sure the last ones land before we go
   useEffect(() => {
-    const dirty = () => {
-      const s = useWorkspace.getState()
-      return s.dirtyBoards.size > 0 || s.deletedBoards.size > 0 || s.assetsTouched
+    const onHide = () => void useWorkspace.getState().flush()
+    window.addEventListener('pagehide', onHide)
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      window.removeEventListener('pagehide', onHide)
+      document.removeEventListener('visibilitychange', onHide)
     }
-    const onUnload = (e: BeforeUnloadEvent) => {
-      if (dirty()) e.preventDefault()
-    }
-    window.addEventListener('beforeunload', onUnload)
-    return () => window.removeEventListener('beforeunload', onUnload)
   }, [])
 
   if (status !== 'ready') return <BootScreen onOpenSettings={() => setShowSettings(true)} />

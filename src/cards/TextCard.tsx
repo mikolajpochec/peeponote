@@ -18,7 +18,12 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
   const [draft, setDraft] = useState(card.text)
   const ta = useRef<HTMLTextAreaElement>(null)
   const view = useRef<HTMLDivElement>(null)
+  const measure = useRef<HTMLDivElement>(null)
   const isTitle = card.style === 'title'
+  const auto = card.autoSize !== false
+  const maxW = isTitle ? 640 : 420
+  const shown = editing ? draft : card.text
+  const placeholder = isTitle ? 'Title' : 'Text'
   const cls = isTitle
     ? 'text-[28px] font-black leading-tight tracking-tight text-frog-50'
     : 'text-[15px] leading-snug text-frog-100'
@@ -30,14 +35,31 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
     }
   }, [editing])
 
-  // grow the card to fit its text (width stays user-controlled)
+  // auto: card hugs its content (wrapping at maxW). manual: keep user width, only grow height to fit
   useEffect(() => {
-    if (editing || readOnly) return
-    const el = view.current
-    if (!el) return
-    const needed = Math.ceil(el.scrollHeight)
-    if (needed > card.h + 1) updateCard(boardId, card.id, { h: needed })
-  }, [card.text, card.w, card.h, editing, readOnly, boardId, card.id, updateCard])
+    if (readOnly) return
+    const m = measure.current
+    if (!m) return
+    if (auto) {
+      const w = Math.max(60, Math.ceil(m.offsetWidth))
+      const h = Math.max(32, Math.ceil(m.offsetHeight))
+      if (Math.abs(w - card.w) > 1 || Math.abs(h - card.h) > 1) updateCard(boardId, card.id, { w, h })
+    } else {
+      const needed = Math.ceil(editing ? (ta.current?.scrollHeight ?? 0) : (view.current?.scrollHeight ?? 0))
+      if (needed > card.h + 1) updateCard(boardId, card.id, { h: needed })
+    }
+  }, [shown, card.w, card.h, auto, editing, readOnly, boardId, card.id, updateCard])
+
+  const measurer = (
+    <div
+      ref={measure}
+      aria-hidden
+      className={`pointer-events-none invisible absolute left-0 top-0 whitespace-pre-wrap p-2 ${cls}`}
+      style={{ width: 'max-content', maxWidth: maxW }}
+    >
+      {shown || placeholder}
+    </div>
+  )
 
   useEditRequest(() => {
     if (readOnly) return
@@ -52,7 +74,9 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
 
   if (editing) {
     return (
-      <textarea
+      <>
+        {measurer}
+        <textarea
         ref={ta}
         data-nodrag
         value={draft}
@@ -62,18 +86,19 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
           if (e.key === 'Escape' || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) commit()
           e.stopPropagation()
         }}
-        placeholder={isTitle ? 'Title' : 'Text'}
-        className={`h-full w-full resize-none bg-frog-300/10 p-2 outline-none placeholder:text-frog-200/30 ${cls}`}
-      />
+          placeholder={placeholder}
+          className={`h-full w-full resize-none overflow-hidden bg-frog-300/10 p-2 outline-none placeholder:text-frog-200/30 ${cls}`}
+        />
+      </>
     )
   }
 
   return (
-    <div
-      ref={view}
-      className={`h-full w-full cursor-text overflow-hidden whitespace-pre-wrap p-2 ${cls}`}
-    >
-      {card.text || <span className="text-frog-200/30">{isTitle ? 'Title' : 'Text'}</span>}
-    </div>
+    <>
+      {measurer}
+      <div ref={view} className={`h-full w-full cursor-text overflow-hidden whitespace-pre-wrap p-2 ${cls}`}>
+        {card.text || <span className="text-frog-200/30">{placeholder}</span>}
+      </div>
+    </>
   )
 }

@@ -12,7 +12,7 @@ const base = {
 
 const cardSchema = z.discriminatedUnion('type', [
   z.object({ ...base, type: z.literal('note'), md: z.string(), color: z.string().optional() }),
-  z.object({ ...base, type: z.literal('text'), text: z.string(), style: z.enum(['title', 'body']) }),
+  z.object({ ...base, type: z.literal('text'), text: z.string(), style: z.enum(['title', 'body']), autoSize: z.boolean().optional() }),
   z.object({
     ...base,
     type: z.literal('todo'),
@@ -33,12 +33,25 @@ const cardSchema = z.discriminatedUnion('type', [
   }),
 ])
 
+const anchorSchema = z.union([
+  z.object({ cardId: z.string(), side: z.enum(['top', 'right', 'bottom', 'left']) }),
+  z.object({ x: z.number(), y: z.number() }),
+])
+
+const connectorSchema = z.object({
+  id: z.string(),
+  from: anchorSchema,
+  to: anchorSchema,
+  arrows: z.enum(['end', 'start', 'both', 'none']).default('end'),
+})
+
 export const boardSchema = z.object({
   id: z.string(),
   name: z.string(),
   parentId: z.string().nullable(),
   createdAt: z.string(),
   cards: z.array(cardSchema),
+  connectors: z.array(connectorSchema).default([]),
 })
 
 export const workspaceSchema = z.object({

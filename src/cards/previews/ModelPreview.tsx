@@ -47,6 +47,9 @@ export default function ModelPreview({ card }: { card: AssetCard }) {
     el.appendChild(renderer.domElement)
     renderer.domElement.setAttribute('data-nodrag', '')
     renderer.domElement.style.display = 'block'
+    // setSize(..., false) leaves CSS size alone; pin it so the 2x backing store isn't shown at 2x
+    renderer.domElement.style.width = '100%'
+    renderer.domElement.style.height = '100%'
     const stopWheel = (e: WheelEvent) => e.stopPropagation()
     const stopPointer = (e: PointerEvent) => e.stopPropagation()
     renderer.domElement.addEventListener('wheel', stopWheel, { passive: false })
@@ -91,13 +94,16 @@ export default function ModelPreview({ card }: { card: AssetCard }) {
     loadModel(url, extOf(card.name))
       .then((obj) => {
         if (!alive) return
-        // fit to view
-        const box = new THREE.Box3().setFromObject(obj)
+        // fit to view: wrap in a pivot and shift so the bounding-box center sits at the origin
+        obj.updateMatrixWorld(true)
+        const box = new THREE.Box3().setFromObject(obj, true)
         const size = box.getSize(new THREE.Vector3())
         const center = box.getCenter(new THREE.Vector3())
+        const pivot = new THREE.Group()
+        pivot.add(obj)
         obj.position.sub(center)
         const radius = Math.max(size.x, size.y, size.z) || 1
-        scene.add(obj)
+        scene.add(pivot)
         const grid = new THREE.GridHelper(radius * 2, 10, 0x5d9b4c, 0x2a3a2c)
         grid.position.y = -size.y / 2
         scene.add(grid)

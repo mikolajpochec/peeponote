@@ -28,6 +28,8 @@ export interface TextCard extends CardBase {
   type: 'text'
   text: string
   style: 'title' | 'body'
+  /** size follows content until the user resizes by hand (default true) */
+  autoSize?: boolean
 }
 
 export interface TodoItem {
@@ -67,12 +69,27 @@ export interface AssetCard extends CardBase {
 export type Card = NoteCard | TextCard | TodoCard | LinkCard | BoardCard | AssetCard
 export type CardType = Card['type']
 
+export type Side = 'top' | 'right' | 'bottom' | 'left'
+export const SIDES: Side[] = ['top', 'right', 'bottom', 'left']
+
+/** where a connector end lives: glued to a card side, or a free point on the board */
+export type Anchor = { cardId: string; side: Side } | { x: number; y: number }
+export type ArrowStyle = 'end' | 'start' | 'both' | 'none'
+
+export interface Connector {
+  id: string
+  from: Anchor
+  to: Anchor
+  arrows: ArrowStyle
+}
+
 export interface Board {
   id: string
   name: string
   parentId: string | null
   createdAt: string
   cards: Card[]
+  connectors: Connector[]
 }
 
 export interface WorkspaceMeta {

@@ -73,7 +73,12 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
       onMove: (dx, dy) => {
         const c = useWorkspace.getState().boards[boardId]?.cards.find((x) => x.id === card.id)
         if (!c) return
-        updateCard(boardId, card.id, { w: Math.max(MIN_W, c.w + dx), h: Math.max(MIN_H, c.h + dy) })
+        const minW = c.type === 'text' ? 60 : MIN_W
+        const minH = c.type === 'text' ? 32 : MIN_H
+        const patch: Partial<Card> = { w: Math.max(minW, c.w + dx), h: Math.max(minH, c.h + dy) }
+        // hand-resizing a text card pins its size
+        if (c.type === 'text' && c.autoSize !== false) (patch as Partial<Extract<Card, { type: 'text' }>>).autoSize = false
+        updateCard(boardId, card.id, patch)
       },
     },
     scale,
@@ -117,6 +122,11 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
           <div
             data-nodrag
             onPointerDown={onResizeStart}
+            onDoubleClick={(e) => {
+              e.stopPropagation()
+              if (card.type === 'text') updateCard(boardId, card.id, { autoSize: true } as Partial<Card>)
+            }}
+            title={card.type === 'text' ? 'Drag to resize · double-click to fit content' : 'Drag to resize'}
             className="absolute -bottom-1 -right-1 hidden h-4 w-4 cursor-nwse-resize rounded-sm bg-frog-300 group-hover:block"
             style={{ display: selected ? 'block' : undefined }}
           />

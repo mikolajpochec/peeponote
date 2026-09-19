@@ -5,7 +5,7 @@ import {
   writeBytes, writeText, type PeepoFS,
 } from '../fs'
 import * as repo from '../git/repo'
-import { ASSETS_DIR, BOARDS_DIR, WORKSPACE_FILE, boardPath, newId, type Board, type Card, type WorkspaceMeta } from '../model/types'
+import { ASSETS_DIR, BOARDS_DIR, WORKSPACE_FILE, boardPath, newId, type Board, type Card, type Connector, type WorkspaceMeta } from '../model/types'
 import { parseBoard, parseWorkspace } from '../model/schema'
 import { detectKind } from '../model/assetKind'
 import { useSettings } from './settings'
@@ -22,9 +22,12 @@ interface WorkspaceState {
   meta: WorkspaceMeta | null
   boards: Record<string, Board>
   currentBoardId: string | null
+  /** boards edited in memory but not yet written to the working tree */
   dirtyBoards: Set<string>
   deletedBoards: Set<string>
   assetsTouched: boolean
+  /** working tree differs from HEAD (uncommitted changes, survives reloads) */
+  treeDirty: boolean
   selection: Set<string>
   busy: Busy
   remoteUrl: string | null
@@ -54,7 +57,14 @@ interface WorkspaceState {
   bringToFront: (boardId: string, cardId: string) => void
   createBoard: (parentId: string, name: string, at: { x: number; y: number }) => string
   renameBoard: (boardId: string, name: string) => void
+  addConnector: (boardId: string, c: Connector) => void
+  updateConnector: (boardId: string, id: string, patch: Partial<Connector>) => void
+  removeConnectors: (boardId: string, ids: string[]) => void
   addAssets: (boardId: string, files: File[], at: { x: number; y: number }) => Promise<void>
+
+  // persistence
+  /** write pending in-memory edits to the working tree (not a commit) */
+  flush: () => Promise<void>
 
   // git
   save: (message?: string) => Promise<boolean>
@@ -66,8 +76,8 @@ interface WorkspaceState {
   restoreCommit: (oid: string) => Promise<void>
 }
 
-const isDirty = (s: Pick<WorkspaceState, 'dirtyBoards' | 'deletedBoards' | 'assetsTouched'>) =>
-  s.dirtyBoards.size > 0 || s.deletedBoards.size > 0 || s.assetsTouched
+const isDirty = (s: Pick<WorkspaceState, 'dirtyBoards' | 'deletedBoards' | 'assetsTouched' | 'treeDirty'>) =>
+  s.dirtyBoards.size > 0 || s.deletedBoards.size > 0 || s.assetsTouched || s.treeDirty
 
 export const selectDirty = (s: WorkspaceState) => isDirty(s)
 
@@ -101,7 +111,7 @@ async function loadBoards(fs: PeepoFS): Promise<{ meta: WorkspaceMeta; boards: R
 async function seedWorkspace(fs: PeepoFS): Promise<void> {
   const rootId = newId()
   const meta: WorkspaceMeta = { version: 1, name: 'peeponote', rootBoardId: rootId }
-  const root: Board = { id: rootId, name: 'Home', parentId: null, createdAt: new Date().toISOString(), cards: [] }
+  const root: Board = { id: rootId, name: 'Home', parentId: null, createdAt: new Date().toISOString(), cards: [], connectors: [] }
   await writeText(fs, abs(fs, WORKSPACE_FILE), JSON.stringify(meta, null, 2))
   await writeText(fs, abs(fs, boardPath(rootId)), JSON.stringify(root, null, 2))
   await writeText(fs, abs(fs, '.gitignore'), '.DS_Store\n')
@@ -141,6 +151,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         dirtyBoards: new Set(),
         deletedBoards: new Set(),
         assetsTouched: false,
+        treeDirty: await repo.hasChanges(fs),
         selection: new Set(),
       })
       await get().refreshGit()
@@ -159,6 +170,13 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     const dirtyBoards = new Set(get().dirtyBoards)
     dirtyBoards.add(boardId)
     set({ boards: { ...get().boards, [boardId]: next }, dirtyBoards })
+    scheduleFlush()
+  }
+
+  let flushTimer: ReturnType<typeof setTimeout> | undefined
+  function scheduleFlush() {
+    clearTimeout(flushTimer)
+    flushTimer = setTimeout(() => void get().flush(), 400)
   }
 
   return {
@@ -172,6 +190,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     dirtyBoards: new Set(),
     deletedBoards: new Set(),
     assetsTouched: false,
+    treeDirty: false,
     selection: new Set(),
     busy: null,
     remoteUrl: null,
@@ -274,9 +293,16 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       }
       for (const c of removed) if (c.type === 'board') rm(c.boardId)
       const assetsTouched = get().assetsTouched || removed.some((c) => c.type === 'asset')
-      boards[boardId] = { ...b, cards: b.cards.filter((c) => !ids.includes(c.id)) }
+      const gone = new Set(ids)
+      boards[boardId] = {
+        ...b,
+        cards: b.cards.filter((c) => !gone.has(c.id)),
+        // drop connectors glued to removed cards
+        connectors: b.connectors.filter((k) => !('cardId' in k.from && gone.has(k.from.cardId)) && !('cardId' in k.to && gone.has(k.to.cardId))),
+      }
       dirtyBoards.add(boardId)
       set({ boards, deletedBoards: deleted, dirtyBoards, assetsTouched, selection: new Set() })
+      scheduleFlush()
     },
 
     bringToFront: (boardId, cardId) =>
@@ -289,12 +315,13 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
 
     createBoard: (parentId, name, at) => {
       const id = newId()
-      const board: Board = { id, name, parentId, createdAt: new Date().toISOString(), cards: [] }
+      const board: Board = { id, name, parentId, createdAt: new Date().toISOString(), cards: [], connectors: [] }
       const parent = get().boards[parentId]
       const z = parent ? parent.cards.reduce((m, c) => Math.max(m, c.z), 0) + 1 : 1
       const dirtyBoards = new Set(get().dirtyBoards)
       dirtyBoards.add(id)
       set({ boards: { ...get().boards, [id]: board }, dirtyBoards })
+      scheduleFlush()
       mutateBoard(parentId, (b) => ({
         ...b,
         cards: [...b.cards, { id: newId(), type: 'board', boardId: id, x: at.x, y: at.y, w: 200, h: 140, z }],
@@ -303,6 +330,14 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     },
 
     renameBoard: (boardId, name) => mutateBoard(boardId, (b) => ({ ...b, name })),
+
+    addConnector: (boardId, c) => mutateBoard(boardId, (b) => ({ ...b, connectors: [...b.connectors, c] })),
+    updateConnector: (boardId, id, patch) =>
+      mutateBoard(boardId, (b) => ({ ...b, connectors: b.connectors.map((k) => (k.id === id ? { ...k, ...patch } : k)) })),
+    removeConnectors: (boardId, ids) => {
+      mutateBoard(boardId, (b) => ({ ...b, connectors: b.connectors.filter((k) => !ids.includes(k.id)) }))
+      set({ selection: new Set() })
+    },
 
     addAssets: async (boardId, files, at) => {
       const fs = get().fs
@@ -332,11 +367,36 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         })
         dx += size.w + 20
       }
-      set({ assetsTouched: true })
+      set({ assetsTouched: true, treeDirty: true })
+    },
+
+    flush: async () => {
+      clearTimeout(flushTimer)
+      const { fs, boards, dirtyBoards, deletedBoards } = get()
+      if (!fs || get().viewingRef || (dirtyBoards.size === 0 && deletedBoards.size === 0)) return
+      const written: [string, Board][] = []
+      for (const id of dirtyBoards) {
+        const b = boards[id]
+        if (!b) continue
+        await writeText(fs, abs(fs, boardPath(id)), JSON.stringify(b, null, 2))
+        written.push([id, b])
+      }
+      const removed: string[] = []
+      for (const id of deletedBoards) {
+        const p = abs(fs, boardPath(id))
+        if (await exists(fs, p)) await fs.promises.unlink(p)
+        removed.push(id)
+      }
+      // only clear what hasn't changed again while we were writing
+      const nextDirty = new Set(get().dirtyBoards)
+      for (const [id, b] of written) if (get().boards[id] === b) nextDirty.delete(id)
+      const nextDeleted = new Set(get().deletedBoards)
+      for (const id of removed) nextDeleted.delete(id)
+      set({ dirtyBoards: nextDirty, deletedBoards: nextDeleted, treeDirty: true })
     },
 
     save: async (message) => {
-      const { fs, boards, dirtyBoards, deletedBoards } = get()
+      const fs = get().fs
       if (!fs || get().viewingRef) return false
       if (!isDirty(get())) {
         toast.info('Nothing to save. peepoSit', 'peepoSit')
@@ -344,14 +404,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       }
       set({ busy: 'saving' })
       try {
-        for (const id of dirtyBoards) {
-          const b = boards[id]
-          if (b) await writeText(fs, abs(fs, boardPath(id)), JSON.stringify(b, null, 2))
-        }
-        for (const id of deletedBoards) {
-          const p = abs(fs, boardPath(id))
-          if (await exists(fs, p)) await fs.promises.unlink(p)
-        }
+        await get().flush()
+        const boards = get().boards
         // garbage-collect unreferenced assets
         const referenced = new Set<string>()
         for (const b of Object.values(boards)) for (const c of b.cards) if (c.type === 'asset') referenced.add(c.path)
@@ -364,13 +418,13 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         const changes = await repo.stageAll(fs)
         const n = changes.added.length + changes.modified.length + changes.deleted.length
         if (n === 0) {
-          set({ dirtyBoards: new Set(), deletedBoards: new Set(), assetsTouched: false })
+          set({ dirtyBoards: new Set(), deletedBoards: new Set(), assetsTouched: false, treeDirty: false })
           toast.info('No changes in the tree. peepoSit', 'peepoSit')
           return false
         }
         const msg = message?.trim() || defaultMessage(changes)
         await repo.commit(fs, msg, identity())
-        set({ dirtyBoards: new Set(), deletedBoards: new Set(), assetsTouched: false })
+        set({ dirtyBoards: new Set(), deletedBoards: new Set(), assetsTouched: false, treeDirty: false })
         await get().refreshGit()
         toast.ok(`Committed: ${msg}`, 'peepoClap')
         if (useSettings.getState().autoPush && get().remoteUrl) {
@@ -498,6 +552,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
           dirtyBoards: new Set(),
           deletedBoards: new Set(),
           assetsTouched: false,
+          treeDirty: false,
           currentBoardId: meta.rootBoardId,
         })
         await get().refreshGit()

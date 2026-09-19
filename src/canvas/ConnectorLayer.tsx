@@ -1,0 +1,192 @@
+import { useMemo } from 'react'
+import type { Anchor, ArrowStyle, Board, Card, Connector, Side } from '../model/types'
+import { SIDES } from '../model/types'
+import { useWorkspace } from '../store/workspace'
+import { anchorPoint, bezierMid, connectorPath, sidePoint, type Pt } from './connectors'
+
+export interface DraftConnector {
+  /** the end that stays put */
+  fixed: Anchor
+  /** the end under the pointer */
+  moving: Pt
+  /** set when re-attaching an end of an existing connector */
+  editing?: { id: string; end: 'from' | 'to' }
+}
+
+interface Props {
+  board: Board
+  scale: number
+  readOnly: boolean
+  selection: Set<string>
+  hoveredCard: string | null
+  draft: DraftConnector | null
+  onAnchorDown: (e: React.PointerEvent, anchor: Anchor) => void
+  onEndpointDown: (e: React.PointerEvent, connector: Connector, end: 'from' | 'to') => void
+  onSelect: (id: string, additive: boolean) => void
+}
+
+const STROKE = '#8ac47e'
+const STROKE_SEL = '#d6ebd1'
+
+export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard, draft, onAnchorDown, onEndpointDown, onSelect }: Props) {
+  const cards = useMemo(() => new Map(board.cards.map((c) => [c.id, c])), [board.cards])
+  const inv = 1 / scale
+
+  const resolved = board.connectors
+    .map((k) => {
+      const a = anchorPoint(k.from, cards)
+      const b = anchorPoint(k.to, cards)
+      return a && b ? { k, a, b } : null
+    })
+    .filter(Boolean) as { k: Connector; a: { pt: Pt; side: Side | null }; b: { pt: Pt; side: Side | null } }[]
+
+  const draftA = draft ? anchorPoint(draft.fixed, cards) : null
+  const handleCards: Card[] = []
+  if (!readOnly && !draft) {
+    for (const id of selection) {
+      const c = cards.get(id)
+      if (c) handleCards.push(c)
+    }
+    if (hoveredCard && !selection.has(hoveredCard)) {
+      const c = cards.get(hoveredCard)
+      if (c) handleCards.push(c)
+    }
+  }
+
+  return (
+    <>
+      <svg className="absolute left-0 top-0 overflow-visible" width={1} height={1} style={{ pointerEvents: 'none', zIndex: 0 }}>
+        <defs>
+          <marker id="pn-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="strokeWidth">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" />
+          </marker>
+        </defs>
+        {resolved.map(({ k, a, b }) => {
+          if (draft?.editing?.id === k.id) return null
+          const sel = selection.has(k.id)
+          const d = connectorPath(a.pt, a.side, b.pt, b.side)
+          return (
+            <g key={k.id}>
+              {/* fat invisible hit area */}
+              <path
+                d={d}
+                fill="none"
+                stroke="transparent"
+                strokeWidth={14 * inv}
+                style={{ pointerEvents: readOnly ? 'none' : 'stroke', cursor: 'pointer' }}
+                onPointerDown={(e) => {
+                  e.stopPropagation()
+                  onSelect(k.id, e.shiftKey)
+                }}
+              />
+              <path
+                d={d}
+                fill="none"
+                stroke={sel ? STROKE_SEL : STROKE}
+                strokeWidth={sel ? 3 : 2}
+                strokeLinecap="round"
+                markerEnd={k.arrows === 'end' || k.arrows === 'both' ? 'url(#pn-arrow)' : undefined}
+                markerStart={k.arrows === 'start' || k.arrows === 'both' ? 'url(#pn-arrow)' : undefined}
+              />
+            </g>
+          )
+        })}
+        {draft && draftA && (
+          <path
+            d={connectorPath(draftA.pt, draftA.side, draft.moving, null)}
+            fill="none"
+            stroke={STROKE_SEL}
+            strokeWidth={2}
+            strokeDasharray="6 4"
+            markerEnd="url(#pn-arrow)"
+          />
+        )}
+      </svg>
+
+      {/* anchor handles on selected / hovered cards */}
+      {handleCards.map((c) =>
+        SIDES.map((side) => {
+          const p = sidePoint(c, side)
+          return (
+            <div
+              key={`${c.id}:${side}`}
+              data-nodrag
+              data-card={c.id}
+              title="Drag to connect"
+              onPointerDown={(e) => onAnchorDown(e, { cardId: c.id, side })}
+              className="absolute rounded-full border-2 border-frog-300 bg-swamp-800 hover:bg-frog-300 hover:scale-125 transition-transform"
+              style={{
+                left: p.x,
+                top: p.y,
+                width: 12,
+                height: 12,
+                transform: `translate(-50%, -50%) scale(${inv})`,
+                zIndex: 100000,
+                cursor: 'crosshair',
+              }}
+            />
+          )
+        }),
+      )}
+
+      {/* selected connectors: endpoints + mini toolbar */}
+      {!readOnly &&
+        resolved
+          .filter(({ k }) => selection.has(k.id))
+          .map(({ k, a, b }) => {
+            const mid = bezierMid(a.pt, a.side, b.pt, b.side)
+            return (
+              <div key={`sel-${k.id}`}>
+                {(['from', 'to'] as const).map((end) => {
+                  const p = end === 'from' ? a.pt : b.pt
+                  return (
+                    <div
+                      key={end}
+                      data-nodrag
+                      title="Drag to reattach"
+                      onPointerDown={(e) => onEndpointDown(e, k, end)}
+                      className="absolute rounded-full bg-frog-100 ring-2 ring-frog-500"
+                      style={{ left: p.x, top: p.y, width: 12, height: 12, transform: `translate(-50%, -50%) scale(${inv})`, zIndex: 100001, cursor: 'move' }}
+                    />
+                  )
+                })}
+                <ConnectorToolbar boardId={board.id} connector={k} at={mid} inv={inv} />
+              </div>
+            )
+          })}
+    </>
+  )
+}
+
+function ConnectorToolbar({ boardId, connector, at, inv }: { boardId: string; connector: Connector; at: Pt; inv: number }) {
+  const updateConnector = useWorkspace((s) => s.updateConnector)
+  const removeConnectors = useWorkspace((s) => s.removeConnectors)
+  const opts: { v: ArrowStyle; label: string; title: string }[] = [
+    { v: 'end', label: '→', title: 'Arrow at end' },
+    { v: 'start', label: '←', title: 'Arrow at start' },
+    { v: 'both', label: '↔', title: 'Both ends' },
+    { v: 'none', label: '—', title: 'Plain line' },
+  ]
+  return (
+    <div
+      data-nodrag
+      onPointerDown={(e) => e.stopPropagation()}
+      className="absolute flex items-center gap-0.5 rounded-lg border border-white/10 bg-swamp-900/95 p-0.5 shadow-xl"
+      style={{ left: at.x, top: at.y, transform: `translate(-50%, -140%) scale(${inv})`, transformOrigin: '50% 100%', zIndex: 100002 }}
+    >
+      {opts.map((o) => (
+        <button
+          key={o.v}
+          title={o.title}
+          onClick={() => updateConnector(boardId, connector.id, { arrows: o.v })}
+          className={`h-6 w-6 rounded text-[13px] font-bold ${connector.arrows === o.v ? 'bg-frog-600 text-white' : 'text-frog-100 hover:bg-white/10'}`}
+        >
+          {o.label}
+        </button>
+      ))}
+      <button title="Delete (Del)" onClick={() => removeConnectors(boardId, [connector.id])} className="h-6 w-6 rounded text-[12px] text-frog-200 hover:bg-red-700 hover:text-white">
+        ✕
+      </button>
+    </div>
+  )
+}
