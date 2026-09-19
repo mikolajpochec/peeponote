@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import type { AssetCard as AssetCardT } from '../model/types'
-import { KIND_LABEL, formatBytes } from '../model/assetKind'
+import { KIND_LABEL, extOf, formatBytes } from '../model/assetKind'
 import { readAssetBytes, useWorkspace } from '../store/workspace'
 import { toast } from '../store/toast'
 import { Peepo } from '../ui/Peepo'
@@ -43,22 +43,34 @@ export async function downloadAsset(card: AssetCardT) {
   }
 }
 
+/** Split "name.ext" using the stored file's real extension, so renaming can't break format detection. */
+function splitName(card: AssetCardT): { stem: string; ext: string } {
+  const ext = extOf(card.path)
+  const suffix = ext ? `.${ext}` : ''
+  const stem = suffix && card.name.toLowerCase().endsWith(suffix) ? card.name.slice(0, -suffix.length) : card.name
+  return { stem, ext }
+}
+
 export function AssetCard({ card, boardId, readOnly }: CardProps<AssetCardT>) {
   const updateCard = useWorkspace((s) => s.updateCard)
+  const { stem, ext } = splitName(card)
   return (
     <div className="flex h-full w-full flex-col">
       <div className="flex items-center gap-2 border-b border-(--hair) px-2.5 py-1.5">
         <span className="text-[13px]" title={KIND_LABEL[card.kind]}>
           {KIND_ICON[card.kind]}
         </span>
-        <input
-          data-nodrag
-          readOnly={readOnly}
-          value={card.name}
-          onChange={(e) => updateCard(boardId, card.id, { name: e.target.value })}
-          title={card.path}
-          className="min-w-0 flex-1 truncate bg-transparent text-[13px] font-bold outline-none"
-        />
+        <div className="flex min-w-0 flex-1 items-baseline">
+          <input
+            data-nodrag
+            readOnly={readOnly}
+            value={stem}
+            onChange={(e) => updateCard(boardId, card.id, { name: `${e.target.value}${ext ? `.${ext}` : ''}` })}
+            title={card.path}
+            className="min-w-0 flex-1 truncate bg-transparent text-[13px] font-bold outline-none"
+          />
+          {ext && <span className="shrink-0 text-[12px] font-semibold opacity-50">.{ext}</span>}
+        </div>
         <span className="shrink-0 rounded bg-(--hover-strong) px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-frog-200">
           {KIND_LABEL[card.kind]}
         </span>

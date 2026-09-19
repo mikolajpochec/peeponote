@@ -108,7 +108,7 @@ export default function ModelPreview({ card, boardId, readOnly }: { card: AssetC
     const ro = new ResizeObserver(resize)
     ro.observe(el)
 
-    loadModel(url, extOf(card.name))
+    loadModel(url, extOf(card.path))
       .then((obj) => {
         if (!alive) return
         // fit to view: wrap in a pivot and shift so the bounding-box center sits at the origin
