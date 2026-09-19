@@ -4,6 +4,7 @@ import type { NoteCard as NoteCardT } from '../model/types'
 import { useWorkspace } from '../store/workspace'
 import type { CardProps } from './CardView'
 import { autoEdit } from './autoEdit'
+import { useEditRequest } from '../canvas/editRequest'
 
 export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
   const updateCard = useWorkspace((s) => s.updateCard)
@@ -23,6 +24,12 @@ export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
       ta.current?.setSelectionRange(ta.current.value.length, ta.current.value.length)
     }
   }, [editing])
+
+  useEditRequest(() => {
+    if (readOnly) return
+    setDraft(card.md)
+    setEditing(true)
+  })
 
   const commit = () => {
     setEditing(false)
@@ -52,12 +59,6 @@ export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
     <div
       className="prose-note h-full w-full cursor-text overflow-auto p-3 text-[14px] leading-snug scrollbar-thin"
       style={{ background: card.color }}
-      onDoubleClick={(e) => {
-        if (readOnly) return
-        e.stopPropagation()
-        setDraft(card.md)
-        setEditing(true)
-      }}
     >
       {card.md.trim() ? (
         <Markdown>{card.md}</Markdown>

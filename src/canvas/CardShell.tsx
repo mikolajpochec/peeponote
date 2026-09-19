@@ -1,4 +1,5 @@
-import { memo, type ReactNode } from 'react'
+import { memo, useState, type ReactNode } from 'react'
+import { EditRequestContext } from './editRequest'
 import type { Card } from '../model/types'
 import { useWorkspace } from '../store/workspace'
 import { useSettings } from '../store/settings'
@@ -27,6 +28,7 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
   const updateCard = useWorkspace((s) => s.updateCard)
   const bringToFront = useWorkspace((s) => s.bringToFront)
   const removeCards = useWorkspace((s) => s.removeCards)
+  const [editTick, setEditTick] = useState(0)
 
   const onDragStart = useDrag(
     {
@@ -90,13 +92,15 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
       style={{ left: card.x, top: card.y, width: card.w, height: card.h, zIndex: card.z }}
       onPointerDown={onDragStart}
       onDoubleClick={(e) => {
-        if (onOpen && !isInteractiveTarget(e as unknown as PointerEvent)) {
-          e.stopPropagation()
-          onOpen()
-        }
+        if (isInteractiveTarget(e as unknown as PointerEvent)) return
+        e.stopPropagation()
+        if (onOpen) onOpen()
+        else if (!readOnly) setEditTick((t) => t + 1)
       }}
     >
-      <div className="h-full w-full overflow-hidden rounded-xl">{children}</div>
+      <EditRequestContext.Provider value={editTick}>
+        <div className="h-full w-full overflow-hidden rounded-xl">{children}</div>
+      </EditRequestContext.Provider>
       {!readOnly && (
         <>
           <button

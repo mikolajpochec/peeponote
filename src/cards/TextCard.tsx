@@ -3,6 +3,7 @@ import type { TextCard as TextCardT } from '../model/types'
 import { useWorkspace } from '../store/workspace'
 import type { CardProps } from './CardView'
 import { autoEdit } from './autoEdit'
+import { useEditRequest } from '../canvas/editRequest'
 
 /** Free-floating text on the board: a big title or a plain paragraph, no card background. */
 export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
@@ -38,6 +39,12 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
     if (needed > card.h + 1) updateCard(boardId, card.id, { h: needed })
   }, [card.text, card.w, card.h, editing, readOnly, boardId, card.id, updateCard])
 
+  useEditRequest(() => {
+    if (readOnly) return
+    setDraft(card.text)
+    setEditing(true)
+  })
+
   const commit = () => {
     setEditing(false)
     if (draft !== card.text) updateCard(boardId, card.id, { text: draft })
@@ -65,12 +72,6 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
     <div
       ref={view}
       className={`h-full w-full cursor-text overflow-hidden whitespace-pre-wrap p-2 ${cls}`}
-      onDoubleClick={(e) => {
-        if (readOnly) return
-        e.stopPropagation()
-        setDraft(card.text)
-        setEditing(true)
-      }}
     >
       {card.text || <span className="text-frog-200/30">{isTitle ? 'Title' : 'Text'}</span>}
     </div>
