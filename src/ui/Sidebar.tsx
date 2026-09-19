@@ -63,6 +63,13 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
   )
 }
 
+/** A board's identity color: the fill of its card in the parent board, else its own canvas background. */
+function boardColor(board: Board, boards: Record<string, Board>): string | undefined {
+  const parent = board.parentId ? boards[board.parentId] : undefined
+  const card = parent?.cards.find((c) => c.type === 'board' && c.boardId === board.id)
+  return card?.style?.bg ?? board.style?.bg
+}
+
 function BoardNode({
   board,
   boards,
@@ -79,7 +86,7 @@ function BoardNode({
   const [open, setOpen] = useState(true)
   const children = board.cards.filter((c) => c.type === 'board').map((c) => (c.type === 'board' ? boards[c.boardId] : undefined)).filter(Boolean) as Board[]
   const active = board.id === current
-  const bg = board.style?.bg
+  const bg = boardColor(board, boards)
   return (
     <div>
       <div
