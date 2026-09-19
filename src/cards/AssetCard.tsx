@@ -106,7 +106,7 @@ function Preview({ card, boardId, readOnly }: { card: AssetCardT; boardId: strin
             </div>
           }
         >
-          <ModelPreview card={card} />
+          <ModelPreview card={card} boardId={boardId} readOnly={readOnly} />
         </Suspense>
       )
     default:

@@ -8,6 +8,7 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 import type { AssetCard } from '../../model/types'
 import { extOf } from '../../model/assetKind'
 import { useAssetUrl } from '../useAssetUrl'
+import { useWorkspace } from '../../store/workspace'
 import { Loading } from './Loading'
 
 async function loadModel(url: string, ext: string): Promise<THREE.Object3D> {
@@ -31,11 +32,15 @@ async function loadModel(url: string, ext: string): Promise<THREE.Object3D> {
   }
 }
 
-export default function ModelPreview({ card }: { card: AssetCard }) {
+export default function ModelPreview({ card, boardId, readOnly }: { card: AssetCard; boardId: string; readOnly: boolean }) {
   const { url, error } = useAssetUrl(card.path, card.mime)
+  const updateCard = useWorkspace((s) => s.updateCard)
   const host = useRef<HTMLDivElement>(null)
   const [err, setErr] = useState<string | null>(null)
   const [stats, setStats] = useState<string | null>(null)
+  // read the saved view once per mount; later orbiting writes back without re-running the effect
+  const savedView = useRef(card.view)
+  const resetRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     const el = host.current
@@ -65,6 +70,18 @@ export default function ModelPreview({ card }: { card: AssetCard }) {
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.enableDamping = true
     controls.dampingFactor = 0.12
+    // persist the view angle on the card when the user stops orbiting
+    let saveTimer: ReturnType<typeof setTimeout> | undefined
+    controls.addEventListener('end', () => {
+      if (readOnly) return
+      clearTimeout(saveTimer)
+      saveTimer = setTimeout(() => {
+        const p = camera.position
+        const t = controls.target
+        const r = (n: number) => Math.round(n * 1000) / 1000
+        updateCard(boardId, card.id, { view: { pos: [r(p.x), r(p.y), r(p.z)], target: [r(t.x), r(t.y), r(t.z)] } })
+      }, 250)
+    })
 
     let raf = 0
     let mixer: THREE.AnimationMixer | null = null
@@ -107,18 +124,34 @@ export default function ModelPreview({ card }: { card: AssetCard }) {
         const grid = new THREE.GridHelper(radius * 2, 10, 0x5d9b4c, 0x2a3a2c)
         grid.position.y = -size.y / 2
         scene.add(grid)
-        camera.position.set(radius * 1.2, radius * 0.9, radius * 1.6)
+        const defaultView = () => {
+          camera.position.set(radius * 1.2, radius * 0.9, radius * 1.6)
+          controls.target.set(0, 0, 0)
+          controls.update()
+        }
         camera.near = radius / 100
         camera.far = radius * 100
         camera.updateProjectionMatrix()
-        controls.target.set(0, 0, 0)
-        controls.update()
+        const v = savedView.current
+        if (v) {
+          camera.position.set(...v.pos)
+          controls.target.set(...v.target)
+          controls.update()
+        } else {
+          defaultView()
+        }
+        resetRef.current = () => {
+          defaultView()
+          if (!readOnly) updateCard(boardId, card.id, { view: undefined })
+        }
         let tris = 0
         obj.traverse((o) => {
           const m = o as THREE.Mesh
           if (m.isMesh && m.geometry) {
             const g = m.geometry as THREE.BufferGeometry
             tris += (g.index ? g.index.count : g.attributes.position?.count ?? 0) / 3
+            // previews shouldn't look hollow because of reversed winding in an export
+            for (const mat of Array.isArray(m.material) ? m.material : [m.material]) if (mat) mat.side = THREE.DoubleSide
           }
         })
         const anims = (obj as THREE.Object3D & { animations?: THREE.AnimationClip[] }).animations
@@ -136,6 +169,8 @@ export default function ModelPreview({ card }: { card: AssetCard }) {
       alive = false
       cancelAnimationFrame(raf)
       ro.disconnect()
+      clearTimeout(saveTimer)
+      resetRef.current = null
       controls.dispose()
       renderer.domElement.removeEventListener('wheel', stopWheel)
       renderer.domElement.removeEventListener('pointerdown', stopPointer)
@@ -151,7 +186,7 @@ export default function ModelPreview({ card }: { card: AssetCard }) {
       renderer.forceContextLoss()
       renderer.domElement.remove()
     }
-  }, [url, card.name])
+  }, [url, card.name, boardId, card.id, readOnly, updateCard])
 
   if (error || err) return <Loading error={error || err} />
   return (
@@ -163,6 +198,16 @@ export default function ModelPreview({ card }: { card: AssetCard }) {
         </div>
       )}
       {stats && <div className="pointer-events-none absolute left-1 top-1 rounded bg-black/50 px-1 text-[10px] text-frog-100">{stats}</div>}
+      {stats && !readOnly && (
+        <button
+          data-nodrag
+          title="Reset view"
+          onClick={() => resetRef.current?.()}
+          className="absolute right-1 top-1 rounded bg-black/50 px-1.5 text-[11px] text-frog-100 hover:bg-frog-700"
+        >
+          ⟲
+        </button>
+      )}
     </div>
   )
 }

@@ -64,6 +64,8 @@ export interface AssetCard extends CardBase {
   kind: AssetKind
   /** optional user override for spritesheet frame size */
   frame?: { w: number; h: number }
+  /** saved 3D preview camera (model-space, after centering) */
+  view?: { pos: [number, number, number]; target: [number, number, number] }
 }
 
 export type Card = NoteCard | TextCard | TodoCard | LinkCard | BoardCard | AssetCard

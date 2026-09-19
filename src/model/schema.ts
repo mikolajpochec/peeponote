@@ -30,6 +30,9 @@ const cardSchema = z.discriminatedUnion('type', [
     size: z.number(),
     kind: z.enum(['image', 'texture', 'audio', 'video', 'model3d', 'font', 'code', 'data', 'other']),
     frame: z.object({ w: z.number(), h: z.number() }).optional(),
+    view: z
+      .object({ pos: z.tuple([z.number(), z.number(), z.number()]), target: z.tuple([z.number(), z.number(), z.number()]) })
+      .optional(),
   }),
 ])
 
