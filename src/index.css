@@ -94,3 +94,25 @@ input:read-only, textarea:read-only { cursor: default; }
 
 /* hairlines and hover tints */
 :root { --hair: rgba(255, 255, 255, 0.1); --hover: rgba(255, 255, 255, 0.08); --hover-strong: rgba(255, 255, 255, 0.16); }
+
+/* to-do checkbox that follows the card's text color */
+.todo-check {
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  flex: none;
+  border-radius: 5px;
+  border: 2px solid currentColor;
+  opacity: 0.55;
+  background: transparent center / 11px no-repeat;
+  cursor: pointer;
+  transition: background-color 120ms, opacity 120ms;
+}
+.todo-check:hover { opacity: 0.85; }
+.todo-check:checked {
+  opacity: 1;
+  border-color: var(--color-frog-500);
+  background-color: var(--color-frog-500);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.5l2.5 2.5 4.5-5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.todo-check:disabled { cursor: default; }

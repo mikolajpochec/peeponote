@@ -484,7 +484,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         set({ dirtyBoards: new Set(), deletedBoards: new Set(), assetsTouched: false, metaDirty: false, treeDirty: false })
         await get().refreshGit()
         toast.ok(`Committed: ${msg}`, 'peepoClap')
-        if (useSettings.getState().autoPush && get().remoteUrl) {
+        // default: a save also pushes when a remote is set up (unless the user wants them separate)
+        if (!useSettings.getState().separatePush && get().remoteUrl && useSettings.getState().token) {
           await get().push()
         }
         return true
@@ -511,7 +512,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       set({ busy: 'pushing' })
       try {
         await repo.push(fs, remoteAuth())
-        toast.ok('Yeeted to remote! peepoRun', 'peepoRun')
+        toast.ok('Pushed to remote. peepoRun', 'peepoRun')
         return true
       } catch (e) {
         console.error(e)
@@ -639,7 +640,7 @@ function defaultMessage(c: repo.ChangeSummary) {
   if (c.added.length) parts.push(`add ${c.added.length}`)
   if (c.modified.length) parts.push(`update ${c.modified.length}`)
   if (c.deleted.length) parts.push(`remove ${c.deleted.length}`)
-  return `peepoSave: ${parts.join(', ')} file${c.added.length + c.modified.length + c.deleted.length === 1 ? '' : 's'}`
+  return `Save: ${parts.join(', ')} file${c.added.length + c.modified.length + c.deleted.length === 1 ? '' : 's'}`
 }
 
 /** Boards as currently displayed (live or historical) */

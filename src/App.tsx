@@ -103,7 +103,7 @@ function UncommittedBanner() {
           disabled={!!busy}
           className="rounded-md bg-frog-500 px-2.5 py-1 font-bold text-white hover:bg-frog-400 disabled:opacity-40"
         >
-          peepoSave
+          Save
         </button>
       </div>
     </div>

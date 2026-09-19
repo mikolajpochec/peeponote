@@ -1,6 +1,6 @@
 # peeponote 🐸
 
-A Milanote-style infinite-canvas board app where **Save is `git commit`** and **Yeet is `git push`**.
+A Milanote-style infinite-canvas board app where **Save is `git commit` (+ `git push` when a remote is connected)**.
 Runs as a static web app, installs as a PWA, and needs no backend.
 
 ![peepoHappy](public/peepo/peepoHappy.webp)
@@ -58,7 +58,7 @@ Auth is a personal access token stored in `localStorage` of this browser only:
 - **GitLab**: token with `write_repository`; set username to `oauth2`.
 - **Gitea/Forgejo**: token; leave username empty.
 
-Turn on *Auto-yeet after every save* if you want commit + push in one click.
+With a remote and token configured, **Save commits and pushes** in one go. Prefer them apart? Tick *Separate commit and push* in Settings to get a dedicated Push button.
 
 ## Develop
 

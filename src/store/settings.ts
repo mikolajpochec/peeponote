@@ -10,7 +10,8 @@ export interface Settings {
   token: string
   username: string
   corsProxy: string
-  autoPush: boolean
+  /** show a separate Push button instead of pushing as part of Save */
+  separatePush: boolean
   theme: ThemeName
   set: (patch: Partial<Omit<Settings, 'set'>>) => void
 }
@@ -23,7 +24,7 @@ export const useSettings = create<Settings>()(
       token: '',
       username: '',
       corsProxy: DEFAULT_CORS_PROXY,
-      autoPush: false,
+      separatePush: false,
       theme: 'dark',
       set: (patch) => set(patch),
     }),

@@ -182,8 +182,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             trust it with secrets you care about). Self-host <code>proxy/worker.ts</code> from the repo for your own.
           </p>
           <label className="flex items-center gap-2 text-[13px]">
-            <input type="checkbox" checked={settings.autoPush} onChange={(e) => settings.set({ autoPush: e.target.checked })} className="accent-frog-500" />
-            Auto-yeet after every save
+            <input type="checkbox" checked={settings.separatePush} onChange={(e) => settings.set({ separatePush: e.target.checked })} className="accent-frog-500" />
+            Separate commit and push (adds a Push button; Save only commits)
           </label>
         </section>
 

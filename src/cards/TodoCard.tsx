@@ -13,7 +13,7 @@ export function TodoCard({ card, boardId, readOnly }: CardProps<TodoCardT>) {
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-current/10 px-3 py-2">
+      <div className="flex shrink-0 items-center gap-2 border-b border-current/10 px-3 py-2">
         <input
           data-nodrag
           readOnly={readOnly}
@@ -26,7 +26,7 @@ export function TodoCard({ card, boardId, readOnly }: CardProps<TodoCardT>) {
           {done}/{card.items.length}
         </span>
       </div>
-      <ul className="flex-1 overflow-auto px-2 py-1 scrollbar-thin">
+      <ul className="min-h-0 flex-1 overflow-auto px-2 py-1 scrollbar-thin">
         {card.items.map((it) => (
           <li key={it.id} className="group/item flex items-start gap-2 px-1 py-0.5 text-[0.93em]">
             <input
@@ -35,7 +35,7 @@ export function TodoCard({ card, boardId, readOnly }: CardProps<TodoCardT>) {
               checked={it.done}
               disabled={readOnly}
               onChange={(e) => setItems(card.items.map((x) => (x.id === it.id ? { ...x, done: e.target.checked } : x)))}
-              className="mt-0.5 accent-frog-500"
+              className="todo-check mt-[0.15em]"
             />
             <input
               data-nodrag
@@ -58,7 +58,7 @@ export function TodoCard({ card, boardId, readOnly }: CardProps<TodoCardT>) {
       </ul>
       {!readOnly && (
         <form
-          className="border-t border-current/10 px-3 py-1.5"
+          className="shrink-0 border-t border-current/10 px-3 py-1.5"
           onSubmit={(e) => {
             e.preventDefault()
             if (!newText.trim()) return
@@ -71,7 +71,7 @@ export function TodoCard({ card, boardId, readOnly }: CardProps<TodoCardT>) {
             value={newText}
             onChange={(e) => setNewText(e.target.value)}
             placeholder="+ add item"
-            className="w-full bg-transparent text-[0.93em] outline-none placeholder:opacity-40"
+            className="w-full bg-transparent text-[0.93em] outline-none placeholder:text-current placeholder:opacity-50"
           />
         </form>
       )}

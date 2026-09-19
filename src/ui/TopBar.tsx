@@ -85,7 +85,9 @@ function SaveBar() {
   const pull = useWorkspace((s) => s.pull)
   const remoteUrl = useWorkspace((s) => s.remoteUrl)
   const viewingRef = useWorkspace((s) => s.viewingRef)
-  const autoPush = useSettings((s) => s.autoPush)
+  const separatePush = useSettings((s) => s.separatePush)
+  const token = useSettings((s) => s.token)
+  const willPush = !separatePush && !!remoteUrl && !!token
   const [msg, setMsg] = useState('')
 
   const doSave = async () => {
@@ -112,19 +114,22 @@ function SaveBar() {
       <button
         onClick={doSave}
         disabled={!dirty || !!busy || !!viewingRef}
-        title="Save = git commit (⌘S)"
+        title={willPush ? `Save = git commit + push → ${remoteUrl} (⌘S)` : 'Save = git commit (⌘S)'}
         className="flex items-center gap-1.5 rounded-md bg-frog-500 px-3 py-1 text-[13px] font-bold text-white hover:bg-frog-400 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        <Peepo name="peepoClap" size={20} /> {busy === 'saving' ? 'Committing…' : 'peepoSave'}
+        <Peepo name={willPush ? 'peepoRun' : 'peepoClap'} size={20} />
+        {busy === 'saving' ? 'Saving…' : busy === 'pushing' ? 'Pushing…' : willPush ? 'Save & push' : 'Save'}
       </button>
-      <button
-        onClick={push}
-        disabled={!remoteUrl || !!busy || !!viewingRef}
-        title={remoteUrl ? `git push → ${remoteUrl}${autoPush ? ' (auto after save)' : ''}` : 'No remote configured — open Settings'}
-        className="flex items-center gap-1.5 rounded-md bg-swamp-600 px-3 py-1 text-[13px] font-bold text-frog-50 hover:bg-swamp-500 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        <Peepo name="peepoRun" size={20} /> Yeet
-      </button>
+      {separatePush && (
+        <button
+          onClick={push}
+          disabled={!remoteUrl || !!busy || !!viewingRef}
+          title={remoteUrl ? `git push → ${remoteUrl}` : 'No remote configured — open Settings'}
+          className="flex items-center gap-1.5 rounded-md bg-swamp-600 px-3 py-1 text-[13px] font-bold text-frog-50 hover:bg-swamp-500 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Peepo name="peepoRun" size={20} /> {busy === 'pushing' ? 'Pushing…' : 'Push'}
+        </button>
+      )}
       <button
         onClick={pull}
         disabled={!remoteUrl || !!busy || !!viewingRef}

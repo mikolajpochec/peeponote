@@ -56,7 +56,7 @@ export function HistoryPanel({ onClose }: { onClose: () => void }) {
             </li>
           )
         })}
-        {commits.length === 0 && <li className="p-4 text-sm text-frog-200/50">No commits yet. Hit peepoSave.</li>}
+        {commits.length === 0 && <li className="p-4 text-sm text-frog-200/50">No commits yet. Hit Save.</li>}
       </ul>
       <div className="border-t border-(--hair) p-2 text-[11px] text-frog-200/50">Click a commit to peek at that version. Restore from the banner.</div>
     </aside>
