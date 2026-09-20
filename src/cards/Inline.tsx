@@ -32,6 +32,9 @@ export const mdLink: Components['a'] = ({ href, children }) => {
 }
 
 const INLINE = ['p', 'strong', 'em', 'del', 'code', 'a', 'br', 'text'] as string[]
+
+/** react-markdown drops unknown URL schemes by default — keep peepo:// (and the usual web ones) */
+export const keepPeepoUrls = (url: string) => (/^(peepo:\/\/|https?:\/\/|mailto:|#|\/)/i.test(url) ? url : '')
 const passthrough: Components = {
   a: mdLink,
   // paragraphs become plain runs — a text card is one flow of text, not a document
@@ -53,7 +56,7 @@ export function InlineMd({ text }: { text: string }) {
         <Fragment key={i}>
           {i > 0 && <br />}
           {line && (
-            <Markdown allowedElements={INLINE} unwrapDisallowed skipHtml components={passthrough}>
+            <Markdown allowedElements={INLINE} unwrapDisallowed skipHtml components={passthrough} urlTransform={keepPeepoUrls}>
               {line}
             </Markdown>
           )}

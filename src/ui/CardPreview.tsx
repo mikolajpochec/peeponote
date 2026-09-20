@@ -3,6 +3,8 @@ import { CardView } from '../cards/CardView'
 import { boardVars } from '../canvas/styles'
 import { resolveTheme } from '../theme/themes'
 import { useSettings } from '../store/settings'
+import { bbox } from '../canvas/arrange'
+import { ConnectorLayer } from '../canvas/ConnectorLayer'
 
 /** A card rendered as it looks on its board, scaled to fit a small box. Not interactive. */
 export function CardPreview({ card, board, w = 220, h = 140 }: { card: Card; board: Board; w?: number; h?: number }) {
@@ -21,41 +23,34 @@ export function CardPreview({ card, board, w = 220, h = 140 }: { card: Card; boa
   )
 }
 
-/** A whole board as a thumbnail: cards become tinted rectangles at their real positions. */
+/** A whole board rendered for real (cards + connectors), scaled to fit. Not interactive. */
 export function BoardPreview({ board, w = 220, h = 140 }: { board: Board; w?: number; h?: number }) {
   const theme = useSettings((s) => resolveTheme(s.theme))
   const vars = boardVars(board, theme.canvas)
-  if (!board.cards.length)
+  const bb = bbox(board.cards)
+  if (!bb)
     return (
       <div className="flex items-center justify-center rounded-lg text-[11px]" style={{ width: w, height: h, ...vars, background: 'var(--board-bg)', color: 'var(--board-fg-muted)' }}>
         empty board
       </div>
     )
-  const minX = Math.min(...board.cards.map((c) => c.x))
-  const minY = Math.min(...board.cards.map((c) => c.y))
-  const maxX = Math.max(...board.cards.map((c) => c.x + c.w))
-  const maxY = Math.max(...board.cards.map((c) => c.y + c.h))
-  const k = Math.min((w - 16) / Math.max(maxX - minX, 1), (h - 16) / Math.max(maxY - minY, 1), 1)
-  const ox = (w - (maxX - minX) * k) / 2
-  const oy = (h - (maxY - minY) * k) / 2
-  const fill = (c: Card) => c.style?.bg ?? (c.type === 'text' ? 'transparent' : c.type === 'board' ? '#5d9b4c' : c.type === 'asset' ? '#3d4a55' : c.type === 'shape' ? 'transparent' : '#fbf8ef')
+  const pad = 20
+  const k = Math.min((w - 16) / (bb.w + pad * 2), (h - 16) / (bb.h + pad * 2), 1)
+  const ox = (w - bb.w * k) / 2 - bb.x * k
+  const oy = (h - bb.h * k) / 2 - bb.y * k
+  // very large boards: cap the work, the picture is tiny anyway
+  const cards = board.cards.length > 80 ? [...board.cards].sort((a, b) => a.z - b.z).slice(-80) : board.cards
   return (
     <div className="relative overflow-hidden rounded-lg" style={{ width: w, height: h, ...vars, background: 'var(--board-bg)' }}>
-      {board.cards.map((c) => (
-        <div
-          key={c.id}
-          className="absolute rounded-[2px]"
-          style={{
-            left: ox + (c.x - minX) * k,
-            top: oy + (c.y - minY) * k,
-            width: Math.max(2, c.w * k),
-            height: Math.max(2, c.h * k),
-            background: fill(c),
-            outline: c.type === 'text' || c.type === 'shape' ? `1px solid ${c.style?.border ?? 'var(--board-line)'}` : undefined,
-            opacity: 0.9,
-          }}
-        />
-      ))}
+      <div data-preview className="pointer-events-none absolute left-0 top-0" style={{ transform: `translate(${ox}px, ${oy}px) scale(${k})`, transformOrigin: '0 0', width: 1, height: 1 }}>
+        <ConnectorLayer board={board} scale={k} readOnly selection={EMPTY} hoveredCard={null} draft={null} onAnchorDown={noop} onEndpointDown={noop} onSelect={noop} />
+        {cards.map((c) => (
+          <CardView key={c.id} card={c} boardId={board.id} selected={false} readOnly scale={() => k} />
+        ))}
+      </div>
     </div>
   )
 }
+
+const EMPTY = new Set<string>()
+const noop = () => {}

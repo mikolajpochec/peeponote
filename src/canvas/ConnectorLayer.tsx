@@ -162,7 +162,7 @@ export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard,
       )}
       {/* per-row handles on to-do cards: left and right of every item */}
       {handleCards
-        .filter((c) => c.type === 'todo')
+        .filter((c) => rects[c.id] && Object.keys(rects[c.id]).length)
         .flatMap((c) =>
           Object.keys(rects[c.id] ?? {}).flatMap((itemId) =>
             (['left', 'right'] as Side[]).map((side) => {

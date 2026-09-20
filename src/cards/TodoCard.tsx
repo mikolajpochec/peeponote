@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { useItemRects } from '../canvas/itemRects'
-import { useViewport } from '../canvas/viewport'
+import { useRef, useState } from 'react'
+import { useItemRectsReporter } from '../canvas/itemRects'
 import { InlineMd } from './Inline'
 import { useEditing } from '../store/editing'
 import { fieldHandle } from '../ui/format'
@@ -18,31 +17,8 @@ export function TodoCard({ card, boardId, readOnly }: CardProps<TodoCardT>) {
   const setItems = (items: TodoCardT['items']) => updateCard(boardId, card.id, { items })
   const list = useRef<HTMLUListElement>(null)
 
-  // tell the connector layer where each row is (board units, relative to the card) — on layout, scroll and resize
-  useEffect(() => {
-    const ul = list.current
-    const shell = ul?.closest('[data-card]') as HTMLElement | null
-    if (!ul || !shell || ul.closest('[data-preview]')) return // previews must not report geometry for the real card
-    const report = () => {
-      const k = useViewport.getState().get(boardId).scale || 1
-      const top = shell.getBoundingClientRect().top
-      const rects: Record<string, { y: number; h: number }> = {}
-      for (const li of ul.querySelectorAll<HTMLElement>('[data-item]')) {
-        const r = li.getBoundingClientRect()
-        rects[li.dataset.item!] = { y: (r.top - top) / k, h: r.height / k }
-      }
-      useItemRects.getState().report(card.id, rects)
-    }
-    report()
-    const ro = new ResizeObserver(report)
-    ro.observe(ul)
-    ul.addEventListener('scroll', report, { passive: true })
-    return () => {
-      ro.disconnect()
-      ul.removeEventListener('scroll', report)
-    }
-  }, [boardId, card.id, card.items, card.w, card.h, card.style])
-  useEffect(() => () => useItemRects.getState().forget(card.id), [card.id])
+  // connectors can attach to single rows
+  useItemRectsReporter(boardId, card.id, list, [card.items, card.w, card.h, card.style])
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">

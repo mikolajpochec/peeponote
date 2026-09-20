@@ -117,12 +117,19 @@ export interface ShapeCard extends CardBase {
 /** character / location / beat are legacy (old files) and render like an event */
 export type StoryKind = 'dialogue' | 'event' | 'quest' | 'scene' | 'character' | 'location' | 'beat'
 
+/** legacy dialogue lines (old files) — dialogue nodes use `options` now */
 export interface DialogueLine {
   id: string
-  /** who speaks — free text, usually a peepo:// link to a character */
   speaker: string
   text: string
-  /** stage direction */
+  note?: string
+}
+
+/** a choice the player can pick in a dialogue node; connect it with an arrow to the next node */
+export interface DialogueOption {
+  id: string
+  text: string
+  /** condition / effect, shown small */
   note?: string
 }
 
@@ -132,8 +139,10 @@ export interface StoryCard extends CardBase {
   kind: StoryKind
   title: string
   fields: Record<string, string>
-  /** dialogue only */
+  /** dialogue: legacy lines (old files) */
   lines?: DialogueLine[]
+  /** dialogue: the choices offered at this node */
+  options?: DialogueOption[]
   /** beat only */
   stage?: 'setup' | 'complication' | 'turning point' | 'climax' | 'resolution'
   /** asset path of a portrait / picture (character, location) */

@@ -28,10 +28,13 @@ export const STORY_KINDS: StoryKindDef[] = [
     label: 'Dialogue',
     icon: '💬',
     color: '#a8c8f5',
-    hint: 'Lines between characters, with stage directions',
-    w: 320,
+    hint: 'A dialogue node: what is said, and the choices that lead on — drag arrows from each choice to the next node',
+    w: 300,
     h: 260,
-    fields: [{ key: 'context', label: 'Context', placeholder: 'where / why this exchange happens' }],
+    fields: [
+      { key: 'speaker', label: 'Speaker', placeholder: 'who is talking', refs: true },
+      { key: 'text', label: 'Says', placeholder: 'the line(s) spoken at this node', long: true },
+    ],
   },
   {
     kind: 'event',

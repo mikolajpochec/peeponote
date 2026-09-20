@@ -5,7 +5,7 @@ import { useWorkspace } from '../store/workspace'
 import type { CardProps } from './CardView'
 import { autoEdit } from './autoEdit'
 import { useEditRequest } from '../canvas/editRequest'
-import { mdLink } from './Inline'
+import { keepPeepoUrls, mdLink } from './Inline'
 import { MdEditor } from '../editor'
 
 export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
@@ -51,7 +51,9 @@ export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
       style={{ background: card.color }}
     >
       {card.md.trim() ? (
-        <Markdown components={{ a: mdLink }}>{card.md}</Markdown>
+        <Markdown components={{ a: mdLink }} urlTransform={keepPeepoUrls}>
+          {card.md}
+        </Markdown>
       ) : (
         <span className="opacity-40">{readOnly ? 'Empty note' : 'Double-click to write…'}</span>
       )}

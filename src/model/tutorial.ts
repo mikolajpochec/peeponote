@@ -95,6 +95,9 @@ export function tutorialBoards(rootId: string): Board[] {
   const storyId = id()
   const scene = id()
   const dlg = id()
+  const dlg2 = id()
+  const opt1 = id()
+  const opt2 = id()
   const story: Board = {
     id: storyId,
     name: 'Story example',
@@ -108,11 +111,11 @@ export function tutorialBoards(rootId: string): Board[] {
       { id: scene, type: 'story', kind: 'scene', slug: 'crossing', x: 60, y: 480, w: 300, h: 340, z: 2, title: 'Crossing the bog', fields: { location: 'the bog, at dusk', characters: 'Peepo, the heron', goal: 'get across before dark', conflict: 'the heron demands a riddle', outcome: 'yes, but — Peepo loses the map' } },
       { id: id(), type: 'story', kind: 'quest', slug: 'lily-pad', x: 380, y: 170, w: 300, h: 300, z: 2, title: 'Find the lily pad', fields: { giver: 'the old heron', objective: 'Bring the lost lily pad back before the frost.', steps: '[Crossing the bog](peepo://Home/How-to-use-peeponote/Story/crossing)\nask the heron\nfollow the map', reward: 'a dry spot for winter', failure: 'Peepo sleeps in the reeds' } },
       { id: id(), type: 'story', kind: 'event', x: 60, y: 170, w: 280, h: 230, z: 2, title: 'The lily pad is gone', fields: { when: 'day 1, morning', description: 'Someone took it overnight.', participants: 'Peepo', consequences: 'the search begins' } },
-      { id: dlg, type: 'story', kind: 'dialogue', x: 400, y: 500, w: 320, h: 220, z: 2, title: 'At the water\'s edge', fields: { context: 'Peepo meets the heron' }, lines: [ { id: id(), speaker: 'Peepo', text: 'Is this the way across?', note: 'nervous' }, { id: id(), speaker: 'Heron', text: 'Every way is across, if you answer me this…' } ] },
+      { id: dlg, type: 'story', kind: 'dialogue', x: 400, y: 500, w: 300, h: 250, z: 2, title: 'At the water\'s edge', fields: { speaker: 'Heron', text: 'Every way is across, little one — if you answer me this.' }, options: [ { id: opt1, text: 'Ask the riddle', note: 'leads to the riddle node' }, { id: opt2, text: 'Try to swim around', note: 'lose the map' } ] },
+      { id: dlg2, type: 'story', kind: 'dialogue', x: 760, y: 500, w: 300, h: 200, z: 2, title: 'The riddle', fields: { speaker: 'Heron', text: 'What has a bed but never sleeps?' }, options: [ { id: id(), text: 'A river', note: 'correct → crossing' }, { id: id(), text: 'A frog' } ] },
       { id: id(), type: 'text', x: 60, y: 850, w: 560, h: 60, z: 1, variant: 'body', autoSize: true, text: 'Right-click any card → **Properties…** to see its address and give it a short ID for links like `peepo://Home/…/crossing`.' },
     ],
-    connectors: [
-    ],
+    connectors: [{ id: id(), from: { cardId: dlg, side: 'right', itemId: opt1 }, to: { cardId: dlg2, side: 'left' }, arrows: 'end' }],
   }
   how.push({ id: id(), type: 'board', x: 630, y: 820, w: 260, h: 110, z: 1, boardId: storyId, style: { bg: '#c9a8f5' } })
   return [home, howBoard, sandbox, story]

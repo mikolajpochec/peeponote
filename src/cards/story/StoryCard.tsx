@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { DialogueLine, StoryCard as StoryCardT } from '../../model/types'
+import type { DialogueOption, StoryCard as StoryCardT } from '../../model/types'
 import { newId } from '../../model/types'
 import { useWorkspace } from '../../store/workspace'
 import { useEditing } from '../../store/editing'
@@ -11,6 +11,7 @@ import { InlineMd } from '../Inline'
 import { LinkPicker } from '../../ui/LinkPicker'
 import { Popover } from '../../ui/Popover'
 import { storyKind, type StoryField } from './kinds'
+import { useItemRectsReporter } from '../../canvas/itemRects'
 
 /**
  * Story-planning card. Header strip in the kind's color, then labeled fields. Fields render inline
@@ -19,7 +20,10 @@ import { storyKind, type StoryField } from './kinds'
 export function StoryCard({ card, boardId, readOnly }: CardProps<StoryCardT>) {
   const updateCard = useWorkspace((s) => s.updateCard)
   const def = storyKind(card.kind)
-  const [editing, setEditing] = useState<string | null>(null) // field key, 'title', or 'line:<id>:<col>'
+  const [editing, setEditing] = useState<string | null>(null) // field key being edited
+  const body = useRef<HTMLDivElement>(null)
+  // every field and every dialogue choice is a row connectors can attach to
+  useItemRectsReporter(boardId, card.id, body, [card.fields, card.options, card.lines, card.w, card.h, card.style])
   const strip = card.style?.bg ? undefined : def.color
   const stripInk = contrast(card.style?.bg ?? def.color)
   const setField = (key: string, value: string) => updateCard(boardId, card.id, { fields: { ...card.fields, [key]: value } })
@@ -46,7 +50,7 @@ export function StoryCard({ card, boardId, readOnly }: CardProps<StoryCardT>) {
         <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">{def.label}</span>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto px-3 py-2 text-[0.93em] scrollbar-thin">
+      <div ref={body} className="min-h-0 flex-1 overflow-auto px-3 py-2 text-[0.93em] scrollbar-thin">
         {def.fields.map((f) => (
           <Field
             key={f.key}
@@ -107,7 +111,7 @@ function Field({
   }, [value, editing])
 
   return (
-    <div className="mb-1.5">
+    <div className="mb-1.5" data-item={field.key}>
       <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider opacity-50">
         <span>{field.label}</span>
         {field.refs && !readOnly && (
@@ -163,92 +167,68 @@ function Field({
   )
 }
 
+/** Choices at this node — each row is an anchor: drag from its edge to the next dialogue card. */
 function Dialogue({ card, boardId, readOnly }: { card: StoryCardT; boardId: string; readOnly: boolean }) {
   const updateCard = useWorkspace((s) => s.updateCard)
-  const lines = card.lines ?? []
-  const setLines = (l: DialogueLine[]) => updateCard(boardId, card.id, { lines: l })
-  const [editing, setEditing] = useState<string | null>(null) // `${id}:${col}`
-  const [pickerFor, setPickerFor] = useState<string | null>(null)
-  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
-
-  const patch = (id: string, p: Partial<DialogueLine>) => setLines(lines.map((l) => (l.id === id ? { ...l, ...p } : l)))
+  // old files stored "lines" — show them as options once, so nothing is lost
+  const options: DialogueOption[] = card.options ?? (card.lines ?? []).map((l) => ({ id: l.id, text: l.speaker ? `${l.speaker}: ${l.text}` : l.text, note: l.note }))
+  const setOptions = (o: DialogueOption[]) => updateCard(boardId, card.id, { options: o, lines: undefined })
+  const [editing, setEditing] = useState<string | null>(null) // `${id}:text` | `${id}:note`
+  const patch = (id: string, p: Partial<DialogueOption>) => setOptions(options.map((o) => (o.id === id ? { ...o, ...p } : o)))
 
   return (
-    <div className="mt-1 space-y-1.5" data-nodrag>
-      {lines.map((l) => (
-        <div
-          key={l.id}
-          ref={(el) => {
-            rowRefs.current[l.id] = el
-          }}
-          className="group/line grid grid-cols-[minmax(70px,30%)_1fr_auto] gap-x-2 rounded px-1 py-0.5 hover:bg-black/5"
-        >
-          <Cell
-            value={l.speaker}
-            placeholder="Speaker"
-            bold
-            editing={editing === `${l.id}:speaker`}
-            readOnly={readOnly}
-            onEdit={() => setEditing(`${l.id}:speaker`)}
-            onDone={() => setEditing(null)}
-            onChange={(v) => patch(l.id, { speaker: v })}
-            boardId={boardId}
-            cardId={card.id}
-            onLink={() => setPickerFor(l.id)}
-          />
-          <div>
-            <Cell
-              value={l.text}
-              placeholder="Line…"
-              editing={editing === `${l.id}:text`}
-              readOnly={readOnly}
-              onEdit={() => setEditing(`${l.id}:text`)}
-              onDone={() => setEditing(null)}
-              onChange={(v) => patch(l.id, { text: v })}
-              boardId={boardId}
-              cardId={card.id}
-            />
-            <Cell
-              value={l.note ?? ''}
-              placeholder="(stage direction)"
-              italic
-              editing={editing === `${l.id}:note`}
-              readOnly={readOnly}
-              onEdit={() => setEditing(`${l.id}:note`)}
-              onDone={() => setEditing(null)}
-              onChange={(v) => patch(l.id, { note: v || undefined })}
-              boardId={boardId}
-              cardId={card.id}
-            />
-          </div>
-          {!readOnly && (
-            <button onClick={() => setLines(lines.filter((x) => x.id !== l.id))} className="self-start opacity-0 group-hover/line:opacity-60 hover:!opacity-100 hover:text-red-600">
-              ✕
-            </button>
-          )}
-          {pickerFor === l.id && (
-            <Popover anchor={rowRefs.current[l.id] ?? null} onClose={() => setPickerFor(null)}>
-              <LinkPicker
-                onClose={() => setPickerFor(null)}
-                onPick={(url, label) => {
-                  setPickerFor(null)
-                  patch(l.id, { speaker: `[${label}](${url})` })
-                }}
+    <div className="mt-1" data-nodrag>
+      <div className="mb-1 flex items-center text-[10px] font-bold uppercase tracking-wider opacity-50">
+        <span>Choices</span>
+        <span className="ml-auto normal-case tracking-normal opacity-70">→ drag an arrow from a choice to the next node</span>
+      </div>
+      <div className="space-y-1">
+        {options.map((o, i) => (
+          <div key={o.id} data-item={o.id} className="group/line flex items-start gap-2 rounded px-1 py-0.5 hover:bg-black/5">
+            <span className="mt-0.5 w-4 shrink-0 text-center text-[11px] font-bold opacity-50">{i + 1}</span>
+            <div className="min-w-0 flex-1">
+              <Cell
+                value={o.text}
+                placeholder="Choice…"
+                editing={editing === `${o.id}:text`}
+                readOnly={readOnly}
+                onEdit={() => setEditing(`${o.id}:text`)}
+                onDone={() => setEditing(null)}
+                onChange={(v) => patch(o.id, { text: v })}
+                boardId={boardId}
+                cardId={card.id}
               />
-            </Popover>
-          )}
-        </div>
-      ))}
+              <Cell
+                value={o.note ?? ''}
+                placeholder="(condition / effect)"
+                italic
+                editing={editing === `${o.id}:note`}
+                readOnly={readOnly}
+                onEdit={() => setEditing(`${o.id}:note`)}
+                onDone={() => setEditing(null)}
+                onChange={(v) => patch(o.id, { note: v || undefined })}
+                boardId={boardId}
+                cardId={card.id}
+              />
+            </div>
+            {!readOnly && (
+              <button onClick={() => setOptions(options.filter((x) => x.id !== o.id))} className="self-start opacity-0 group-hover/line:opacity-60 hover:!opacity-100 hover:text-red-600">
+                ✕
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
       {!readOnly && (
         <button
           onClick={() => {
             const id = newId()
-            setLines([...lines, { id, speaker: lines.length ? lines[lines.length - 1].speaker : '', text: '' }])
+            setOptions([...options, { id, text: '' }])
             setEditing(`${id}:text`)
           }}
-          className="rounded px-1 py-0.5 text-[12px] opacity-60 hover:bg-black/5 hover:opacity-100"
+          className="mt-1 rounded px-1 py-0.5 text-[12px] opacity-60 hover:bg-black/5 hover:opacity-100"
         >
-          + line
+          + choice
         </button>
       )}
     </div>
@@ -267,7 +247,6 @@ function Cell({
   onChange,
   boardId,
   cardId,
-  onLink,
 }: {
   value: string
   placeholder: string
@@ -280,7 +259,6 @@ function Cell({
   onChange: (v: string) => void
   boardId: string
   cardId: string
-  onLink?: () => void
 }) {
   const ta = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
@@ -320,11 +298,6 @@ function Cell({
           className={`w-full resize-none overflow-hidden rounded bg-black/5 px-1 leading-snug outline-none placeholder:opacity-40 ${cls}`}
           style={{ fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit' }}
         />
-        {onLink && (
-          <button onMouseDown={(e) => e.preventDefault()} onClick={onLink} title="Link a character" className="rounded px-1 text-[11px] opacity-60 hover:opacity-100">
-            🔗
-          </button>
-        )}
       </div>
     )
   return (
