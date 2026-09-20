@@ -2,7 +2,7 @@
 
 **→ [mikolajpochec.github.io/peeponote](https://mikolajpochec.github.io/peeponote/)**
 
-Milanote-style boards where **Save = `git commit`** (and push, if a remote is set). Static web app + installable PWA, no backend.
+Visual boards on an infinite canvas where **Save = `git commit`** (and push, if a remote is set). Static web app + installable PWA, no backend.
 
 - Infinite canvas, nested boards, connectors, styling, grouping & alignment, works on phones.
 - Cards: text, markdown notes, to-dos, links, sub-boards and **any file** with a preview (images, textures, audio, video, 3D models, fonts, code) and a download button.
