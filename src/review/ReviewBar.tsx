@@ -24,6 +24,9 @@ export function ReviewBar({ board }: { board: Board }) {
   const me = useMe()
   const anyoneCanClose = useWorkspace((s) => !s.meta?.settings?.review?.authorOnlyClose)
   const select = useWorkspace((s) => s.select)
+  const showResolved = useReview((s) => s.showResolved)
+  const setShowResolved = useReview((s) => s.setShowResolved)
+  const resolvedHere = useMemo(() => Object.values(comments).filter((c) => c.boardId === board.id && !c.parentId && c.resolved).length, [comments, board.id])
   const [note, setNote] = useState('')
   const [asking, setAsking] = useState<null | 'approved' | 'changes-requested'>(null)
 
@@ -68,6 +71,12 @@ export function ReviewBar({ board }: { board: Board }) {
         <span className="text-frog-200/80">Click a card, a row or an empty spot to comment. Nothing on the board can change while reviewing.</span>
       )}
       <span className="flex-1" />
+      {resolvedHere > 0 && (
+        <label className="flex items-center gap-1 text-[12px] text-frog-200/80" title="Resolved threads are hidden by default">
+          <input type="checkbox" className="accent-frog-500" checked={showResolved} onChange={(e) => setShowResolved(e.target.checked)} />
+          Show {resolvedHere} resolved
+        </label>
+      )}
       {review && amReviewer && review.status === 'open' && (
         <>
           {myVerdict && <span className="text-[11px] text-frog-200/70">you: {myVerdict.verdict === 'approved' ? '✓ approved' : '✎ changes requested'}</span>}

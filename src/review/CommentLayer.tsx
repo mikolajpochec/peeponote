@@ -82,7 +82,9 @@ export function CommentLayer({ board, scale }: { board: Board; scale: number }) 
     cascadeClose.current = setTimeout(() => setCascade(null), 180)
   }
 
-  const threads = useMemo(() => threadsOf(board, comments, rects), [board, comments, rects])
+  const showResolved = useReview((s) => s.showResolved)
+  // resolved threads stay out of the way unless asked for (the thread dialog always lists them)
+  const threads = useMemo(() => threadsOf(board, comments, rects).filter((t) => showResolved || !t.root.resolved), [board, comments, rects, showResolved])
   const bubbles = mode.on && scale >= 0.5
   const draftHere = draft && draft.boardId === board.id ? draft : null
 

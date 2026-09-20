@@ -60,6 +60,8 @@ interface ReviewState {
   identity: IdentityStatus
   mode: ReviewMode
   panelOpen: boolean
+  /** resolved threads are hidden on the board unless this is on */
+  showResolved: boolean
   /** thread (root comment id) currently open in the dialog */
   openThread: { boardId: string; anchorKey: string } | null
   /** a comment being written (not yet a file) */
@@ -90,6 +92,7 @@ interface ReviewState {
 
   setMode: (mode: ReviewMode) => void
   setPanelOpen: (open: boolean) => void
+  setShowResolved: (on: boolean) => void
   setOpenThread: (t: ReviewState['openThread']) => void
   setDraft: (d: ReviewState['draft']) => void
   setRequestDialog: (d: ReviewState['requestDialog']) => void
@@ -171,6 +174,7 @@ export const useReview = create<ReviewState>((set, get) => {
     identity: { kind: 'guest' },
     mode: { on: false },
     panelOpen: false,
+    showResolved: false,
     openThread: null,
     draft: null,
     requestDialog: null,
@@ -403,6 +407,7 @@ export const useReview = create<ReviewState>((set, get) => {
 
     setMode: (mode) => set({ mode, draft: null }),
     setPanelOpen: (panelOpen) => set({ panelOpen }),
+    setShowResolved: (showResolved) => set({ showResolved }),
     setOpenThread: (openThread) => set({ openThread }),
     setDraft: (draft) => set({ draft }),
     setRequestDialog: (requestDialog) => set({ requestDialog }),
