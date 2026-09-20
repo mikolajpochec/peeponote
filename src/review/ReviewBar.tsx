@@ -42,6 +42,7 @@ export function ReviewBar({ board, onHeight }: { board: Board; onHeight?: (h: nu
   const resolvedHere = useMemo(() => Object.values(comments).filter((c) => c.boardId === board.id && !c.parentId && c.resolved).length, [comments, board.id])
   const [note, setNote] = useState('')
   const [asking, setAsking] = useState<null | 'approved' | 'changes-requested'>(null)
+  const [changing, setChanging] = useState(false)
 
   // the request we're answering, or any open one on this board that involves me
   const review = useMemo(() => {
@@ -98,13 +99,29 @@ export function ReviewBar({ board, onHeight }: { board: Board; onHeight?: (h: nu
       )}
       {review && amReviewer && review.status === 'open' && (
         <>
-          {myVerdict && <span className="text-[11px] text-frog-200/70">you: {myVerdict.verdict === 'approved' ? '✓ approved' : '✎ changes requested'}</span>}
-          <button onClick={() => setAsking('approved')} className="rounded-md bg-frog-500 px-2.5 py-1 text-[12px] font-bold text-white hover:bg-frog-400">
-            ✓ Approve
-          </button>
-          <button onClick={() => setAsking('changes-requested')} className="rounded-md bg-amber-500 px-2.5 py-1 text-[12px] font-bold text-black hover:bg-amber-400">
-            ✎ Request changes
-          </button>
+          {myVerdict && !changing ? (
+            // one verdict per reviewer; you can change your mind, but there's nothing to "approve again"
+            <span className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-bold ${myVerdict.verdict === 'approved' ? 'bg-frog-700/60 text-frog-50' : 'bg-amber-600/50 text-amber-50'}`}>
+              {myVerdict.verdict === 'approved' ? '✓ You approved' : '✎ You requested changes'}
+              <button onClick={() => setChanging(true)} className="rounded px-1 text-[11px] font-semibold text-frog-100/70 underline decoration-dotted hover:text-white">
+                change
+              </button>
+            </span>
+          ) : (
+            <>
+              <button onClick={() => setAsking('approved')} className="rounded-md bg-frog-500 px-2.5 py-1 text-[12px] font-bold text-white hover:bg-frog-400">
+                ✓ Approve
+              </button>
+              <button onClick={() => setAsking('changes-requested')} className="rounded-md bg-amber-500 px-2.5 py-1 text-[12px] font-bold text-black hover:bg-amber-400">
+                ✎ Request changes
+              </button>
+              {changing && (
+                <button onClick={() => setChanging(false)} className="rounded-md px-2 py-1 text-[12px] text-frog-200 hover:bg-(--hover-strong)">
+                  keep mine
+                </button>
+              )}
+            </>
+          )}
         </>
       )}
       {review && (amRequester || anyoneCanClose) && identity.kind === 'verified' && (
@@ -134,6 +151,7 @@ export function ReviewBar({ board, onHeight }: { board: Board; onHeight?: (h: nu
               if (e.key === 'Enter') {
                 await giveVerdict(review.id, asking, note)
                 setAsking(null)
+                setChanging(false)
                 setNote('')
               }
               if (e.key === 'Escape') setAsking(null)
@@ -145,6 +163,7 @@ export function ReviewBar({ board, onHeight }: { board: Board; onHeight?: (h: nu
             onClick={async () => {
               await giveVerdict(review.id, asking, note)
               setAsking(null)
+              setChanging(false)
               setNote('')
             }}
             className="rounded-md bg-frog-500 px-2.5 py-1 text-[12px] font-bold text-white hover:bg-frog-400"
