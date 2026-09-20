@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Card, CardStyle, FontFamily, TextAlign } from '../model/types'
 import { useWorkspace } from '../store/workspace'
-import { FILLS, FONT_LABEL, INKS, RADII, defaultBold, defaultFontSize } from '../canvas/styles'
+import { FONT_LABEL, RADII, contrast, defaultBold, defaultFontSize } from '../canvas/styles'
 import { ALIGN_LABEL, alignCards, distributeCards, type AlignMode } from '../canvas/arrange'
 import { ColorPicker } from './ColorPicker'
 
@@ -56,9 +56,10 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
       onDoubleClick={(e) => e.stopPropagation()}
       className="flex items-center gap-0.5 rounded-xl border border-(--hair) bg-swamp-900/95 p-1 shadow-2xl shadow-black/50 backdrop-blur"
     >
-      <ColorPicker title="Fill" icon="◼" value={s.bg} fallback={first.type === 'text' ? '#00000000' : '#fbf8ef'} swatches={FILLS} onChange={(bg) => apply({ bg })} />
-      <ColorPicker title="Text color" icon="A" value={s.fg} fallback="#1b1d1a" swatches={INKS} onChange={(fg) => apply({ fg })} />
-      <ColorPicker title="Border" icon="◻" value={s.border} fallback="#00000000" swatches={INKS} onChange={(border) => apply({ border })} />
+      {/* a new fill resets the ink so it re-derives its contrast automatically */}
+      <ColorPicker title="Fill (text color adapts)" icon="◼" value={s.bg} fallback={first.type === 'text' ? '#00000000' : '#fbf8ef'} onChange={(bg) => apply({ bg, fg: undefined })} />
+      <ColorPicker title="Text color" icon="A" value={s.fg} fallback={s.bg ? contrast(s.bg) : '#1b1d1a'} onChange={(fg) => apply({ fg })} />
+      <ColorPicker title="Border" icon="◻" value={s.border} fallback="#00000000" onChange={(border) => apply({ border })} />
 
       {textual && (
         <>

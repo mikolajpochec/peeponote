@@ -4,7 +4,6 @@ import { SIDES } from '../model/types'
 import { useWorkspace } from '../store/workspace'
 import { anchorPoint, bezierMid, connectorPath, sidePoint, type Pt } from './connectors'
 import { ColorPicker } from '../ui/ColorPicker'
-import { INKS } from './styles'
 
 export interface DraftConnector {
   /** the end that stays put */
@@ -217,7 +216,7 @@ function ConnectorToolbar({ boardId, connector, at, inv }: { boardId: string; co
         </button>
       ))}
       <span className="mx-0.5 h-4 w-px bg-(--hover-strong)" />
-      <ColorPicker title="Line color" value={st.color} fallback="#8ac47e" swatches={INKS} onChange={(color) => styleConnectors(boardId, [connector.id], { color })} />
+      <ColorPicker title="Line color" value={st.color} fallback="#8ac47e" onChange={(color) => styleConnectors(boardId, [connector.id], { color })} />
       <button
         title={`Line width: ${width}`}
         onClick={() => styleConnectors(boardId, [connector.id], { width: width >= 6 ? undefined : width + 1 })}

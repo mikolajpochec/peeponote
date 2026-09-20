@@ -70,7 +70,6 @@ export function TopBar({
             icon="◼"
             value={board.style?.bg}
             fallback={themeCanvas}
-            swatches={['#171f18', '#101610', '#1c2a1e', '#2a3a2c', '#1e1b2e', '#2a1f1f', '#fbf8ef', '#eef7ec', '#e7e5e4', '#fff3b0', '#dbeafe', '#fce7f3']}
             onChange={(bg) => setBoardStyle(board.id, { bg })}
           />
           <button

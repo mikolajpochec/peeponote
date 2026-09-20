@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { contrast } from '../canvas/styles'
+import { PALETTE, contrast } from '../canvas/styles'
 
 interface Props {
   value: string | undefined
-  swatches: string[]
+  /** custom swatch list; default is the shared 12-column palette */
+  swatches?: string[]
   onChange: (v: string | undefined) => void
   title: string
   /** what the button shows when no color is set */
@@ -40,17 +41,17 @@ export function ColorPicker({ value, swatches, onChange, title, fallback, icon }
         </span>
       </button>
       {open && (
-        <div className="absolute left-1/2 top-full z-10 mt-1 w-44 -translate-x-1/2 rounded-lg border border-(--hair) bg-swamp-900 p-2 shadow-2xl">
-          <div className="grid grid-cols-6 gap-1.5">
-            {swatches.map((c) => (
+        <div className="absolute left-1/2 top-full z-10 mt-1 -translate-x-1/2 rounded-lg border border-(--hair) bg-swamp-900 p-2 shadow-2xl" style={{ width: swatches ? 176 : 268 }}>
+          <div className={`grid gap-1 ${swatches ? 'grid-cols-6' : 'grid-cols-12'}`}>
+            {(swatches ?? PALETTE.flat()).map((c, i) => (
               <button
-                key={c}
+                key={`${c}-${i}`}
                 title={c}
                 onClick={() => {
                   onChange(c)
                   setOpen(false)
                 }}
-                className={`h-5 w-5 rounded-full border ${value === c ? 'border-frog-300 ring-2 ring-frog-300/50' : 'border-(--hair)'}`}
+                className={`h-[18px] w-[18px] rounded-[5px] border ${value?.toLowerCase() === c.toLowerCase() ? 'border-white ring-2 ring-frog-300/70' : 'border-black/20'} ${!swatches && i < 12 ? 'mb-1' : ''}`}
                 style={{ background: c }}
               />
             ))}

@@ -477,7 +477,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       scheduleFlush()
       mutateBoard(parentId, (b) => ({
         ...b,
-        cards: [...b.cards, { id: newId(), type: 'board', boardId: id, x: at.x, y: at.y, w: 200, h: 140, z }],
+        cards: [...b.cards, { id: newId(), type: 'board', boardId: id, x: at.x, y: at.y, w: 200, h: 96, z }],
       }))
       return id
     },
