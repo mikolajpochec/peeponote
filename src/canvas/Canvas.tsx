@@ -655,11 +655,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       className={`canvas-bg relative h-full w-full overflow-hidden touch-none ${dragOver ? 'outline outline-4 -outline-offset-4 outline-frog-300/60' : ''}`}
       style={{
         ...boardVars(board, theme.canvas),
-        // dots sit exactly on the snap grid: same spacing as GRID, and the 1 px dot centre pulled back onto the tile origin
-        backgroundSize: `${GRID * vp.scale}px ${GRID * vp.scale}px`,
-        backgroundPosition: `${vp.x - 1}px ${vp.y - 1}px`,
         backgroundColor: 'var(--board-bg)',
-        backgroundImage: board.style?.dots === false ? 'none' : undefined,
       }}
       onPointerDown={onBackgroundPointerDown}
       onPointerDownCapture={onPointerDownCapture}
@@ -678,6 +674,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       onDragLeave={() => setDragOver(false)}
       onDrop={onDrop}
     >
+      {board.style?.dots !== false && <GridDots x={vp.x} y={vp.y} scale={vp.scale} />}
       <div
         data-layer="1"
         className="absolute left-0 top-0 origin-top-left"
@@ -782,3 +779,29 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
   )
 }
 
+
+/**
+ * The dot grid, drawn as an SVG pattern rather than a CSS background: browsers round repeated
+ * background tiles to whole pixels, so at fractional zoom the dots drift away from the snap grid
+ * the further you get from the origin. SVG patterns tile exactly. Dots thin out when zoomed out.
+ */
+function GridDots({ x, y, scale }: { x: number; y: number; scale: number }) {
+  let step = GRID
+  while (step * scale < 10) step *= 2
+  const tile = step * scale
+  const r = Math.max(0.8, Math.min(1.6, scale))
+  return (
+    <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden>
+      <defs>
+        <pattern id="grid-dots" patternUnits="userSpaceOnUse" width={tile} height={tile} x={x} y={y}>
+          {/* four quarter-dots on the corners so the centre lands exactly on the grid point */}
+          <circle cx={0} cy={0} r={r} fill="var(--board-dot)" />
+          <circle cx={tile} cy={0} r={r} fill="var(--board-dot)" />
+          <circle cx={0} cy={tile} r={r} fill="var(--board-dot)" />
+          <circle cx={tile} cy={tile} r={r} fill="var(--board-dot)" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#grid-dots)" />
+    </svg>
+  )
+}

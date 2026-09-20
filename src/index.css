@@ -46,11 +46,7 @@ html, body, #root {
 body { user-select: none; -webkit-user-select: none; }
 input, textarea, [contenteditable="true"], pre, code, .selectable { user-select: text; -webkit-user-select: text; }
 
-.canvas-bg {
-  background-color: var(--color-swamp-800);
-  background-image:
-    radial-gradient(circle at 1px 1px, var(--board-dot, rgba(138, 196, 126, 0.16)) 1px, transparent 0);
-}
+.canvas-bg { background-color: var(--color-swamp-800); }
 
 .checker {
   background-color: #2b2b2b;
