@@ -33,20 +33,30 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
     }
   }, [editing])
 
-  // auto: card hugs its content (wrapping at maxW). manual: keep user width, only grow height to fit
+  // auto: card hugs its content (wrapping at maxW). manual: keep user width, only grow height to fit.
+  // A ResizeObserver on the hidden measurer catches every reason the text box changes size:
+  // typing, style bar changes (font size / family / bold), late font loads.
   useEffect(() => {
     if (readOnly) return
     const m = measure.current
     if (!m) return
-    if (auto) {
-      const w = Math.max(60, Math.ceil(m.offsetWidth))
-      const h = Math.max(32, Math.ceil(m.offsetHeight))
-      if (Math.abs(w - card.w) > 1 || Math.abs(h - card.h) > 1) updateCard(boardId, card.id, { w, h })
-    } else {
-      const needed = Math.ceil(editing ? (ta.current?.scrollHeight ?? 0) : (view.current?.scrollHeight ?? 0))
-      if (needed > card.h + 1) updateCard(boardId, card.id, { h: needed })
+    const apply = () => {
+      const c = useWorkspace.getState().boards[boardId]?.cards.find((x) => x.id === card.id)
+      if (!c || c.type !== 'text') return
+      if (c.autoSize !== false) {
+        const w = Math.max(60, Math.ceil(m.offsetWidth))
+        const h = Math.max(32, Math.ceil(m.offsetHeight))
+        if (Math.abs(w - c.w) > 1 || Math.abs(h - c.h) > 1) updateCard(boardId, card.id, { w, h })
+      } else {
+        const needed = Math.ceil(editing ? (ta.current?.scrollHeight ?? 0) : (view.current?.scrollHeight ?? 0))
+        if (needed > c.h + 1) updateCard(boardId, card.id, { h: needed })
+      }
     }
-  }, [shown, card.w, card.h, auto, editing, readOnly, boardId, card.id, updateCard])
+    apply()
+    const ro = new ResizeObserver(apply)
+    ro.observe(m)
+    return () => ro.disconnect()
+  }, [shown, auto, editing, readOnly, boardId, card.id, card.style, card.w, updateCard])
 
   const measurer = (
     <div

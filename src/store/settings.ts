@@ -12,6 +12,8 @@ export interface Settings {
   corsProxy: string
   /** show a separate Push button instead of pushing as part of Save */
   separatePush: boolean
+  /** first-run wizard finished (or skipped) */
+  onboarded: boolean
   theme: ThemeName
   set: (patch: Partial<Omit<Settings, 'set'>>) => void
 }
@@ -25,6 +27,7 @@ export const useSettings = create<Settings>()(
       username: '',
       corsProxy: DEFAULT_CORS_PROXY,
       separatePush: false,
+      onboarded: false,
       theme: 'dark',
       set: (patch) => set(patch),
     }),

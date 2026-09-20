@@ -14,9 +14,11 @@ const EXT: Record<string, AssetKind> = {
   // fonts
   ttf: 'font', otf: 'font', woff: 'font', woff2: 'font',
   // code / shaders / scripts
-  glsl: 'code', vert: 'code', frag: 'code', hlsl: 'code', wgsl: 'code', shader: 'code',
-  js: 'code', ts: 'code', lua: 'code', gd: 'code', cs: 'code', cpp: 'code', c: 'code', h: 'code',
-  py: 'code', rs: 'code', md: 'code', txt: 'code', ini: 'code', cfg: 'code',
+  glsl: 'code', vert: 'code', frag: 'code', geom: 'code', comp: 'code', hlsl: 'code', fx: 'code', cginc: 'code', wgsl: 'code', shader: 'code', gdshader: 'code', metal: 'code',
+  js: 'code', mjs: 'code', cjs: 'code', jsx: 'code', ts: 'code', mts: 'code', lua: 'code', gd: 'code', cs: 'code', cpp: 'code', cc: 'code', hpp: 'code', c: 'code', h: 'code',
+  py: 'code', rs: 'code', go: 'code', java: 'code', kt: 'code', swift: 'code', rb: 'code', php: 'code', dart: 'code', hx: 'code', zig: 'code',
+  sh: 'code', bash: 'code', zsh: 'code', ps1: 'code', bat: 'code', sql: 'code', css: 'code', scss: 'code', html: 'code', htm: 'code', mk: 'code',
+  md: 'code', txt: 'code', ini: 'code', cfg: 'code', conf: 'code', env: 'code', log: 'code',
   // data
   json: 'data', yaml: 'data', yml: 'data', csv: 'data', xml: 'data', toml: 'data', tsv: 'data',
   tmx: 'data', tsx: 'data', tres: 'data', tscn: 'data', ldtk: 'data', aseprite: 'other',

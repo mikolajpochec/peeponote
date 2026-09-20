@@ -72,8 +72,20 @@ html, body, #root {
 .prose-note blockquote { border-left: 3px solid var(--color-frog-300); padding-left: 0.6em; opacity: 0.85; margin: 0.3em 0; }
 .prose-note hr { border: 0; border-top: 1px solid rgba(0,0,0,0.15); margin: 0.5em 0; }
 
+/* thin scrollbars that reveal themselves on hover (overlay scrollbars on macOS would otherwise stay hidden) */
 .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
-.scrollbar-thin::-webkit-scrollbar-thumb { background: var(--color-swamp-500); border-radius: 4px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 150ms;
+}
+.scrollbar-thin:hover::-webkit-scrollbar-thumb,
+.scrollbar-thin:focus-within::-webkit-scrollbar-thumb { background-color: color-mix(in srgb, currentColor 35%, transparent); }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, currentColor 55%, transparent); }
+.scrollbar-thin::-webkit-scrollbar-corner { background: transparent; }
 
 @keyframes peepo-bounce {
   0%, 100% { transform: translateY(0); }
@@ -116,3 +128,21 @@ input:read-only, textarea:read-only { cursor: default; }
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.5l2.5 2.5 4.5-5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 .todo-check:disabled { cursor: default; }
+
+/* highlight.js — frog-tinted dark palette */
+.hljs { color: #d8dfd6; }
+.hljs-comment, .hljs-quote { color: #7a8a78; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-doctag, .hljs-meta .hljs-keyword { color: #c99bff; }
+.hljs-built_in, .hljs-type, .hljs-class .hljs-title, .hljs-title.class_ { color: #7fd6e0; }
+.hljs-string, .hljs-addition, .hljs-regexp, .hljs-template-tag { color: #a8dc8f; }
+.hljs-number, .hljs-symbol, .hljs-bullet, .hljs-link { color: #f0b86e; }
+.hljs-function .hljs-title, .hljs-title.function_, .hljs-title { color: #8ac4ff; }
+.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable, .hljs-property { color: #e6c17a; }
+.hljs-params { color: #d8dfd6; }
+.hljs-name, .hljs-selector-id, .hljs-selector-class, .hljs-tag { color: #ff9a9a; }
+.hljs-meta, .hljs-meta .hljs-string { color: #b3a0d9; }
+.hljs-section { color: #8ac4ff; font-weight: 700; }
+.hljs-deletion { color: #ff8080; background: rgba(255, 80, 80, 0.12); }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 700; }
+.hljs-subst { color: #d8dfd6; }

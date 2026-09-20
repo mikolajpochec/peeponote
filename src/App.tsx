@@ -8,6 +8,7 @@ import { SettingsDialog } from './ui/SettingsDialog'
 import { Toasts } from './ui/Toasts'
 import { Peepo } from './ui/Peepo'
 import { BootScreen } from './ui/BootScreen'
+import { Onboarding } from './ui/Onboarding'
 import { useSettings } from './store/settings'
 import { applyTheme, resolveTheme } from './theme/themes'
 
@@ -21,6 +22,11 @@ export default function App() {
   const busy = useWorkspace((s) => s.busy)
   const [showHistory, setShowHistory] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  // first run: no identity yet and the wizard was never finished/skipped — decided once, at startup
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    const s = useSettings.getState()
+    return !s.onboarded && !s.authorName
+  })
 
   useEffect(() => {
     boot()
@@ -83,6 +89,7 @@ export default function App() {
         </div>
       </div>
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
+      {showOnboarding && <Onboarding onFinish={() => setShowOnboarding(false)} />}
       <Toasts />
     </div>
   )

@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import type { AssetCard as AssetCardT } from '../model/types'
-import { KIND_LABEL, extOf, formatBytes } from '../model/assetKind'
+import { KIND_LABEL, detectKind, extOf, formatBytes } from '../model/assetKind'
 import { readAssetBytes, useWorkspace } from '../store/workspace'
 import { toast } from '../store/toast'
 import { Peepo } from '../ui/Peepo'
@@ -51,8 +51,10 @@ function splitName(card: AssetCardT): { stem: string; ext: string } {
   return { stem, ext }
 }
 
-export function AssetCard({ card, boardId, readOnly }: CardProps<AssetCardT>) {
+export function AssetCard({ card: stored, boardId, readOnly }: CardProps<AssetCardT>) {
   const updateCard = useWorkspace((s) => s.updateCard)
+  // kind is detected at drop time; re-detect files we didn't know how to preview back then
+  const card = stored.kind === 'other' ? { ...stored, kind: detectKind(stored.path, stored.mime) } : stored
   const { stem, ext } = splitName(card)
   return (
     <div className="flex h-full w-full flex-col">
