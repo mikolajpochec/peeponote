@@ -6,7 +6,7 @@ import { Peepo } from '../ui/Peepo'
 import { Avatar } from './Avatar'
 import { reviewStatus, useNotifications, type Notification } from './notifications'
 import { samePerson } from './identity'
-import { isCardAnchor } from '../model/review'
+import { isCardAnchor, type ReviewRequest } from '../model/review'
 
 function timeAgo(iso: string) {
   if (!iso) return ''
@@ -24,7 +24,6 @@ export function NotificationsPanel({ onClose, mobile }: { onClose: () => void; m
   const items = useNotifications()
   const me = useMe()
   const reviews = useReview((s) => s.reviews)
-  const verdicts = useReview((s) => s.verdicts)
   const comments = useReview((s) => s.comments)
   const markSeen = useReview((s) => s.markSeen)
   const markUnseen = useReview((s) => s.markUnseen)
@@ -37,10 +36,15 @@ export function NotificationsPanel({ onClose, mobile }: { onClose: () => void; m
       else n.add(id)
       return n
     })
-  const boards = useWorkspace((s) => s.boards)
   const identity = useReview((s) => s.identity)
 
-  const askedOfMe = useMemo(() => Object.values(reviews).filter((r) => me && r.status === 'open' && r.reviewers.some((p) => samePerson(p, me))), [reviews, me])
+  const askedOfMe = useMemo(
+    () =>
+      Object.values(reviews)
+        .filter((r) => me && r.status === 'open' && r.reviewers.some((p) => samePerson(p, me)))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [reviews, me],
+  )
   const mine = useMemo(() => Object.values(reviews).filter((r) => me && samePerson(r.requester, me)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [reviews, me])
   const unseen = items.filter((n) => n.unseen)
 
@@ -94,58 +98,24 @@ export function NotificationsPanel({ onClose, mobile }: { onClose: () => void; m
         {askedOfMe.length > 0 && (
           <Section title="Asked of you">
             {askedOfMe.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => open({ id: r.id, kind: 'review-request', at: r.createdAt, who: r.requester, boardId: r.boardId, reviewId: r.id, what: '', unseen: false, verified: true })}
-                className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-swamp-700"
-              >
-                <Avatar person={r.requester} size={26} />
-                <div className="min-w-0 flex-1">
-                  <div className="text-[13px]">
-                    <b>{r.requester.name}</b> · {r.targets.length ? `${r.targets.length} card${r.targets.length === 1 ? '' : 's'} on ` : ''}
-                    <b>{boards[r.boardId]?.name ?? '?'}</b>
-                  </div>
-                  {r.message && <div className="truncate text-[12px] text-frog-200/70">{r.message}</div>}
-                  <div className="text-[11px] text-frog-200/50">
-                    {timeAgo(r.createdAt)} · {reviewStatus(r, Object.values(verdicts).filter((v) => v.reviewId === r.id), Object.values(comments))}
-                  </div>
-                </div>
-                <span className="rounded bg-frog-600 px-1.5 py-0.5 text-[10px] font-bold text-white">Review</span>
-              </button>
+              <ReviewRow key={r.id} r={r} role="reviewer" onOpen={() => open({ id: r.id, kind: 'review-request', at: r.createdAt, who: r.requester, boardId: r.boardId, reviewId: r.id, what: '', unseen: false, verified: true })} />
             ))}
           </Section>
         )}
         {mine.length > 0 && (
           <Section title="Your requests">
-            {mine.slice(0, 8).map((r) => {
-              const vs = Object.values(verdicts).filter((v) => v.reviewId === r.id)
-              const status = reviewStatus(r, vs, Object.values(comments))
-              return (
-                <button
-                  key={r.id}
-                  onClick={() => {
-                    openLink(r.targets.length ? { kind: 'card', boardId: r.boardId, cardId: r.targets[0] } : { kind: 'board', boardId: r.boardId })
-                    useReview.getState().setMode({ on: true, reviewId: r.id })
-                    if (mobile) onClose()
-                  }}
-                  className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-swamp-700"
-                >
-                  <div className="flex -space-x-1.5">
-                    {r.reviewers.slice(0, 3).map((p) => (
-                      <Avatar key={p.email} person={p} size={22} className="ring-2 ring-swamp-900" />
-                    ))}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13px]">
-                      <b>{boards[r.boardId]?.name ?? '?'}</b> → {r.reviewers.map((p) => p.name).join(', ')}
-                    </div>
-                    <div className="text-[11px] text-frog-200/50">
-                      {timeAgo(r.createdAt)} · <StatusPill status={status} />
-                    </div>
-                  </div>
-                </button>
-              )
-            })}
+            {mine.slice(0, 8).map((r) => (
+              <ReviewRow
+                key={r.id}
+                r={r}
+                role="requester"
+                onOpen={() => {
+                  openLink(r.targets.length ? { kind: 'card', boardId: r.boardId, cardId: r.targets[0] } : { kind: 'board', boardId: r.boardId })
+                  useReview.getState().setMode({ on: true, reviewId: r.id })
+                  if (mobile) onClose()
+                }}
+              />
+            ))}
           </Section>
         )}
         <Section title="Activity">
@@ -184,6 +154,101 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <div className="px-3 pb-1 pt-2 text-[10px] font-black uppercase tracking-wider text-frog-200/50">{title}</div>
       {children}
     </div>
+  )
+}
+
+/**
+ * One review in the panel, read at a glance: a coloured left edge when it waits for *you*, a state line
+ * ("waiting for Basia", "Basia asked for changes", "approved — close it?") and a per-reviewer ✓ / ✎ / … strip.
+ */
+function ReviewRow({ r, role, onOpen }: { r: ReviewRequest; role: 'reviewer' | 'requester'; onOpen: () => void }) {
+  const verdicts = useReview((s) => s.verdicts)
+  const comments = useReview((s) => s.comments)
+  const boards = useWorkspace((s) => s.boards)
+  const me = useMe()
+  const vs = Object.values(verdicts).filter((v) => v.reviewId === r.id)
+  const status = reviewStatus(r, vs, Object.values(comments))
+  const mine = me ? vs.find((v) => samePerson(v.reviewer, me)) : undefined
+  const changes = vs.filter((v) => v.verdict === 'changes-requested')
+  const waiting = r.reviewers.filter((p) => !vs.some((v) => samePerson(v.reviewer, p)))
+  const commented = new Set(Object.values(comments).filter((c) => c.reviewId === r.id).map((c) => c.author.email.toLowerCase()))
+
+  // what this row asks of me
+  let needsMe = false
+  let line: string
+  let tone: 'action' | 'ok' | 'wait' | 'done' = 'wait'
+  if (r.status === 'closed') {
+    line = `closed${r.closedBy ? ` by ${r.closedBy.name}` : ''}`
+    tone = 'done'
+  } else if (role === 'reviewer') {
+    if (!mine) {
+      needsMe = true
+      line = 'Your review is needed'
+      tone = 'action'
+    } else if (mine.verdict === 'approved') {
+      line = 'You approved'
+      tone = 'ok'
+    } else {
+      line = 'You asked for changes — waiting for ' + r.requester.name
+      tone = 'wait'
+    }
+  } else if (status === 'changes requested') {
+    needsMe = true
+    line = `${changes.map((v) => v.reviewer.name).join(', ')} asked for changes`
+    tone = 'action'
+  } else if (status === 'approved') {
+    needsMe = true
+    line = 'Approved by everyone — close it?'
+    tone = 'ok'
+  } else if (status === 'in progress') {
+    line = `${r.reviewers.filter((p) => commented.has(p.email.toLowerCase())).map((p) => p.name).join(', ') || 'Someone'} is looking at it`
+    tone = 'wait'
+  } else {
+    line = `Waiting for ${waiting.map((p) => p.name).join(', ')}`
+    tone = 'wait'
+  }
+  const edge = tone === 'action' ? 'border-l-amber-400' : tone === 'ok' ? 'border-l-frog-400' : tone === 'done' ? 'border-l-transparent' : 'border-l-swamp-500'
+  const lineCls = tone === 'action' ? 'text-amber-200' : tone === 'ok' ? 'text-frog-300' : tone === 'done' ? 'text-frog-200/50' : 'text-frog-200/70'
+  return (
+    <button onClick={onOpen} className={`flex w-full items-start gap-2 border-l-[3px] px-3 py-2 text-left hover:bg-swamp-700 ${edge} ${r.status === 'closed' ? 'opacity-60' : ''} ${needsMe ? 'bg-amber-500/5' : ''}`}>
+      <Avatar person={role === 'reviewer' ? r.requester : r.reviewers[0] ?? r.requester} size={26} />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[13px]">
+          {role === 'reviewer' ? (
+            <>
+              <b>{r.requester.name}</b> · {r.targets.length ? `${r.targets.length} card${r.targets.length === 1 ? '' : 's'} on ` : ''}
+              <b>{boards[r.boardId]?.name ?? '?'}</b>
+            </>
+          ) : (
+            <>
+              <b>{boards[r.boardId]?.name ?? '?'}</b> → {r.reviewers.map((p) => p.name).join(', ')}
+            </>
+          )}
+        </div>
+        {r.message && <div className="truncate text-[12px] text-frog-200/60">{r.message}</div>}
+        <div className={`mt-0.5 flex items-center gap-1.5 text-[12px] font-semibold ${lineCls}`}>
+          {needsMe && <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />}
+          {tone === 'ok' && !needsMe && <span>✓</span>}
+          <span className="truncate">{line}</span>
+        </div>
+        {/* who said what */}
+        <div className="mt-1 flex flex-wrap gap-1">
+          {r.reviewers.map((p) => {
+            const v = vs.find((x) => samePerson(x.reviewer, p))
+            const k = v ? (v.verdict === 'approved' ? 'ok' : 'changes') : commented.has(p.email.toLowerCase()) ? 'looking' : 'waiting'
+            const cls = k === 'ok' ? 'bg-frog-700/60 text-frog-50' : k === 'changes' ? 'bg-amber-600/50 text-amber-50' : k === 'looking' ? 'bg-swamp-600 text-frog-100' : 'bg-swamp-700 text-frog-200/60'
+            const icon = k === 'ok' ? '✓' : k === 'changes' ? '✎' : k === 'looking' ? '👀' : '…'
+            return (
+              <span key={p.email} className={`flex items-center gap-1 rounded-full py-0.5 pl-0.5 pr-1.5 text-[10px] font-bold ${cls}`} title={v?.note || (k === 'waiting' ? 'no answer yet' : k === 'looking' ? 'commented, no verdict yet' : '')}>
+                <Avatar person={p} size={14} />
+                {icon} {p.name.split(' ')[0]}
+              </span>
+            )
+          })}
+        </div>
+      </div>
+      <span className="text-[10px] text-frog-200/40">{timeAgo(r.updatedAt || r.createdAt)}</span>
+    </button>
   )
 }
 
