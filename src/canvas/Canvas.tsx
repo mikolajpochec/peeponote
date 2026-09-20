@@ -312,10 +312,22 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     el.setPointerCapture(e.pointerId)
     const start = { x: e.clientX, y: e.clientY }
     const toBoard = (ev: { clientX: number; clientY: number }) => screenToBoard(useViewport.getState().get(board.id), ev.clientX, ev.clientY, rect)
-    setDraft({ fixed, moving: toBoard(e), editing })
+    /** where the end would land right now — same rule as the drop itself */
+    const targetFor = (p: { x: number; y: number }): Anchor => {
+      const live = useWorkspace.getState().boards[board.id]
+      if (!live) return p
+      const cards = new Map(live.cards.map((c) => [c.id, c]))
+      const fixedPt = anchorPoint(fixed, cards)?.pt ?? p
+      return anchorForDrop(live, p, fixedPt, excludeCard)
+    }
+    const p0 = toBoard(e)
+    setDraft({ fixed, moving: p0, editing, target: targetFor(p0) })
 
     setGlobalCursor('crosshair')
-    const move = (ev: PointerEvent) => setDraft((d) => (d ? { ...d, moving: toBoard(ev) } : d))
+    const move = (ev: PointerEvent) => {
+      const p = toBoard(ev)
+      setDraft((d) => (d ? { ...d, moving: p, target: targetFor(p) } : d))
+    }
     const up = (ev: PointerEvent) => {
       setGlobalCursor(null)
       el.removeEventListener('pointermove', move)
@@ -328,11 +340,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       }
       setDraft(null)
       if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 8) return // just a click
-      const live = useWorkspace.getState().boards[board.id]
-      if (!live) return
-      const cards = new Map(live.cards.map((c) => [c.id, c]))
-      const fixedPt = anchorPoint(fixed, cards)?.pt ?? toBoard(ev)
-      const dropped = anchorForDrop(live, toBoard(ev), fixedPt, excludeCard)
+      const dropped = targetFor(toBoard(ev))
       if (editing) {
         updateConnector(board.id, editing.id, { [editing.end]: dropped } as Partial<Connector>)
         select([editing.id])

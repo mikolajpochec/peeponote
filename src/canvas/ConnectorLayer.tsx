@@ -13,6 +13,8 @@ export interface DraftConnector {
   moving: Pt
   /** set when re-attaching an end of an existing connector */
   editing?: { id: string; end: 'from' | 'to' }
+  /** where the moving end will land if released now */
+  target: Anchor
 }
 
 interface Props {
@@ -43,6 +45,8 @@ export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard,
     .filter(Boolean) as { k: Connector; a: { pt: Pt; side: Side | null }; b: { pt: Pt; side: Side | null } }[]
 
   const draftA = draft ? anchorPoint(draft.fixed, cards) : null
+  const draftB = draft ? anchorPoint(draft.target, cards) : null
+  const targetCard = draft && 'cardId' in draft.target ? cards.get(draft.target.cardId) : undefined
   const handleCards: Card[] = []
   if (!readOnly && !draft) {
     for (const id of selection) {
@@ -95,17 +99,36 @@ export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard,
             </g>
           )
         })}
-        {draft && draftA && (
-          <path
-            d={connectorPath(draftA.pt, draftA.side, draft.moving, null)}
-            fill="none"
-            style={{ stroke: STROKE_SEL }}
-            strokeWidth={2}
-            strokeDasharray="6 4"
-            markerEnd="url(#pn-arrow)"
-          />
+        {draft && draftA && draftB && (
+          <>
+            <path
+              d={connectorPath(draftA.pt, draftA.side, draftB.pt, draftB.side)}
+              fill="none"
+              style={{ stroke: STROKE_SEL }}
+              strokeWidth={2}
+              strokeDasharray="6 4"
+              markerEnd="url(#pn-arrow)"
+            />
+            {/* landing spot: snapped anchor on a card, or a free point under the pointer */}
+            <circle cx={draftB.pt.x} cy={draftB.pt.y} r={targetCard ? 7 * inv : 5 * inv} fill={targetCard ? 'var(--board-line)' : 'var(--board-bg)'} style={{ stroke: STROKE_SEL }} strokeWidth={2 * inv} />
+          </>
         )}
       </svg>
+
+      {/* drop-target outline while dragging a connector */}
+      {targetCard && (
+        <div
+          className="pointer-events-none absolute rounded-xl"
+          style={{
+            left: targetCard.x - 4,
+            top: targetCard.y - 4,
+            width: targetCard.w + 8,
+            height: targetCard.h + 8,
+            zIndex: 99999,
+            boxShadow: `0 0 0 ${2 * inv}px var(--board-line-sel), 0 0 0 ${6 * inv}px color-mix(in srgb, var(--board-line) 35%, transparent)`,
+          }}
+        />
+      )}
 
       {/* anchor handles on selected / hovered cards */}
       {handleCards.map((c) =>
