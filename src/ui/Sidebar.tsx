@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Board } from '../model/types'
 import { selectBoards, useWorkspace } from '../store/workspace'
 import { Peepo } from './Peepo'
+import { BoardIconView } from './BoardIcon'
 import { contrast } from '../canvas/styles'
 import { ContextMenu, sep, type MenuItem } from './ContextMenu'
 
@@ -257,6 +258,7 @@ function BoardNode({
             className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-left"
           >
             {bg && !active && <span className="h-2 w-2 shrink-0 rounded-full ring-1 ring-black/20" style={{ background: bg }} />}
+            <BoardIconView icon={board.icon} size={16} className="shrink-0" />
             <span className="truncate">{board.name || 'Untitled'}</span>
           </button>
         )}

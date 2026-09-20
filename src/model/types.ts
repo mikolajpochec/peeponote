@@ -137,6 +137,8 @@ export interface Board {
   cards: Card[]
   connectors: Connector[]
   style?: BoardStyle
+  /** board card / sidebar icon: a peepo name ("peepo:peepoGlad"), any emoji, or "" for none. Default: peepo */
+  icon?: string
 }
 
 /** Shared, committed workspace settings (everyone who clones gets these) */

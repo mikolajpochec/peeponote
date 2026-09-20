@@ -76,6 +76,7 @@ interface WorkspaceState {
   insert: (boardId: string, cards: Card[], connectors: Connector[]) => void
   createBoard: (parentId: string, name: string, at: { x: number; y: number }) => string
   renameBoard: (boardId: string, name: string) => void
+  setBoardIcon: (boardId: string, icon: string | undefined) => void
   /** shared workspace settings + name (committed) */
   updateMeta: (patch: { name?: string; settings?: Partial<WorkspaceSettings> }) => void
   styleCards: (boardId: string, ids: string[], patch: Partial<CardStyle>) => void
@@ -483,6 +484,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     },
 
     renameBoard: (boardId, name) => mutateBoard(boardId, (b) => ({ ...b, name })),
+    setBoardIcon: (boardId, icon) => mutateBoard(boardId, (b) => ({ ...b, icon })),
 
     updateMeta: (patch) => {
       const meta = get().meta

@@ -80,6 +80,7 @@ export const boardSchema = z.object({
   cards: z.array(cardSchema),
   connectors: z.array(connectorSchema).default([]),
   style: z.object({ bg: z.string().optional(), dots: z.boolean().optional() }).optional(),
+  icon: z.string().optional(),
 })
 
 export const workspaceSchema = z.object({

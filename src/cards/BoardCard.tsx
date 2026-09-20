@@ -1,17 +1,18 @@
 import type { BoardCard as BoardCardT } from '../model/types'
 import { selectBoards, useWorkspace } from '../store/workspace'
-import { Peepo } from '../ui/Peepo'
+import { BoardIconPicker } from '../ui/BoardIcon'
 import type { CardProps } from './CardView'
 
 export function BoardCard({ card, readOnly }: CardProps<BoardCardT>) {
   const board = useWorkspace((s) => selectBoards(s)[card.boardId])
   const renameBoard = useWorkspace((s) => s.renameBoard)
   const navigate = useWorkspace((s) => s.navigate)
+  const setBoardIcon = useWorkspace((s) => s.setBoardIcon)
   const count = board?.cards.length ?? 0
   return (
     <div className="flex h-full w-full flex-col p-3">
       <div className="flex items-center gap-2">
-        <Peepo name="peepoGlad" size={26} />
+        <BoardIconPicker icon={board?.icon} size={26} disabled={readOnly || !board} onChange={(icon) => setBoardIcon(card.boardId, icon)} />
         <input
           data-nodrag
           readOnly={readOnly || !board}
