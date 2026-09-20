@@ -84,7 +84,7 @@ export function ImageAssetCard({ card: stored, boardId, readOnly }: CardProps<As
         </div>
         {!readOnly && (
           <button
-            title={pixel ? 'Show as picture' : 'Pixel view: checkerboard, crisp pixels, spritesheet frames'}
+            title={pixel ? 'Show as picture' : 'Pixel view: crisp pixels, spritesheet frames'}
             onClick={() => updateCard(boardId, card.id, { kind: pixel ? 'image' : 'texture' })}
             className={`shrink-0 rounded-md px-1.5 py-0.5 text-[12px] hover:bg-(--hover-strong) ${pixel ? 'bg-frog-600 text-white' : ''}`}
           >

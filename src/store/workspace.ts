@@ -351,6 +351,14 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
   /** re-read boards from the working tree (after pull / merge / restore); highlights what changed */
   async function reloadBoards(fs: PeepoFS) {
     const prev = get().boards
+    // the workspace folder may have moved in the commits we just pulled (e.g. repo turned into a monorepo)
+    if (!(await exists(fs, abs(fs, wp(WORKSPACE_FILE))))) {
+      const found = await findWorkspaces(fs)
+      if (found.length) {
+        setWsPrefix(found[0])
+        set({ wsRoot: found[0], wsCandidates: found })
+      }
+    }
     const { meta, boards } = await loadBoards(fs)
     const arrived = diffWorkspaces(prev, boards)
     useArrivals.getState().mark(arrived.cards, arrived.boards)

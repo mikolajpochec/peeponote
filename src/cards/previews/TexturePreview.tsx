@@ -4,7 +4,7 @@ import { useWorkspace } from '../../store/workspace'
 import { useAssetUrl } from '../useAssetUrl'
 import { Loading } from './Loading'
 
-/** Pixel-perfect preview on a checkerboard, with optional spritesheet frame stepping. */
+/** Pixel-perfect preview (transparency shows the board), with optional spritesheet frame stepping. */
 export function TexturePreview({ card, boardId, readOnly }: { card: AssetCard; boardId: string; readOnly: boolean }) {
   const { url, error } = useAssetUrl(card.path, card.mime)
   const updateCard = useWorkspace((s) => s.updateCard)
@@ -29,7 +29,7 @@ export function TexturePreview({ card, boardId, readOnly }: { card: AssetCard; b
 
   return (
     <div className="flex h-full w-full flex-col">
-      <div className="checker relative min-h-0 flex-1 overflow-hidden">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
         {sheet ? (
           <div className="flex h-full w-full items-center justify-center">
             <div
