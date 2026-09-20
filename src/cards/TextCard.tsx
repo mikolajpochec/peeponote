@@ -5,6 +5,8 @@ import type { CardProps } from './CardView'
 import { autoEdit } from './autoEdit'
 import { useEditRequest } from '../canvas/editRequest'
 import { useViewport } from '../canvas/viewport'
+import { InlineMd } from './Inline'
+import { useEditing } from '../store/editing'
 
 /** Free-floating text on the board: a big title or a plain paragraph, no card background. */
 export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
@@ -29,6 +31,8 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
 
   useEffect(() => {
     if (editing) {
+      // register before focusing: a background window doesn't fire focus events, the bar must still appear
+      if (ta.current) useEditing.getState().begin(boardId, card.id, ta.current, 'inline')
       ta.current?.focus()
       ta.current?.select()
     }
@@ -72,7 +76,7 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
       className={`pointer-events-none invisible absolute left-0 top-0 whitespace-pre-wrap break-words p-2 ${cls}`}
       style={{ width: 'max-content', maxWidth: maxW }}
     >
-      {shown || placeholder}
+      {editing ? shown || placeholder : shown ? <InlineMd text={shown} /> : placeholder}
     </div>
   )
 
@@ -96,7 +100,12 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
         data-nodrag
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
+        onFocus={(e) => useEditing.getState().begin(boardId, card.id, e.currentTarget, 'inline')}
+        onBlur={(e) => {
+          if (useEditing.getState().hold) return // the link picker took focus; we're still editing
+          useEditing.getState().end(e.currentTarget)
+          commit()
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Escape' || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) commit()
           e.stopPropagation()
@@ -113,7 +122,7 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
     <>
       {measurer}
       <div ref={view} className={`h-full w-full overflow-hidden whitespace-pre-wrap break-words p-2 ${cls}`}>
-        {card.text || <span className="text-frog-200/30">{placeholder}</span>}
+        {card.text ? <InlineMd text={card.text} /> : <span className="text-frog-200/30">{placeholder}</span>}
       </div>
     </>
   )

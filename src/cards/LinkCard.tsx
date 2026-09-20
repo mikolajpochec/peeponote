@@ -15,8 +15,7 @@ function hostOf(url: string) {
 
 export function LinkCard({ card, boardId, readOnly, selected }: CardProps<LinkCardT>) {
   const updateCard = useWorkspace((s) => s.updateCard)
-  const target = isInternalLink(card.url) ? parseLink(card.url) : null
-  if (target) return <InternalLink card={card} boardId={boardId} readOnly={readOnly} selected={selected} target={target} />
+  if (isInternalLink(card.url)) return <InternalLink card={card} boardId={boardId} readOnly={readOnly} selected={selected} target={parseLink(card.url)} />
 
   const host = hostOf(card.url)
   return (
@@ -55,16 +54,16 @@ export function LinkCard({ card, boardId, readOnly, selected }: CardProps<LinkCa
 }
 
 /** A link into this workspace: shows what it points at and jumps there on click. */
-function InternalLink({ card, boardId, readOnly, target }: CardProps<LinkCardT> & { target: NonNullable<ReturnType<typeof parseLink>> }) {
+function InternalLink({ card, boardId, readOnly, target }: CardProps<LinkCardT> & { target: ReturnType<typeof parseLink> }) {
   const updateCard = useWorkspace((s) => s.updateCard)
   // subscribe to boards so the label follows renames / deletions
   useWorkspace(selectBoards)
-  const info = describeLink(target)
-  const kindLabel = target.kind === 'card' ? 'card' : target.kind === 'place' ? 'spot' : 'board'
+  const info = target ? describeLink(target) : { title: 'Broken link', sub: card.url, icon: undefined, missing: true }
+  const kindLabel = !target ? 'peepo://' : target.kind === 'card' ? 'card' : target.kind === 'place' ? 'spot' : 'board'
   return (
     <div className="flex h-full w-full items-stretch gap-3 p-3">
       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${info.missing ? 'bg-red-200 text-red-800' : 'bg-frog-100'}`}>
-        {info.missing ? '⚠' : target.kind === 'board' ? <BoardIconView icon={info.icon} size={26} /> : target.kind === 'card' ? '🎯' : '📍'}
+        {info.missing || !target ? '⚠' : target.kind === 'board' ? <BoardIconView icon={info.icon} size={26} /> : target.kind === 'card' ? '🎯' : '📍'}
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <input
@@ -82,8 +81,8 @@ function InternalLink({ card, boardId, readOnly, target }: CardProps<LinkCardT> 
         <div className="mt-auto flex items-center gap-2">
           <button
             data-nodrag
-            disabled={info.missing}
-            onClick={() => openLink(target)}
+            disabled={info.missing || !target}
+            onClick={() => target && openLink(target)}
             className="self-start rounded-md bg-black/15 px-2 py-0.5 text-[0.86em] font-semibold hover:bg-black/25 disabled:opacity-40"
           >
             Go →

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useItemRects } from '../canvas/itemRects'
 import { useViewport } from '../canvas/viewport'
+import { InlineMd } from './Inline'
+import { useEditing } from '../store/editing'
 import type { TodoCard as TodoCardT } from '../model/types'
 import { newId } from '../model/types'
 import { useWorkspace } from '../store/workspace'
@@ -9,6 +11,7 @@ import type { CardProps } from './CardView'
 export function TodoCard({ card, boardId, readOnly }: CardProps<TodoCardT>) {
   const updateCard = useWorkspace((s) => s.updateCard)
   const [newText, setNewText] = useState('')
+  const [editingItem, setEditingItem] = useState<string | null>(null)
   const done = card.items.filter((i) => i.done).length
 
   const setItems = (items: TodoCardT['items']) => updateCard(boardId, card.id, { items })
@@ -66,13 +69,34 @@ export function TodoCard({ card, boardId, readOnly }: CardProps<TodoCardT>) {
               onChange={(e) => setItems(card.items.map((x) => (x.id === it.id ? { ...x, done: e.target.checked } : x)))}
               className="todo-check mt-[0.15em]"
             />
-            <input
-              data-nodrag
-              readOnly={readOnly}
-              value={it.text}
-              onChange={(e) => setItems(card.items.map((x) => (x.id === it.id ? { ...x, text: e.target.value } : x)))}
-              className={`min-w-0 flex-1 bg-transparent outline-none ${it.done ? 'line-through opacity-50' : ''}`}
-            />
+            {editingItem === it.id && !readOnly ? (
+              <input
+                data-nodrag
+                autoFocus
+                value={it.text}
+                onChange={(e) => setItems(card.items.map((x) => (x.id === it.id ? { ...x, text: e.target.value } : x)))}
+                onFocus={(e) => useEditing.getState().begin(boardId, card.id, e.currentTarget, 'inline')}
+                onBlur={(e) => {
+                  if (useEditing.getState().hold) return
+                  useEditing.getState().end(e.currentTarget)
+                  setEditingItem(null)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === 'Escape') (e.currentTarget as HTMLInputElement).blur()
+                  e.stopPropagation()
+                }}
+                className={`min-w-0 flex-1 bg-transparent outline-none ${it.done ? 'line-through opacity-50' : ''}`}
+              />
+            ) : (
+              // rendered (bold / links…); click to edit the raw text
+              <div
+                data-nodrag
+                onClick={() => !readOnly && setEditingItem(it.id)}
+                className={`min-w-0 flex-1 cursor-text whitespace-pre-wrap break-words ${it.done ? 'line-through opacity-50' : ''} ${it.text ? '' : 'opacity-40'}`}
+              >
+                {it.text ? <InlineMd text={it.text} /> : 'item'}
+              </div>
+            )}
             {!readOnly && (
               <button
                 data-nodrag

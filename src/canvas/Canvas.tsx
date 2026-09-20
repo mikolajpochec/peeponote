@@ -11,6 +11,8 @@ import { autoEdit } from '../cards/autoEdit'
 import { setGlobalCursor } from './cursor'
 import { Palette, TOOL_MIME, placeTool, toolById } from '../ui/Palette'
 import { StyleBar } from '../ui/StyleBar'
+import { FormatBar } from '../ui/FormatBar'
+import { useEditing } from '../store/editing'
 import { ContextMenu, sep, type MenuItem } from '../ui/ContextMenu'
 import { TOOLS } from '../ui/Palette'
 import { copySelection, duplicateSelection, hasClipboard, pastePayload, readPayload } from './clipboard'
@@ -216,7 +218,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         e.preventDefault()
         const z = (useWorkspace.getState().boards[board.id]?.cards ?? []).reduce((m, k) => Math.max(m, k.z), 0) + 1
         const id = newId()
-        if (/^https?:\/\/\S+$/.test(text)) addCard(board.id, { id, type: 'link', x: c.x - 130, y: c.y - 45, w: 260, h: 90, z, url: text, title: '' })
+        if (/^(https?:\/\/|peepo:\/\/)\S+$/i.test(text)) addCard(board.id, { id, type: 'link', x: c.x - 130, y: c.y - 45, w: 260, h: 90, z, url: text, title: '' })
         else addCard(board.id, { id, type: 'note', x: c.x - 110, y: c.y - 60, w: 220, h: 120, z, md: text })
         select([id])
       }
@@ -583,7 +585,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       return
     }
     const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain')
-    if (url && /^https?:\/\//.test(url)) {
+    if (url && /^(https?:\/\/|peepo:\/\/)/i.test(url)) {
       const z = board.cards.reduce((m, c) => Math.max(m, c.z), 0) + 1
       addCard(board.id, { id: newId(), type: 'link', x: p.x, y: p.y, w: 260, h: 90, z, url, title: '' })
     }
@@ -600,14 +602,17 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     return b ? [{ id, ...b }] : []
   })
 
-  // style bar floats (unscaled) above the selected cards
+  // style bar floats (unscaled) above the selected cards; while a card's text is being edited the
+  // format bar (bold / italic / link…) takes that spot instead
+  const editingCardId = useEditing((s) => (s.boardId === board.id ? s.cardId : null))
   const selectedCards = board.cards.filter((c) => selection.has(c.id))
+  const barCards = editingCardId ? board.cards.filter((c) => c.id === editingCardId) : selectedCards
   let styleBarPos: { x: number; y: number; below: boolean } | null = null
-  if (!readOnly && !draft && !marquee && selectedCards.length) {
-    const minX = Math.min(...selectedCards.map((c) => c.x))
-    const maxX = Math.max(...selectedCards.map((c) => c.x + c.w))
-    const minY = Math.min(...selectedCards.map((c) => c.y))
-    const maxY = Math.max(...selectedCards.map((c) => c.y + c.h))
+  if (!readOnly && !draft && !marquee && barCards.length) {
+    const minX = Math.min(...barCards.map((c) => c.x))
+    const maxX = Math.max(...barCards.map((c) => c.x + c.w))
+    const minY = Math.min(...barCards.map((c) => c.y))
+    const maxY = Math.max(...barCards.map((c) => c.y + c.h))
     const sx = vp.x + ((minX + maxX) / 2) * vp.scale
     const top = vp.y + minY * vp.scale - 12
     const below = top < 56
@@ -727,7 +732,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
             transform: styleBarPos.below ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
           }}
         >
-          <StyleBar boardId={board.id} cards={selectedCards} />
+          {editingCardId ? <FormatBar /> : <StyleBar boardId={board.id} cards={selectedCards} />}
         </div>
       )}
       <div

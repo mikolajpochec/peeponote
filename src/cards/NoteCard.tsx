@@ -5,6 +5,8 @@ import { useWorkspace } from '../store/workspace'
 import type { CardProps } from './CardView'
 import { autoEdit } from './autoEdit'
 import { useEditRequest } from '../canvas/editRequest'
+import { mdLink } from './Inline'
+import { useEditing } from '../store/editing'
 
 export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
   const updateCard = useWorkspace((s) => s.updateCard)
@@ -20,6 +22,8 @@ export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
 
   useEffect(() => {
     if (editing) {
+      // register before focusing: a background window doesn't fire focus events, the bar must still appear
+      if (ta.current) useEditing.getState().begin(boardId, card.id, ta.current, 'block')
       ta.current?.focus()
       ta.current?.setSelectionRange(ta.current.value.length, ta.current.value.length)
     }
@@ -43,7 +47,12 @@ export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
         data-nodrag
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
+        onFocus={(e) => useEditing.getState().begin(boardId, card.id, e.currentTarget, 'block')}
+        onBlur={(e) => {
+          if (useEditing.getState().hold) return // the link picker took focus; we're still editing
+          useEditing.getState().end(e.currentTarget)
+          commit()
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Escape') commit()
           if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') commit()
@@ -62,7 +71,7 @@ export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
       style={{ background: card.color }}
     >
       {card.md.trim() ? (
-        <Markdown>{card.md}</Markdown>
+        <Markdown components={{ a: mdLink }}>{card.md}</Markdown>
       ) : (
         <span className="opacity-40">{readOnly ? 'Empty note' : 'Double-click to write…'}</span>
       )}

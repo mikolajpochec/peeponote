@@ -11,6 +11,7 @@ import { useWorkspace } from '../store/workspace'
 import { useViewport } from '../canvas/viewport'
 import { useArrivals } from '../canvas/arrivals'
 import type { Board, Card } from '../model/types'
+import { PEEPO_SCHEME, peepoUrlFor, resolvePeepoUrl } from './peepoUrl'
 
 export type LinkTarget =
   | { kind: 'board'; boardId: string }
@@ -19,7 +20,14 @@ export type LinkTarget =
 
 const appBase = () => `${location.origin}${location.pathname}`
 
+/** Preferred form: readable peepo://… when the target exists; hash URL otherwise. */
 export function linkTo(t: LinkTarget): string {
+  const ws = useWorkspace.getState()
+  return peepoUrlFor(t, ws.boards) ?? hashLinkTo(t)
+}
+
+/** The shareable https://…/#/b/… form (opens the app from anywhere). */
+export function hashLinkTo(t: LinkTarget): string {
   const base = `${appBase()}#/b/${t.boardId}`
   if (t.kind === 'card') return `${base}/c/${t.cardId}`
   if (t.kind === 'place') return `${base}/@${Math.round(t.x)},${Math.round(t.y)},${t.scale.toFixed(2)}`
@@ -28,6 +36,10 @@ export function linkTo(t: LinkTarget): string {
 
 /** Parse a hash (with or without the URL in front). Null for anything that isn't an internal link. */
 export function parseLink(s: string): LinkTarget | null {
+  if (s.trim().toLowerCase().startsWith(PEEPO_SCHEME)) {
+    const ws = useWorkspace.getState()
+    return resolvePeepoUrl(s.trim(), ws.boards, ws.meta?.rootBoardId ?? null)
+  }
   const hash = s.includes('#') ? s.slice(s.indexOf('#')) : s.startsWith('/b/') ? `#${s}` : null
   if (!hash) return null
   // links from another deployment of the app still resolve — a board id is a board id
@@ -40,7 +52,7 @@ export function parseLink(s: string): LinkTarget | null {
 }
 
 /** True when the string is a link into this app (any origin — pasted from another host still works). */
-export const isInternalLink = (url: string) => parseLink(url) !== null && /(^#\/b\/|\/#\/b\/)/.test(url)
+export const isInternalLink = (url: string) => /^\s*peepo:\/\//i.test(url) || (/(^#\/b\/|\/#\/b\/)/.test(url) && parseLink(url) !== null)
 
 /** Human label for a target, from the live workspace. */
 export function describeLink(t: LinkTarget): { title: string; sub: string; icon?: string; missing: boolean } {

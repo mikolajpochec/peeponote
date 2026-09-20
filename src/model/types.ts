@@ -50,6 +50,8 @@ export interface CardBase {
   style?: CardStyle
   /** cards sharing a groupId select and move together */
   groupId?: string
+  /** stable, human-chosen id used in peepo:// links (Properties); the auto id is used when absent */
+  slug?: string
 }
 
 export interface NoteCard extends CardBase {
@@ -140,6 +142,8 @@ export interface Board {
   style?: BoardStyle
   /** board card / sidebar icon: a peepo name ("peepo:peepoGlad"), any emoji, or "" for none. Default: peepo */
   icon?: string
+  /** path segment in peepo:// links; slugified name when absent */
+  slug?: string
 }
 
 /** Shared, committed workspace settings (everyone who clones gets these) */

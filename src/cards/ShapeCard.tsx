@@ -4,6 +4,8 @@ import { useWorkspace } from '../store/workspace'
 import { useEditRequest } from '../canvas/editRequest'
 import { contrast } from '../canvas/styles'
 import type { CardProps } from './CardView'
+import { InlineMd } from './Inline'
+import { useEditing } from '../store/editing'
 
 export const SHAPES: { kind: ShapeKind; label: string; icon: string }[] = [
   { kind: 'rect', label: 'Rectangle', icon: '▭' },
@@ -92,6 +94,8 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
 
   useEffect(() => {
     if (editing) {
+      // register before focusing: a background window doesn't fire focus events, the bar must still appear
+      if (ta.current) useEditing.getState().begin(boardId, card.id, ta.current, 'inline')
       ta.current?.focus()
       ta.current?.select()
     }
@@ -128,7 +132,12 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
             data-nodrag
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
+            onFocus={(e) => useEditing.getState().begin(boardId, card.id, e.currentTarget, 'inline')}
+            onBlur={(e) => {
+              if (useEditing.getState().hold) return // the link picker took focus; we're still editing
+              useEditing.getState().end(e.currentTarget)
+              commit()
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Escape' || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) commit()
               e.stopPropagation()
@@ -138,7 +147,9 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
             style={{ fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', letterSpacing: 'inherit', color: 'inherit', textAlign: 'inherit' }}
           />
         ) : (
-          <div className="whitespace-pre-wrap break-words">{card.label}</div>
+          <div className="whitespace-pre-wrap break-words">
+            <InlineMd text={card.label} />
+          </div>
         )}
       </div>
     </div>

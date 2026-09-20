@@ -25,6 +25,7 @@ const base = {
   z: z.number().default(0),
   style: cardStyleSchema.optional(),
   groupId: z.string().optional(),
+  slug: z.string().optional(),
 }
 
 const cardSchema = z.discriminatedUnion('type', [
@@ -81,6 +82,7 @@ export const boardSchema = z.object({
   connectors: z.array(connectorSchema).default([]),
   style: z.object({ bg: z.string().optional(), dots: z.boolean().optional() }).optional(),
   icon: z.string().optional(),
+  slug: z.string().optional(),
 })
 
 export const workspaceSchema = z.object({
