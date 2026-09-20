@@ -18,7 +18,7 @@ import { downloadAsset } from '../cards/AssetCard'
 import { boardVars } from './styles'
 import { useSettings } from '../store/settings'
 import { resolveTheme } from '../theme/themes'
-import { LONG_PRESS_MS, LONG_PRESS_SLOP, isDuplicateDblClick, markLongPress, registerTap, shouldSwallowContextMenu, useIsMobile } from './touch'
+import { LONG_PRESS_MS, LONG_PRESS_SLOP, activeTouches, isDuplicateDblClick, markLongPress, registerTap, shouldSwallowContextMenu, useIsMobile } from './touch'
 
 interface Marquee {
   x0: number
@@ -247,7 +247,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
 
   // touch: long-press → context menu, double-tap → edit/open (runs in capture phase so it also sees captured card drags)
   const onPointerDownCapture = (e: React.PointerEvent) => {
-    if (e.pointerType !== 'touch') return
+    if (e.pointerType !== 'touch' || activeTouches() > 1) return
     const t = e.target as HTMLElement
     if (t.closest('input, textarea, button, a, select, [contenteditable="true"], [data-nodrag]')) return
     const el = ref.current!
@@ -273,6 +273,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       }
     }
     const timer = setTimeout(() => {
+      if (activeTouches() !== 1) return cancel() // a pinch, not a press
       fired = true
       cancel()
       markLongPress()
@@ -348,6 +349,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
   const onBackgroundPointerDown = (e: React.PointerEvent) => {
     if (e.button === 2) return // context menu
     if (e.target !== e.currentTarget && !(e.target as HTMLElement).dataset.layer) return
+    if (e.pointerType === 'touch' && activeTouches() > 1) return // second finger → pinch handler owns it
     const el = ref.current!
     const rect = el.getBoundingClientRect()
     // a finger on empty canvas pans; marquee stays a mouse/pen gesture
@@ -360,6 +362,11 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     if (!pan && !e.shiftKey) clearSelection()
 
     const move = (ev: PointerEvent) => {
+      if (ev.pointerType === 'touch' && activeTouches() > 1) {
+        lx = ev.clientX
+        ly = ev.clientY
+        return
+      }
       moved = true
       setGlobalCursor(pan ? 'grabbing' : 'crosshair')
       if (pan) {

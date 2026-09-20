@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { supportsFolderAccess } from '../fs'
 import { wipeBrowserFS } from '../fs/lightning'
 import { DEFAULT_CORS_PROXY } from '../git/repo'
-import { TokenHelp } from './TokenHelp'
+import { GitHubSignIn, TokenHelp } from './TokenHelp'
+import { githubAuthConfig, hasBuiltInGitHubAuth } from '../git/githubAuth'
 import { useSettings } from '../store/settings'
 import { useWorkspace } from '../store/workspace'
 import { toast } from '../store/toast'
@@ -159,25 +160,30 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               Save
             </button>
           </div>
-          <div className="grid grid-cols-[1fr_auto] gap-2">
-            <input
-              className={field}
-              type={showToken ? 'text' : 'password'}
-              placeholder="Personal access token (repo scope / contents: read+write)"
-              value={settings.token}
-              onChange={(e) => settings.set({ token: e.target.value })}
-            />
-            <button className={btn} onClick={() => setShowToken((v) => !v)}>
-              {showToken ? 'Hide' : 'Show'}
-            </button>
-          </div>
-          <TokenHelp remote={remote} />
-          <input
-            className={field}
-            placeholder="Username (leave empty for GitHub; use 'oauth2' for GitLab)"
-            value={settings.username}
-            onChange={(e) => settings.set({ username: e.target.value })}
-          />
+          <GitHubSignIn />
+          {settings.tokenSource !== 'github-signin' && (
+            <>
+              <div className="grid grid-cols-[1fr_auto] gap-2">
+                <input
+                  className={field}
+                  type={showToken ? 'text' : 'password'}
+                  placeholder="Personal access token (repo scope / contents: read+write)"
+                  value={settings.token}
+                  onChange={(e) => settings.set({ token: e.target.value, tokenSource: 'manual' })}
+                />
+                <button className={btn} onClick={() => setShowToken((v) => !v)}>
+                  {showToken ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <TokenHelp remote={remote} />
+              <input
+                className={field}
+                placeholder="Username (leave empty for GitHub; use 'oauth2' for GitLab)"
+                value={settings.username}
+                onChange={(e) => settings.set({ username: e.target.value })}
+              />
+            </>
+          )}
           <div className="rounded-lg bg-swamp-700/60 p-2">
             <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-frog-200/60">Transport</div>
             <div className="flex flex-wrap gap-1.5">
@@ -207,6 +213,17 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               <input className={`${field} mt-2`} placeholder={DEFAULT_CORS_PROXY} value={settings.corsProxy} onChange={(e) => settings.set({ corsProxy: e.target.value })} />
             )}
           </div>
+          <details className="rounded-lg bg-swamp-700/60 p-2 text-[12px]">
+            <summary className="cursor-pointer select-none text-[11px] font-bold uppercase tracking-wider text-frog-200/60">
+              Sign in with GitHub — setup {githubAuthConfig() ? '(configured)' : '(not configured)'}
+            </summary>
+            <p className="mt-1.5 text-[11px] text-frog-200/50">
+              The one-click sign-in needs an OAuth App client id and a relay URL (github.com has no CORS for the login endpoints). Whoever hosts peeponote sets them once; see the README.
+              {hasBuiltInGitHubAuth() ? ' This build has them baked in — the fields below override.' : ' This build has none — fill them in here, or paste a token above.'}
+            </p>
+            <input className={`${field} mt-2`} placeholder="OAuth App client id (Iv1… / Ov23…)" value={settings.ghClientId} onChange={(e) => settings.set({ ghClientId: e.target.value })} />
+            <input className={`${field} mt-2`} placeholder="Relay URL, e.g. https://peeponote-relay.you.workers.dev" value={settings.ghAuthRelay} onChange={(e) => settings.set({ ghAuthRelay: e.target.value })} />
+          </details>
           <label className="flex items-center gap-2 text-[13px]">
             <input type="checkbox" checked={settings.separatePush} onChange={(e) => settings.set({ separatePush: e.target.checked })} className="accent-frog-500" />
             Separate commit and push (adds a Push button; Save only commits)
