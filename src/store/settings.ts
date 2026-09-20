@@ -18,12 +18,6 @@ export interface Settings {
   /** first-run wizard finished (or skipped) */
   onboarded: boolean
   theme: ThemeName
-  /** "Sign in with GitHub": OAuth App client id + relay URL; override the build-time defaults */
-  ghClientId: string
-  ghAuthRelay: string
-  /** how the token was obtained — a signed-in token shows a "Sign out" instead of the field */
-  tokenSource: 'manual' | 'github-signin'
-  ghLogin: string
   set: (patch: Partial<Omit<Settings, 'set'>>) => void
 }
 
@@ -39,10 +33,6 @@ export const useSettings = create<Settings>()(
       separatePush: false,
       onboarded: false,
       theme: 'dark',
-      ghClientId: '',
-      ghAuthRelay: '',
-      tokenSource: 'manual',
-      ghLogin: '',
       set: (patch) => set(patch),
     }),
     { name: 'peeponote-settings' },

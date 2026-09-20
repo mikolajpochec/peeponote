@@ -22,10 +22,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: bun run build
-        env:
-          # optional "Sign in with GitHub": repository variables, see README → GitHub sign-in
-          VITE_GITHUB_CLIENT_ID: ${{ vars.PEEPONOTE_GH_CLIENT_ID }}
-          VITE_GITHUB_AUTH_RELAY: ${{ vars.PEEPONOTE_AUTH_RELAY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
