@@ -56,6 +56,9 @@ export default function App() {
   const reviewOn = useReview((s) => s.mode.on)
   const notifOpen = useReview((s) => s.panelOpen)
   const setNotifOpen = useReview((s) => s.setPanelOpen)
+  useEffect(() => {
+    if (notifOpen) setShowHistory(false)
+  }, [notifOpen])
   const identityKind = useReview((s) => s.identity.kind)
   useEffect(() => {
     const open = () => setIdentity({ intro: false })
@@ -164,7 +167,11 @@ export default function App() {
       )}
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar
-          onToggleHistory={() => setShowHistory((v) => !v)}
+          onToggleHistory={() => {
+            // one right-hand panel at a time
+            setNotifOpen(false)
+            setShowHistory((v) => !v)
+          }}
           historyOpen={showHistory}
           onOpenSettings={() => setShowSettings(true)}
           onToggleSidebar={mobile ? () => setShowSidebar((v) => !v) : undefined}
@@ -186,7 +193,7 @@ export default function App() {
               </div>
             )}
           </div>
-          {showHistory && !notifOpen && <HistoryPanel onClose={() => setShowHistory(false)} mobile={mobile} />}
+          {showHistory && <HistoryPanel onClose={() => setShowHistory(false)} mobile={mobile} />}
           {notifOpen && <NotificationsPanel onClose={() => setNotifOpen(false)} mobile={mobile} />}
         </div>
       </div>
