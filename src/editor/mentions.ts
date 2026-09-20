@@ -23,7 +23,7 @@ function mentionSource(ctx: CompletionContext): CompletionResult | null {
       apply: `${mentionToken(p)} `,
       type: 'variable',
     })),
-    validFor: /^@[\p{L}\p{N}_ ]*$/u,
+    // no `validFor`: every keystroke re-runs the fuzzy search (with it, CodeMirror would keep the first list unfiltered)
   }
 }
 
