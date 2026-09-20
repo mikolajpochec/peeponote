@@ -17,6 +17,7 @@ import { copySelection, duplicateSelection, hasClipboard, pastePayload, readPayl
 import { downloadAsset } from '../cards/AssetCard'
 import { boardVars } from './styles'
 import { bbox } from './arrange'
+import { useLastStyle } from '../store/lastStyle'
 import { useSettings } from '../store/settings'
 import { resolveTheme } from '../theme/themes'
 import { LONG_PRESS_MS, LONG_PRESS_SLOP, activeTouches, isDuplicateDblClick, markLongPress, registerTap, shouldSwallowContextMenu, useIsMobile } from './touch'
@@ -412,6 +413,14 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
           const x0 = Math.min(m.x0, m.x1), x1 = Math.max(m.x0, m.x1)
           const y0 = Math.min(m.y0, m.y1), y1 = Math.max(m.y0, m.y1)
           const hit = board.cards.filter((c) => c.x < x1 && c.x + c.w > x0 && c.y < y1 && c.y + c.h > y0).map((c) => c.id)
+          // connectors count when both ends are inside the marquee
+          const cmap = new Map(board.cards.map((c) => [c.id, c]))
+          const inside = (p: { x: number; y: number }) => p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1
+          for (const k of board.connectors) {
+            const a = anchorPoint(k.from, cmap)
+            const b = anchorPoint(k.to, cmap)
+            if (a && b && inside(a.pt) && inside(b.pt)) hit.push(k.id)
+          }
           select(hit, ev.shiftKey)
         }
         return null
@@ -471,7 +480,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         select([editing.id])
       } else {
         const id = newId()
-        addConnector(board.id, { id, from: fixed, to: dropped, arrows: 'end' })
+        addConnector(board.id, { id, from: fixed, to: dropped, arrows: useLastStyle.getState().arrows })
         select([id])
       }
     }

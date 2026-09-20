@@ -9,7 +9,7 @@ import { chooseTransport, compare, fetchRemote, mergeRemote, pushRemote, resetTo
 import { ghClone, parseGitHubUrl } from '../git/githubApi'
 import {
   ASSETS_DIR, BOARDS_DIR, WORKSPACE_FILE, boardPath, newId,
-  type Board, type BoardStyle, type Card, type CardStyle, type Connector, type ConnectorStyle, type WorkspaceMeta, type WorkspaceSettings,
+  type Board, type BoardStyle, type Card, type CardStyle, type Connector, type ConnectorStyle, type ShapeKind, type WorkspaceMeta, type WorkspaceSettings,
 } from '../model/types'
 import { parseBoard, parseWorkspace } from '../model/schema'
 import { detectKind } from '../model/assetKind'
@@ -17,6 +17,7 @@ import { tutorialBoards } from '../model/tutorial'
 import { useSettings } from './settings'
 import { toast } from './toast'
 import { diffWorkspaces, formatAuthors, useArrivals } from '../canvas/arrivals'
+import { rememberedStyle, styleKeyOf, useLastStyle } from './lastStyle'
 
 export type Busy = 'saving' | 'pushing' | 'pulling' | 'syncing' | 'cloning' | 'loading' | null
 export type Resolution = 'merge-ours' | 'merge-theirs' | 'force-push' | 'take-theirs'
@@ -214,6 +215,12 @@ async function pictureSize(file: File): Promise<{ w: number; h: number } | null>
 }
 
 let lastNotifiedRemote: string | null = null
+
+function withRemembered(card: Card): Card {
+  if (card.style) return card
+  const style = rememberedStyle(styleKeyOf(card))
+  return style ? ({ ...card, style } as Card) : card
+}
 
 // where you were, per workspace — survives a refresh
 const navKey = (rootId: string) => `peeponote-nav:${rootId}`
@@ -465,13 +472,16 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     },
     clearSelection: () => set({ selection: new Set() }),
 
-    addCard: (boardId, card) => mutateBoard(boardId, (b) => ({ ...b, cards: [...b.cards, card] })),
+    // new cards start with the style you last gave a card of that kind
+    addCard: (boardId, card) => mutateBoard(boardId, (b) => ({ ...b, cards: [...b.cards, withRemembered(card)] })),
 
-    updateCard: (boardId, cardId, patch) =>
+    updateCard: (boardId, cardId, patch) => {
+      if ('shape' in patch && patch.shape) useLastStyle.getState().rememberShape(patch.shape as ShapeKind)
       mutateBoard(boardId, (b) => ({
         ...b,
         cards: b.cards.map((c) => (c.id === cardId ? ({ ...c, ...patch } as Card) : c)),
-      })),
+      }))
+    },
 
     moveCards: (boardId, deltas) =>
       mutateBoard(boardId, (b) => ({
@@ -549,7 +559,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       scheduleFlush()
       mutateBoard(parentId, (b) => ({
         ...b,
-        cards: [...b.cards, { id: newId(), type: 'board', boardId: id, x: at.x, y: at.y, w: 200, h: 96, z }],
+        cards: [...b.cards, withRemembered({ id: newId(), type: 'board', boardId: id, x: at.x, y: at.y, w: 200, h: 96, z })],
       }))
       return id
     },
@@ -565,21 +575,32 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       scheduleFlush()
     },
 
-    styleCards: (boardId, ids, patch) =>
+    styleCards: (boardId, ids, patch) => {
+      const keys = new Set((get().boards[boardId]?.cards ?? []).filter((c) => ids.includes(c.id)).map(styleKeyOf))
+      for (const k of keys) useLastStyle.getState().rememberCard(k, patch)
       mutateBoard(boardId, (b) => ({
         ...b,
         cards: b.cards.map((c) => (ids.includes(c.id) ? ({ ...c, style: mergeStyle(c.style, patch) } as Card) : c)),
-      })),
-    styleConnectors: (boardId, ids, patch) =>
+      }))
+    },
+    styleConnectors: (boardId, ids, patch) => {
+      useLastStyle.getState().rememberConnector(patch)
       mutateBoard(boardId, (b) => ({
         ...b,
         connectors: b.connectors.map((k) => (ids.includes(k.id) ? { ...k, style: mergeStyle(k.style, patch) } : k)),
-      })),
+      }))
+    },
     setBoardStyle: (boardId, patch) => mutateBoard(boardId, (b) => ({ ...b, style: mergeStyle(b.style, patch) })),
 
-    addConnector: (boardId, c) => mutateBoard(boardId, (b) => ({ ...b, connectors: [...b.connectors, c] })),
-    updateConnector: (boardId, id, patch) =>
-      mutateBoard(boardId, (b) => ({ ...b, connectors: b.connectors.map((k) => (k.id === id ? { ...k, ...patch } : k)) })),
+    addConnector: (boardId, c) => {
+      const last = useLastStyle.getState()
+      const style = c.style ?? (Object.keys(last.connector).length ? { ...last.connector } : undefined)
+      mutateBoard(boardId, (b) => ({ ...b, connectors: [...b.connectors, { ...c, style }] }))
+    },
+    updateConnector: (boardId, id, patch) => {
+      if (patch.arrows) useLastStyle.getState().rememberArrows(patch.arrows)
+      mutateBoard(boardId, (b) => ({ ...b, connectors: b.connectors.map((k) => (k.id === id ? { ...k, ...patch } : k)) }))
+    },
     removeConnectors: (boardId, ids) => {
       mutateBoard(boardId, (b) => ({ ...b, connectors: b.connectors.filter((k) => !ids.includes(k.id)) }))
       set({ selection: new Set() })

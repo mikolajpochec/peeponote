@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import type { Board, Card } from '../model/types'
 import { newId } from '../model/types'
 import { useWorkspace } from '../store/workspace'
+import { useLastStyle } from '../store/lastStyle'
 import { useViewport } from '../canvas/viewport'
 import { autoEdit } from '../cards/autoEdit'
 
@@ -27,7 +28,7 @@ export const TOOLS: Tool[] = [
   { id: 'note', label: 'Note', icon: '📝', hint: 'Markdown note card', w: 220, h: 120, autoEdit: true, make: (b) => ({ ...b, type: 'note', md: '' }) },
   { id: 'todo', label: 'To-do', icon: '☑', hint: 'Checklist', w: 240, h: 200, make: (b) => ({ ...b, type: 'todo', title: '', items: [] }) },
   { id: 'link', label: 'Link', icon: '🔗', hint: 'Bookmark a URL', w: 260, h: 90, make: (b) => ({ ...b, type: 'link', url: '', title: '' }) },
-  { id: 'shape', label: 'Shape', icon: '◇', hint: 'Outline shape: rectangle, ellipse, diamond, arrow… (switch shape / add fill in the style bar)', w: 160, h: 110, make: (b) => ({ ...b, type: 'shape', shape: 'rect', label: '' }) },
+  { id: 'shape', label: 'Shape', icon: '◇', hint: 'Outline shape: rectangle, ellipse, diamond, arrow… (switch shape / add fill in the style bar)', w: 160, h: 110, make: (b) => ({ ...b, type: 'shape', shape: useLastStyle.getState().shape, label: '' }) },
   { id: 'board', label: 'Board', icon: '🐸', hint: 'Nested board', w: 200, h: 96 },
   { id: 'file', label: 'File', icon: '📎', hint: 'Upload image / audio / 3D / anything', w: 280, h: 280 },
 ]

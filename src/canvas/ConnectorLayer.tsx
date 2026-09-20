@@ -46,6 +46,7 @@ export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard,
     })
     .filter(Boolean) as { k: Connector; a: { pt: Pt; side: Side | null }; b: { pt: Pt; side: Side | null } }[]
 
+  const selectedConnectors = resolved.filter(({ k }) => selection.has(k.id))
   const draftA = draft ? anchorPoint(draft.fixed, cards, rects) : null
   const draftB = draft ? anchorPoint(draft.target, cards, rects) : null
   const targetCard = draft && 'cardId' in draft.target ? cards.get(draft.target.cardId) : undefined
@@ -192,12 +193,17 @@ export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard,
           ),
         )}
 
-      {/* selected connectors: endpoints + mini toolbar */}
+      {/* selected connectors: endpoints on each, one toolbar for all of them */}
+      {!readOnly && selectedConnectors.length > 0 && (
+        <ConnectorToolbar
+          boardId={board.id}
+          connectors={selectedConnectors.map((r) => r.k)}
+          at={selectedConnectors.length === 1 ? bezierMid(selectedConnectors[0].a.pt, selectedConnectors[0].a.side, selectedConnectors[0].b.pt, selectedConnectors[0].b.side) : centroid(selectedConnectors)}
+          inv={inv}
+        />
+      )}
       {!readOnly &&
-        resolved
-          .filter(({ k }) => selection.has(k.id))
-          .map(({ k, a, b }) => {
-            const mid = bezierMid(a.pt, a.side, b.pt, b.side)
+        selectedConnectors.map(({ k, a, b }) => {
             return (
               <div key={`sel-${k.id}`}>
                 {(['from', 'to'] as const).map((end) => {
@@ -213,7 +219,6 @@ export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard,
                     />
                   )
                 })}
-                <ConnectorToolbar boardId={board.id} connector={k} at={mid} inv={inv} />
               </div>
             )
           })}
@@ -221,10 +226,23 @@ export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard,
   )
 }
 
-function ConnectorToolbar({ boardId, connector, at, inv }: { boardId: string; connector: Connector; at: Pt; inv: number }) {
+function centroid(rs: { a: { pt: Pt }; b: { pt: Pt } }[]): Pt {
+  let x = 0
+  let y = 0
+  for (const r of rs) {
+    x += (r.a.pt.x + r.b.pt.x) / 2
+    y += (r.a.pt.y + r.b.pt.y) / 2
+  }
+  return { x: x / rs.length, y: y / rs.length }
+}
+
+/** Styles every selected connector at once; shows the first one's values. */
+function ConnectorToolbar({ boardId, connectors, at, inv }: { boardId: string; connectors: Connector[]; at: Pt; inv: number }) {
   const updateConnector = useWorkspace((s) => s.updateConnector)
   const removeConnectors = useWorkspace((s) => s.removeConnectors)
   const styleConnectors = useWorkspace((s) => s.styleConnectors)
+  const connector = connectors[0]
+  const ids = connectors.map((k) => k.id)
   const st = connector.style ?? {}
   const width = st.width ?? 2
   const opts: { v: ArrowStyle; label: string; title: string }[] = [
@@ -244,30 +262,31 @@ function ConnectorToolbar({ boardId, connector, at, inv }: { boardId: string; co
         <button
           key={o.v}
           title={o.title}
-          onClick={() => updateConnector(boardId, connector.id, { arrows: o.v })}
-          className={`h-6 w-6 rounded text-[13px] font-bold ${connector.arrows === o.v ? 'bg-frog-600 text-white' : 'text-frog-100 hover:bg-(--hover-strong)'}`}
+          onClick={() => ids.forEach((id) => updateConnector(boardId, id, { arrows: o.v }))}
+          className={`h-6 w-6 rounded text-[13px] font-bold ${connectors.every((k) => k.arrows === o.v) ? 'bg-frog-600 text-white' : 'text-frog-100 hover:bg-(--hover-strong)'}`}
         >
           {o.label}
         </button>
       ))}
       <span className="mx-0.5 h-4 w-px bg-(--hover-strong)" />
-      <ColorPicker title="Line color" value={st.color} fallback="#8ac47e" onChange={(color) => styleConnectors(boardId, [connector.id], { color })} />
+      {connectors.length > 1 && <span className="px-1 text-[11px] text-frog-200/60">{connectors.length}×</span>}
+      <ColorPicker title="Line color" value={st.color} fallback="#8ac47e" onChange={(color) => styleConnectors(boardId, ids, { color })} />
       <button
         title={`Line width: ${width}`}
-        onClick={() => styleConnectors(boardId, [connector.id], { width: width >= 6 ? undefined : width + 1 })}
+        onClick={() => styleConnectors(boardId, ids, { width: width >= 6 ? undefined : width + 1 })}
         className="flex h-6 w-6 items-center justify-center rounded text-frog-100 hover:bg-(--hover-strong)"
       >
         <span className="block w-3.5 rounded-full bg-current" style={{ height: Math.min(6, width) }} />
       </button>
       <button
         title="Dashed"
-        onClick={() => styleConnectors(boardId, [connector.id], { dashed: st.dashed ? undefined : true })}
+        onClick={() => styleConnectors(boardId, ids, { dashed: st.dashed ? undefined : true })}
         className={`h-6 w-6 rounded text-[13px] ${st.dashed ? 'bg-frog-600 text-white' : 'text-frog-100 hover:bg-(--hover-strong)'}`}
       >
         ┄
       </button>
       <span className="mx-0.5 h-4 w-px bg-(--hover-strong)" />
-      <button title="Delete (Del)" onClick={() => removeConnectors(boardId, [connector.id])} className="h-6 w-6 rounded text-[12px] text-frog-200 hover:bg-red-700 hover:text-white">
+      <button title="Delete (Del)" onClick={() => removeConnectors(boardId, ids)} className="h-6 w-6 rounded text-[12px] text-frog-200 hover:bg-red-700 hover:text-white">
         ✕
       </button>
     </div>
