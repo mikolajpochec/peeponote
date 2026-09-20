@@ -10,6 +10,7 @@ import http from 'isomorphic-git/http/web'
 import type { PeepoFS } from '../fs'
 import type { Board, Card, Connector } from '../model/types'
 import { BOARDS_DIR, WORKSPACE_FILE } from '../model/types'
+import { unwp } from '../fs/wsroot'
 import { NotFastForwardError, ghFetch, ghPush, parseGitHubUrl, type Progress } from './githubApi'
 import { currentBranch, headOid, type GitIdentity, type RemoteAuth } from './repo'
 
@@ -244,12 +245,13 @@ export async function mergeRemote(fs: PeepoFS, ours: string, theirs: string, pre
     else {
       // both modified
       changed++
-      if (path.startsWith(`${BOARDS_DIR}/`) && path.endsWith('.json')) {
+      const rel = unwp(path)
+      if (rel && rel.startsWith(`${BOARDS_DIR}/`) && rel.endsWith('.json')) {
         progress(`merging ${path}…`)
         const m = mergeBoardJson(b ? await text(b) : undefined, await text(o), await text(t), prefer)
         conflicts += m.conflicts
         pick = await git.writeBlob({ fs, dir, blob: new TextEncoder().encode(m.json) })
-      } else if (path === WORKSPACE_FILE) {
+      } else if (rel === WORKSPACE_FILE) {
         const json = mergeJsonShallow(b ? await text(b) : undefined, await text(o), await text(t), prefer)
         pick = await git.writeBlob({ fs, dir, blob: new TextEncoder().encode(json) })
       } else {

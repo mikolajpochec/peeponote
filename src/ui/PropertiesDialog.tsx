@@ -4,6 +4,7 @@ import { selectBoards, useWorkspace } from '../store/workspace'
 import { cardSummary, hashLinkTo, type LinkTarget } from '../nav/links'
 import { boardChain, boardSlug, cardSlug, slugify } from '../nav/peepoUrl'
 import { toast } from '../store/toast'
+import { wp } from '../fs/wsroot'
 import { Peepo } from './Peepo'
 
 type Subject = { kind: 'card'; boardId: string; cardId: string } | { kind: 'board'; boardId: string } | { kind: 'connector'; boardId: string; connectorId: string }
@@ -193,7 +194,7 @@ function BoardProps({ boardId }: { boardId: string }) {
       />
       <div className={row}>
         <span className={label}>File</span>
-        <span className="font-mono text-[12px] text-frog-200/70">boards/{board.id}.json</span>
+        <span className="font-mono text-[12px] text-frog-200/70">{wp(`boards/${board.id}.json`)}</span>
       </div>
     </div>
   )

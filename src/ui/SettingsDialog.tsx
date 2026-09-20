@@ -25,6 +25,9 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   const cloneInto = useWorkspace((s) => s.cloneInto)
   const busy = useWorkspace((s) => s.busy)
   const meta = useWorkspace((s) => s.meta)
+  const wsRoot = useWorkspace((s) => s.wsRoot)
+  const wsCandidates = useWorkspace((s) => s.wsCandidates)
+  const setWsRoot = useWorkspace((s) => s.setWsRoot)
   const updateMeta = useWorkspace((s) => s.updateMeta)
   const viewingRef = useWorkspace((s) => s.viewingRef)
   const flush = useWorkspace((s) => s.flush)
@@ -80,6 +83,23 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             />
             Snap cards to grid
           </label>
+          <div className="rounded-lg bg-swamp-700/60 p-2 text-[12px]">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-frog-200/60">Workspace folder in the repo</div>
+            <p className="mt-1 text-[11px] text-frog-200/50">
+              Boards live where <code>peeponote.json</code> is — the repo root, or any subfolder of a monorepo (found automatically, up to 4 levels deep).
+            </p>
+            {wsCandidates.length > 1 ? (
+              <select value={wsRoot} onChange={(e) => void setWsRoot(e.target.value)} className={`${field} mt-2`}>
+                {wsCandidates.map((c) => (
+                  <option key={c} value={c}>
+                    {c || '/ (repo root)'}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="mt-1.5 font-mono text-[12px] text-frog-100">{wsRoot ? `/${wsRoot}/` : '/ (repo root)'}</div>
+            )}
+          </div>
         </section>
 
         <GroupHeader title="You, on this device" hint="Personal settings kept in this browser — never committed to the repo. The remote URL lives in this clone's .git/config; the token is only ever sent to your git host." tone="user" />

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { ReadCommitResult } from 'isomorphic-git'
 import {
-  abs, exists, mountLast, pickFolder, readBytes, readText, requestFolderPermission, useBrowserStorage,
+  abs, exists, mkdirp, mountLast, pickFolder, readBytes, readText, requestFolderPermission, useBrowserStorage,
   writeBytes, writeText, type PeepoFS,
 } from '../fs'
 import * as repo from '../git/repo'
@@ -19,6 +19,7 @@ import { toast } from './toast'
 import { diffWorkspaces, formatAuthors, useArrivals } from '../canvas/arrivals'
 import { rememberedStyle, styleKeyOf, useLastStyle } from './lastStyle'
 import { boardSlug, cardSlug, validateSlug } from '../nav/peepoUrl'
+import { findWorkspaces, rootHasOtherFiles, setWsPrefix, unwp, wp, wsPrefix } from '../fs/wsroot'
 import { cardSummary } from '../nav/links'
 
 export type Busy = 'saving' | 'pushing' | 'pulling' | 'syncing' | 'cloning' | 'loading' | null
@@ -33,6 +34,10 @@ interface WorkspaceState {
   meta: WorkspaceMeta | null
   boards: Record<string, Board>
   currentBoardId: string | null
+  /** repo-relative folder holding peeponote.json ('' = repo root) and every folder that has one */
+  wsRoot: string
+  wsCandidates: string[]
+  setWsRoot: (root: string) => Promise<void>
   /** boards visited before the current one (most recent last) — the floating Back button walks it */
   navStack: string[]
   /** boards edited in memory but not yet written to the working tree */
@@ -133,9 +138,9 @@ function remoteAuth() {
 }
 
 async function loadBoards(fs: PeepoFS): Promise<{ meta: WorkspaceMeta; boards: Record<string, Board> }> {
-  const meta = parseWorkspace(await readText(fs, abs(fs, WORKSPACE_FILE)))
+  const meta = parseWorkspace(await readText(fs, abs(fs, wp(WORKSPACE_FILE))))
   const boards: Record<string, Board> = {}
-  const dir = abs(fs, BOARDS_DIR)
+  const dir = abs(fs, wp(BOARDS_DIR))
   if (await exists(fs, dir)) {
     for (const f of await fs.promises.readdir(dir)) {
       if (!f.endsWith('.json')) continue
@@ -151,13 +156,14 @@ async function loadBoards(fs: PeepoFS): Promise<{ meta: WorkspaceMeta; boards: R
 }
 
 async function seedWorkspace(fs: PeepoFS): Promise<void> {
+  if (wsPrefix()) await mkdirp(fs, abs(fs, wsPrefix()))
   const rootId = newId()
   const meta: WorkspaceMeta = { version: 1, name: 'peeponote', rootBoardId: rootId }
-  await writeText(fs, abs(fs, WORKSPACE_FILE), JSON.stringify(meta, null, 2))
+  await writeText(fs, abs(fs, wp(WORKSPACE_FILE)), JSON.stringify(meta, null, 2))
   // Home + the "How to use peeponote" walkthrough
-  for (const b of tutorialBoards(rootId)) await writeText(fs, abs(fs, boardPath(b.id)), JSON.stringify(b, null, 2))
-  await writeText(fs, abs(fs, '.gitignore'), '.DS_Store\n')
-  await writeText(fs, abs(fs, 'README.md'), workspaceReadme())
+  for (const b of tutorialBoards(rootId)) await writeText(fs, abs(fs, wp(boardPath(b.id))), JSON.stringify(b, null, 2))
+  await writeText(fs, abs(fs, wp('.gitignore')), '.DS_Store\n')
+  await writeText(fs, abs(fs, wp('README.md')), workspaceReadme())
 }
 
 const PROJECT_URL = 'https://github.com/mikolajpochec/peeponote'
@@ -286,7 +292,17 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       if (!(await repo.isRepo(fs))) {
         await repo.initRepo(fs)
       }
-      if (!(await exists(fs, abs(fs, WORKSPACE_FILE)))) {
+      // monorepo-friendly: the workspace is wherever peeponote.json lives (root, or one subfolder)
+      const found = await findWorkspaces(fs)
+      const preferred = localStorage.getItem(`peeponote-wsroot:${fs.label}`)
+      let root: string
+      if (preferred !== null && found.includes(preferred)) root = preferred
+      else if (found.length) root = found[0]
+      else root = (await rootHasOtherFiles(fs)) ? 'peeponote' : '' // fresh workspace in a non-empty repo → its own folder
+      setWsPrefix(root)
+      if (!found.length && wsPrefix()) await mkdirp(fs, abs(fs, wsPrefix()))
+      set({ wsRoot: wsPrefix(), wsCandidates: found })
+      if (!(await exists(fs, abs(fs, wp(WORKSPACE_FILE))))) {
         await seedWorkspace(fs)
         await repo.stageAll(fs)
         await repo.commit(fs, 'Welcome board', identity())
@@ -366,6 +382,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     meta: null,
     boards: {},
     currentBoardId: null,
+    wsRoot: '',
+    wsCandidates: [],
     navStack: [],
     dirtyBoards: new Set(),
     deletedBoards: new Set(),
@@ -431,6 +449,14 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       } finally {
         set({ busy: null, busyDetail: null })
       }
+    },
+
+    setWsRoot: async (root) => {
+      const fs = get().fs
+      if (!fs) return
+      localStorage.setItem(`peeponote-wsroot:${fs.label}`, root)
+      await get().flush()
+      await openFs(fs)
     },
 
     navigate: (boardId) =>
@@ -683,7 +709,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         const buf = await file.arrayBuffer()
         const hash = await sha1Short(buf)
         const path = `${ASSETS_DIR}/${hash}-${safeName(file.name)}`
-        await writeBytes(fs, abs(fs, path), new Uint8Array(buf))
+        await writeBytes(fs, abs(fs, wp(path)), new Uint8Array(buf))
         const kind = detectKind(file.name, file.type)
         let size = kind === 'audio' ? { w: 300, h: 130 } : kind === 'code' || kind === 'data' ? { w: 320, h: 260 } : { w: 280, h: 280 }
         if (kind === 'image' || kind === 'texture') size = (await pictureSize(file)) ?? size
@@ -712,19 +738,19 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       const { fs, boards, dirtyBoards, deletedBoards, meta, metaDirty } = get()
       if (!fs || get().viewingRef || (dirtyBoards.size === 0 && deletedBoards.size === 0 && !metaDirty)) return
       if (metaDirty && meta) {
-        await writeText(fs, abs(fs, WORKSPACE_FILE), JSON.stringify(meta, null, 2))
+        await writeText(fs, abs(fs, wp(WORKSPACE_FILE)), JSON.stringify(meta, null, 2))
         if (get().meta === meta) set({ metaDirty: false })
       }
       const written: [string, Board][] = []
       for (const id of dirtyBoards) {
         const b = boards[id]
         if (!b) continue
-        await writeText(fs, abs(fs, boardPath(id)), JSON.stringify(b, null, 2))
+        await writeText(fs, abs(fs, wp(boardPath(id))), JSON.stringify(b, null, 2))
         written.push([id, b])
       }
       const removed: string[] = []
       for (const id of deletedBoards) {
-        const p = abs(fs, boardPath(id))
+        const p = abs(fs, wp(boardPath(id)))
         if (await exists(fs, p)) await fs.promises.unlink(p)
         removed.push(id)
       }
@@ -750,7 +776,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         // garbage-collect unreferenced assets
         const referenced = new Set<string>()
         for (const b of Object.values(boards)) for (const c of b.cards) if (c.type === 'asset') referenced.add(c.path)
-        const assetsDir = abs(fs, ASSETS_DIR)
+        const assetsDir = abs(fs, wp(ASSETS_DIR))
         if (await exists(fs, assetsDir)) {
           for (const f of await fs.promises.readdir(assetsDir)) {
             if (!referenced.has(`${ASSETS_DIR}/${f}`)) await fs.promises.unlink(`${assetsDir}/${f}`)
@@ -941,7 +967,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         const files = await repo.listFilesAt(fs, oid)
         const boards: Record<string, Board> = {}
         for (const f of files) {
-          if (!f.startsWith(`${BOARDS_DIR}/`) || !f.endsWith('.json')) continue
+          const rel = unwp(f)
+          if (!rel || !rel.startsWith(`${BOARDS_DIR}/`) || !rel.endsWith('.json')) continue
           try {
             const b = parseBoard(await repo.readTextAt(fs, oid, f))
             boards[b.id] = b
@@ -1019,6 +1046,6 @@ export const selectBoards = (s: WorkspaceState) => (s.viewingRef ? s.viewingBoar
 export async function readAssetBytes(path: string): Promise<Uint8Array> {
   const { fs, viewingRef } = useWorkspace.getState()
   if (!fs) throw new Error('no fs')
-  if (viewingRef) return repo.readBlobAt(fs, viewingRef, path)
-  return readBytes(fs, abs(fs, path))
+  if (viewingRef) return repo.readBlobAt(fs, viewingRef, wp(path))
+  return readBytes(fs, abs(fs, wp(path)))
 }
