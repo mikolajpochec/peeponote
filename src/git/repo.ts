@@ -105,7 +105,7 @@ export async function existsAt(fs: PeepoFS, ref: string, filepath: string): Prom
 }
 
 export const APP_TAG = '[peeponote]'
-export const APP_TRAILER = 'Co-Authored-By: peeponote <peeponote@noreply.github.io>'
+export const APP_TRAILER = 'Co-Authored-By: peeponote <331708502+peeponote[bot]@users.noreply.github.com>'
 
 /** "[peeponote] Save: update 1 file" + a co-author trailer, so app-made commits are recognisable in any git UI */
 export function stampMessage(message: string): string {
