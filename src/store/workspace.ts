@@ -13,6 +13,7 @@ import {
 } from '../model/types'
 import { parseBoard, parseWorkspace } from '../model/schema'
 import { detectKind } from '../model/assetKind'
+import { tutorialBoards } from '../model/tutorial'
 import { useSettings } from './settings'
 import { toast } from './toast'
 
@@ -134,9 +135,9 @@ async function loadBoards(fs: PeepoFS): Promise<{ meta: WorkspaceMeta; boards: R
 async function seedWorkspace(fs: PeepoFS): Promise<void> {
   const rootId = newId()
   const meta: WorkspaceMeta = { version: 1, name: 'peeponote', rootBoardId: rootId }
-  const root: Board = { id: rootId, name: 'Home', parentId: null, createdAt: new Date().toISOString(), cards: [], connectors: [] }
   await writeText(fs, abs(fs, WORKSPACE_FILE), JSON.stringify(meta, null, 2))
-  await writeText(fs, abs(fs, boardPath(rootId)), JSON.stringify(root, null, 2))
+  // Home + the "How to use peeponote" walkthrough
+  for (const b of tutorialBoards(rootId)) await writeText(fs, abs(fs, boardPath(b.id)), JSON.stringify(b, null, 2))
   await writeText(fs, abs(fs, '.gitignore'), '.DS_Store\n')
   await writeText(
     fs,
@@ -164,7 +165,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       if (!(await exists(fs, abs(fs, WORKSPACE_FILE)))) {
         await seedWorkspace(fs)
         await repo.stageAll(fs)
-        await repo.commit(fs, 'peepoHey initial board', identity())
+        await repo.commit(fs, 'peepoHey welcome board', identity())
       }
       const { meta, boards } = await loadBoards(fs)
       set({

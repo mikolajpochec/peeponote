@@ -48,9 +48,17 @@ Unreferenced assets are garbage-collected on save.
 
 ## Remotes
 
-Browsers can't speak git smart-HTTP to GitHub directly (no CORS headers), so pushes go through a CORS proxy.
-The default is the public `https://cors.isomorphic-git.org` demo proxy — fine for trying it out, but rate-limited
-and run by strangers. For real use, deploy `proxy/worker.ts` to Cloudflare Workers and paste its URL into Settings.
+Two transports (Settings → Remote → Transport):
+
+- **GitHub API** (default for github.com remotes) — talks to `api.github.com` directly, no proxy. Push recreates
+  the local git objects through the Git Data API (blobs → trees → commits → ref); pull downloads objects into the
+  local `.git`. Object ids are verified to match on both sides, so the repo stays interchangeable with plain git.
+- **git over HTTP** — standard smart-HTTP through a CORS proxy, for any host. The default proxy is the public
+  `https://cors.isomorphic-git.org` demo (rate-limited); deploy `proxy/worker.ts` to Cloudflare Workers for your own.
+
+**Sync** (⇅, and automatically after Save when a remote is set): fetch, then push if you're ahead, fast-forward if
+you're behind, and if both sides have new commits a dialog offers a **card-level merge** (cards edited on only one
+side are combined; a card changed on both sides goes to whichever side you pick), force-push, or reset to remote.
 
 Auth is a personal access token stored in `localStorage` of this browser only:
 

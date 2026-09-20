@@ -83,9 +83,39 @@ export function facingSide(card: Card, from: Pt): Side {
   return dy > 0 ? 'bottom' : 'top'
 }
 
-/** Snap a drop point to a card side, or leave it as a free anchor. */
+/** Side whose anchor dot is closest to the pointer — lets the user pick any of the four. */
+export function nearestSide(card: Card, p: Pt): Side {
+  let best: Side = 'top'
+  let bestD = Infinity
+  for (const side of ['top', 'right', 'bottom', 'left'] as Side[]) {
+    const q = sidePoint(card, side)
+    const d = Math.hypot(q.x - p.x, q.y - p.y)
+    if (d < bestD) {
+      bestD = d
+      best = side
+    }
+  }
+  return best
+}
+
+/**
+ * Snap a drop point to a card side, or leave it as a free anchor.
+ * Over a card: the side nearest to the pointer (so all four dots are reachable); when the pointer
+ * is near the card's middle, the side facing the other end is used instead.
+ */
 export function anchorForDrop(board: Board, p: Pt, other: Pt, excludeCard?: string): Anchor {
   const card = cardAt(board, p, excludeCard)
-  if (card) return { cardId: card.id, side: facingSide(card, other) }
+  if (card) {
+    const cx = card.x + card.w / 2
+    const cy = card.y + card.h / 2
+    const central = Math.abs(p.x - cx) < card.w * 0.25 && Math.abs(p.y - cy) < card.h * 0.25
+    return { cardId: card.id, side: central ? facingSide(card, other) : nearestSide(card, p) }
+  }
+  // near a card but just outside it: still snap to that edge (dots sit on the border)
+  const SLOP = 14
+  for (const c of [...board.cards].sort((a, b) => b.z - a.z)) {
+    if (c.id === excludeCard) continue
+    if (p.x >= c.x - SLOP && p.x <= c.x + c.w + SLOP && p.y >= c.y - SLOP && p.y <= c.y + c.h + SLOP) return { cardId: c.id, side: nearestSide(c, p) }
+  }
   return { x: Math.round(p.x), y: Math.round(p.y) }
 }
