@@ -70,7 +70,28 @@ Auth is a personal access token stored in `localStorage` of this browser only:
   with `read_repository` + `write_repository`; set username to `oauth2`.
 - **Gitea/Forgejo**: *Settings → Applications → Generate token* with repository read/write; leave username empty.
 
-The Settings dialog and the onboarding wizard show these links for whichever host your remote URL points at.
+The Settings dialog and the onboarding wizard show these links — plus a step-by-step guide — for whichever host
+your remote URL points at.
+
+### Sign in with GitHub (one click instead of a token)
+
+Optional, set up once by whoever hosts peeponote. It uses the GitHub OAuth **device flow**: the app shows a short
+code, you type it at github.com/login/device, done. No client secret exists anywhere; the only moving part is a tiny
+relay, because `github.com/login/*` has no CORS headers.
+
+1. **Create an OAuth App**: [github.com/settings/applications/new](https://github.com/settings/applications/new)
+   → name `peeponote`, homepage and callback URL = where you host it (the callback is required but unused)
+   → *Register* → tick **Enable Device Flow** → *Update application* → copy the **Client ID**.
+2. **Deploy the relay** (Cloudflare Workers free tier; needs Node ≥ 22 for wrangler):
+   `bunx wrangler login && bunx wrangler deploy` — config is in `wrangler.toml`, code in `proxy/worker.ts`
+   (it doubles as the git CORS proxy). Note the `https://peeponote-relay.<you>.workers.dev` URL.
+3. **Tell the build**: for GitHub Pages set two repository variables and re-run the deploy —
+   `gh variable set PEEPONOTE_GH_CLIENT_ID -b <client id>` and `gh variable set PEEPONOTE_AUTH_RELAY -b <relay url>`.
+   Self-hosting? Put them in `.env` as `VITE_GITHUB_CLIENT_ID` / `VITE_GITHUB_AUTH_RELAY`.
+
+Users can also paste a client id + relay URL under *Settings → Sign in with GitHub — setup* to use a build that has
+none baked in. The resulting token has the OAuth `repo` scope and is revocable at github.com → Settings →
+Applications → Authorized OAuth Apps.
 
 With a remote and token configured, **Save commits and pushes** in one go. Prefer them apart? Tick *Separate commit and push* in Settings to get a dedicated Push button.
 
