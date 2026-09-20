@@ -8,6 +8,7 @@ import { LinkCard } from './LinkCard'
 import { BoardCard } from './BoardCard'
 import { AssetCard, ImageAssetCard, isPicture } from './AssetCard'
 import { ShapeCard } from './ShapeCard'
+import { isInternalLink, openLink, parseLink } from '../nav/links'
 import { useWorkspace } from '../store/workspace'
 
 export interface CardProps<C extends Card = Card> {
@@ -43,12 +44,15 @@ export const CardView = memo(function CardView({ card, boardId, readOnly, select
           <TodoCard {...common} card={card} />
         </CardShell>
       )
-    case 'link':
+    case 'link': {
+      // double-click on an internal link jumps to its target
+      const t = isInternalLink(card.url) ? parseLink(card.url) : null
       return (
-        <CardShell {...common} scale={scale} className="bg-paper text-ink">
+        <CardShell {...common} scale={scale} className="bg-paper text-ink" onOpen={t ? () => openLink(t) : undefined}>
           <LinkCard {...common} card={card} />
         </CardShell>
       )
+    }
     case 'shape':
       return (
         <CardShell {...common} scale={scale} bare>

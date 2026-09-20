@@ -18,6 +18,8 @@ import { downloadAsset } from '../cards/AssetCard'
 import { boardVars } from './styles'
 import { bbox } from './arrange'
 import { useLastStyle } from '../store/lastStyle'
+import { copyLink } from '../nav/links'
+import { toast } from '../store/toast'
 import { useSettings } from '../store/settings'
 import { resolveTheme } from '../theme/themes'
 import { LONG_PRESS_MS, LONG_PRESS_SLOP, activeTouches, isDuplicateDblClick, markLongPress, registerTap, shouldSwallowContextMenu, useIsMobile } from './touch'
@@ -335,6 +337,19 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       if (one?.type === 'asset') items.push({ kind: 'item', label: 'Download original', icon: '⬇', onClick: () => void downloadAsset(one) }, sep)
       items.push(
         { kind: 'item', label: n > 1 ? `Copy ${n} items` : 'Copy', icon: '⧉', shortcut: '⌘C', onClick: () => copySelection(live, sel) },
+        ...(one
+          ? [
+              {
+                kind: 'item',
+                label: 'Copy link to this card',
+                icon: '🔗',
+                onClick: async () => {
+                  await copyLink({ kind: 'card', boardId: board.id, cardId: one.id })
+                  toast.ok('Link copied — paste it on any board to make a link card. peepoHey', 'peepoHey')
+                },
+              } as MenuItem,
+            ]
+          : []),
         { kind: 'item', label: 'Cut', icon: '✂', shortcut: '⌘X', disabled: readOnly, onClick: () => (copySelection(live, sel), removeCards(board.id, ids)) },
         { kind: 'item', label: 'Duplicate', icon: '⊕', shortcut: '⌘D', disabled: readOnly, onClick: () => duplicateSelection(live, sel) },
         paste,
@@ -356,6 +371,15 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     // empty canvas
     return [
       paste,
+      {
+        kind: 'item',
+        label: 'Copy link to this spot',
+        icon: '🔗',
+        onClick: async () => {
+          await copyLink({ kind: 'place', boardId: board.id, x: menu.at.x, y: menu.at.y, scale: useViewport.getState().get(board.id).scale })
+          toast.ok('Link copied — paste it anywhere to make a link card. peepoHey', 'peepoHey')
+        },
+      },
       sep,
       ...TOOLS.filter((t) => t.id !== 'file').map<MenuItem>((t) => ({
         kind: 'item',

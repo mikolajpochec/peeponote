@@ -4,6 +4,8 @@ import { selectBoards, useWorkspace } from '../store/workspace'
 import { Peepo } from './Peepo'
 import { BoardIconView } from './BoardIcon'
 import { useArrivals } from '../canvas/arrivals'
+import { copyLink } from '../nav/links'
+import { toast } from '../store/toast'
 import { contrast } from '../canvas/styles'
 import { ContextMenu, sep, type MenuItem } from './ContextMenu'
 
@@ -78,6 +80,15 @@ export function Sidebar({ onOpenSettings, onNavigate, onClose }: { onOpenSetting
     }
     return [
       { kind: 'item', label: 'Open', icon: '→', disabled: b.id === current, onClick: () => navigate(b.id) },
+      {
+        kind: 'item',
+        label: 'Copy link to board',
+        icon: '🔗',
+        onClick: async () => {
+          await copyLink({ kind: 'board', boardId: b.id })
+          toast.ok('Link copied — paste it on a board to make a link card. peepoHey', 'peepoHey')
+        },
+      },
       { kind: 'item', label: 'Rename', icon: '✎', shortcut: 'dbl-click', disabled: readOnly, onClick: () => setRenaming(b.id) },
       sep,
       { kind: 'item', label: 'Add sub-board', icon: '🐸', disabled: readOnly, onClick: () => addSubBoard(b.id) },

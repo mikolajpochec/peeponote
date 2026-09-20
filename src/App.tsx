@@ -13,6 +13,7 @@ import { SyncDialog } from './ui/SyncDialog'
 import { useSettings } from './store/settings'
 import { applyTheme, resolveTheme } from './theme/themes'
 import { useIsMobile } from './canvas/touch'
+import { openLink, parseLink, reflectBoardInHash } from './nav/links'
 
 export default function App() {
   const status = useWorkspace((s) => s.status)
@@ -54,6 +55,21 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [save])
+
+  // deep links: #/b/<board>[/c/<card>|/@x,y,s] opens that place once the workspace is loaded, and later on hashchange
+  useEffect(() => {
+    if (status !== 'ready') return
+    const go = () => {
+      const t = parseLink(location.hash)
+      if (t && !openLink(t)) return
+    }
+    go()
+    window.addEventListener('hashchange', go)
+    return () => window.removeEventListener('hashchange', go)
+  }, [status])
+  useEffect(() => {
+    if (status === 'ready') reflectBoardInHash(currentBoardId)
+  }, [status, currentBoardId])
 
   // background pull: every 45s while visible, and right when the tab comes back into view
   const autoPull = useSettings((s) => s.autoPull)
