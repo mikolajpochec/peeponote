@@ -468,8 +468,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       treeDirty: await repo.hasChanges(fs, wsPrefix(), wp(REVIEW_DIR)),
       selection: new Set(),
     })
-    await get().refreshGit()
-    await useReview.getState().load(fs)
+    await get().refreshGit() // also re-reads review files when HEAD moved
   }
 
   /**
@@ -1257,6 +1256,9 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       // first page only; the History panel asks for more as you scroll (a long log would stall the UI otherwise)
       const [commits, remoteUrl] = await Promise.all([repo.log(fs, HISTORY_PAGE), repo.getRemoteUrl(fs)])
       set({ commits, head: commits[0] ?? null, remoteUrl, historyDone: commits.length < HISTORY_PAGE })
+      // review files change with commits we didn't make here (a pull, or another tab on the same storage) → re-read
+      const rv = useReview.getState()
+      if (rv.loaded && rv.loadedHead !== (commits[0]?.oid ?? null)) await rv.load(fs)
     },
 
     loadMoreHistory: async () => {

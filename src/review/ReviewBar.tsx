@@ -7,6 +7,7 @@ import { Avatar } from './Avatar'
 import { samePerson, userKey } from './identity'
 import { reviewStatus } from './notifications'
 import { StatusPill } from './NotificationsPanel'
+import { confirm } from '../ui/confirm'
 
 /**
  * The strip at the top of the canvas while reviewing: what's being reviewed, who asked, verdict buttons for
@@ -33,6 +34,7 @@ export function ReviewBar({ board, onHeight }: { board: Board; onHeight?: (h: nu
   const comments = useReview((s) => s.comments)
   const giveVerdict = useReview((s) => s.giveVerdict)
   const closeReview = useReview((s) => s.closeReview)
+  const deleteReview = useReview((s) => s.deleteReview)
   const identity = useReview((s) => s.identity)
   const me = useMe()
   const anyoneCanClose = useWorkspace((s) => !s.meta?.settings?.review?.authorOnlyClose)
@@ -62,11 +64,13 @@ export function ReviewBar({ board, onHeight }: { board: Board; onHeight?: (h: nu
   }
 
   return (
-    <div ref={root} className="pointer-events-auto absolute inset-x-0 top-0 z-20 flex flex-wrap items-center gap-2 border-b border-amber-400/40 bg-amber-500/15 px-3 py-1.5 text-[13px] backdrop-blur" data-nodrag>
-      <span className="font-black text-amber-200">🔍 Review mode</span>
+    <div ref={root} className="relative z-20 flex flex-col gap-1.5 border-b border-amber-400/40 bg-amber-500/15 px-3 py-1.5 text-[13px]" data-nodrag>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+      <span className="shrink-0 font-black text-amber-200">🔍 Review mode</span>
       {review ? (
         <>
-          <span className="flex items-center gap-1 text-frog-100">
+          <span className="flex min-w-0 flex-wrap items-center gap-1 text-frog-100">
             <Avatar person={review.requester} size={18} />
             <b>{review.requester.name}</b> asked {review.reviewers.map((p) => p.name).join(', ')} to look at{' '}
             {review.targets.length ? (
@@ -89,7 +93,8 @@ export function ReviewBar({ board, onHeight }: { board: Board; onHeight?: (h: nu
       ) : (
         <span className="text-frog-200/80">Click a card, a row or an empty spot to comment. Nothing on the board can change while reviewing.</span>
       )}
-      <span className="flex-1" />
+      </div>
+      <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1.5">
       {resolvedHere > 0 && !mode.reviewId && (
         <label className="flex items-center gap-1 text-[12px] text-frog-200/80" title="Resolved threads are hidden by default">
           <input type="checkbox" className="accent-frog-500" checked={showResolved} onChange={(e) => setShowResolved(e.target.checked)} />
@@ -124,13 +129,35 @@ export function ReviewBar({ board, onHeight }: { board: Board; onHeight?: (h: nu
         </>
       )}
       {review && (amRequester || anyoneCanClose) && identity.kind === 'verified' && (
-        <button onClick={() => closeReview(review.id)} className="rounded-md px-2.5 py-1 text-[12px] font-semibold text-frog-100 hover:bg-(--hover-strong)">
-          {review.status === 'open' ? 'Close review' : 'Reopen'}
-        </button>
+        <>
+          <button onClick={() => closeReview(review.id)} className="rounded-md px-2.5 py-1 text-[12px] font-semibold text-frog-100 hover:bg-(--hover-strong)">
+            {review.status === 'open' ? 'Close review' : 'Reopen'}
+          </button>
+          <button
+            onClick={async () => {
+              const n = Object.values(comments).filter((c) => c.reviewId === review.id).length
+              if (
+                await confirm({
+                  title: 'Delete this review?',
+                  message: `The request, ${vs.length} verdict${vs.length === 1 ? '' : 's'} and ${n} comment${n === 1 ? '' : 's'} are removed for everyone. Finished reviews disappear by themselves after 10 days.`,
+                  confirmLabel: 'Delete review',
+                  danger: true,
+                })
+              )
+                await deleteReview(review.id)
+            }}
+            title="Delete the review with its comments and verdicts"
+            className="rounded-md px-2 py-1 text-[12px] text-frog-200/70 hover:bg-red-900/40 hover:text-red-100"
+          >
+            🗑
+          </button>
+        </>
       )}
       <button onClick={() => setMode({ on: false })} className="rounded-md bg-swamp-700 px-2.5 py-1 text-[12px] font-bold text-frog-50 hover:bg-swamp-600">
         Exit review
       </button>
+      </div>
+      </div>
       {review?.message && (
         <div className="flex w-full items-start gap-2 rounded-lg bg-black/25 px-3 py-2 text-[14px] leading-snug text-frog-50">
           <Avatar person={review.requester} size={22} className="mt-0.5" />

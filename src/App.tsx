@@ -14,6 +14,7 @@ import { useReview } from './store/review'
 import { NotificationsPanel } from './review/NotificationsPanel'
 import { RequestReviewDialog } from './review/RequestReviewDialog'
 import { ThreadDialog } from './review/ThreadDialog'
+import { ReviewBar } from './review/ReviewBar'
 import { SyncDialog } from './ui/SyncDialog'
 import { ConfirmDialog } from './ui/ConfirmDialog'
 import { PropertiesDialog } from './ui/PropertiesDialog'
@@ -176,6 +177,7 @@ export default function App() {
           onOpenSettings={() => setShowSettings(true)}
           onToggleSidebar={mobile ? () => setShowSidebar((v) => !v) : undefined}
         />
+        {reviewOn && board && <ReviewBar board={board} />}
         <div className="relative flex min-h-0 flex-1">
           <div className="relative min-w-0 flex-1">
             {board && currentBoardId ? (

@@ -47,6 +47,8 @@ export interface ReviewMode {
 
 interface ReviewState {
   loaded: boolean
+  /** HEAD the review files were last read at — a different HEAD means someone (or another tab) committed review activity */
+  loadedHead: string | null
   accounts: Record<string, Account> // userKey → account
   pictures: Record<string, string> // userKey → object URL of the profile picture
   reviews: Record<string, ReviewRequest>
@@ -82,6 +84,8 @@ interface ReviewState {
 
   requestReview: (boardId: string, targets: string[], reviewers: Person[], message?: string) => Promise<ReviewRequest | null>
   closeReview: (id: string) => Promise<void>
+  /** remove a review with its verdicts and comments (files of everyone involved) */
+  deleteReview: (id: string) => Promise<void>
   giveVerdict: (reviewId: string, verdict: Verdict['verdict'], note?: string) => Promise<void>
   addComment: (boardId: string, anchor: CommentAnchor, text: string, opts?: { reviewId?: string; parentId?: string }) => Promise<Comment | null>
   editComment: (id: string, text: string) => Promise<void>
@@ -166,6 +170,7 @@ export const useReview = create<ReviewState>((set, get) => {
 
   return {
     loaded: false,
+    loadedHead: null,
     accounts: {},
     pictures: {},
     reviews: {},
@@ -228,9 +233,23 @@ export const useReview = create<ReviewState>((set, get) => {
       const wasLoaded = get().loaded
       const me = get().me()
       const before = wasLoaded && me ? deriveNotifications(get(), useWorkspace.getState().boards, me).filter((n) => n.unseen) : []
-      set({ accounts, reviews, verdicts, comments, states, pictures, verified, authors })
+      set({ accounts, reviews, verdicts, comments, states, pictures, verified, authors, loadedHead: await repo.headOid(fs) })
       await get().refreshIdentity()
       set({ loaded: true }) // only now: the identity prompt must see the settled identity, not the guest default
+      // housekeeping: finished reviews (closed, or approved by everyone) older than 10 days go away by themselves
+      if (get().identity.kind === 'verified') {
+        const cutoff = Date.now() - 10 * 24 * 3600 * 1000
+        const all = Object.values(get().comments)
+        const stale = Object.values(get().reviews).filter((r) => {
+          const vs = Object.values(get().verdicts).filter((v) => v.reviewId === r.id)
+          const finished = r.status === 'closed' || (r.reviewers.length > 0 && r.reviewers.every((p) => vs.some((v) => samePerson(v.reviewer, p) && v.verdict === 'approved')))
+          if (!finished) return false
+          const last = Math.max(Date.parse(r.updatedAt), ...vs.map((v) => Date.parse(v.at)), ...all.filter((c) => c.reviewId === r.id).map((c) => Date.parse(c.createdAt)))
+          return last < cutoff
+        })
+        for (const r of stale) await get().deleteReview(r.id)
+        if (stale.length) pending.forEach((_, k) => pending.set(k, `cleaned up ${stale.length} finished review${stale.length === 1 ? '' : 's'} older than 10 days`))
+      }
       // something new arrived with a pull → say so (one toast, opens the panel)
       if (wasLoaded && me) {
         const known = new Set(before.map((n) => n.id))
@@ -327,6 +346,27 @@ export const useReview = create<ReviewState>((set, get) => {
       next.sig = samePerson(me.person, r.requester) ? await sign(me.keys, signedFields.review(next)) : undefined
       set((s) => ({ reviews: { ...s.reviews, [id]: next }, verified: { ...s.verified, [id]: !!next.sig } }))
       await writeJson(`${REVIEWS_DIR}/${id}.json`, next, `${next.status === 'closed' ? 'closed' : 'reopened'} the review of "${useWorkspace.getState().boards[r.boardId]?.name ?? ''}"`)
+    },
+
+    deleteReview: async (id) => {
+      const r = get().reviews[id]
+      if (!r) return
+      const board = useWorkspace.getState().boards[r.boardId]?.name ?? ''
+      const commentIds = Object.values(get().comments).filter((c) => c.reviewId === id).map((c) => c.id)
+      const verdictKeys = Object.keys(get().verdicts).filter((k) => k.startsWith(`${id}.`))
+      set((s) => {
+        const reviews = { ...s.reviews }
+        delete reviews[id]
+        const comments = { ...s.comments }
+        for (const c of commentIds) delete comments[c]
+        const verdicts = { ...s.verdicts }
+        for (const k of verdictKeys) delete verdicts[k]
+        return { reviews, comments, verdicts, mode: s.mode.reviewId === id ? { on: s.mode.on } : s.mode }
+      })
+      const msg = `deleted the review of "${board}"`
+      await removeFile(`${REVIEWS_DIR}/${id}.json`, msg)
+      for (const k of verdictKeys) await removeFile(`${VERDICTS_DIR}/${k}.json`, msg)
+      for (const c of commentIds) await removeFile(`${COMMENTS_DIR}/${c}.json`, msg)
     },
 
     giveVerdict: async (reviewId, verdict, note) => {
