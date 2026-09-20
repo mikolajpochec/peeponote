@@ -1,4 +1,5 @@
 import type { Anchor, Board, Card, Side } from '../model/types'
+import { useItemRects, type ItemRect } from './itemRects'
 
 export interface Pt {
   x: number
@@ -18,11 +19,25 @@ export function sidePoint(card: Card, side: Side): Pt {
   }
 }
 
+/** Left/right edge point of one row inside a card; null when the row isn't laid out (yet). */
+export function itemPoint(card: Card, itemId: string, side: Side, rects = useItemRects.getState().byCard): Pt | null {
+  const r: ItemRect | undefined = rects[card.id]?.[itemId]
+  if (!r) return null
+  // rows scrolled out of view attach at the list's edge rather than floating off the card
+  const y = card.y + Math.max(4, Math.min(card.h - 4, r.y + r.h / 2))
+  return { x: side === 'left' ? card.x : card.x + card.w, y }
+}
+
 /** Resolve an anchor to a board point. Returns null when the card is gone. */
-export function anchorPoint(anchor: Anchor, cards: Map<string, Card>): { pt: Pt; side: Side | null } | null {
+export function anchorPoint(anchor: Anchor, cards: Map<string, Card>, rects?: Record<string, Record<string, ItemRect>>): { pt: Pt; side: Side | null } | null {
   if ('cardId' in anchor) {
     const card = cards.get(anchor.cardId)
     if (!card) return null
+    if (anchor.itemId) {
+      const side: Side = anchor.side === 'right' ? 'right' : 'left'
+      const pt = itemPoint(card, anchor.itemId, side, rects)
+      if (pt) return { pt, side }
+    }
     return { pt: sidePoint(card, anchor.side), side: anchor.side }
   }
   return { pt: { x: anchor.x, y: anchor.y }, side: null }
@@ -103,8 +118,12 @@ export function nearestSide(card: Card, p: Pt): Side {
  * Over a card: the side nearest to the pointer (so all four dots are reachable); when the pointer
  * is near the card's middle, the side facing the other end is used instead.
  */
-export function anchorForDrop(board: Board, p: Pt, other: Pt, excludeCard?: string): Anchor {
+export function anchorForDrop(board: Board, p: Pt, other: Pt, excludeCard?: string, item?: { cardId: string; itemId: string } | null): Anchor {
   const card = cardAt(board, p, excludeCard)
+  // pointer over a to-do row: attach to that row, on the edge nearer the pointer
+  if (item && card && card.id === item.cardId) {
+    return { cardId: card.id, itemId: item.itemId, side: p.x < card.x + card.w / 2 ? 'left' : 'right' }
+  }
   if (card) {
     const cx = card.x + card.w / 2
     const cy = card.y + card.h / 2

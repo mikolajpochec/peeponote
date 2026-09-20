@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import type { Anchor, ArrowStyle, Board, Card, Connector, Side } from '../model/types'
 import { SIDES } from '../model/types'
 import { useWorkspace } from '../store/workspace'
-import { anchorPoint, bezierMid, connectorPath, sidePoint, type Pt } from './connectors'
+import { anchorPoint, bezierMid, connectorPath, itemPoint, sidePoint, type Pt } from './connectors'
+import { useItemRects } from './itemRects'
 import { ColorPicker } from '../ui/ColorPicker'
 
 export interface DraftConnector {
@@ -34,17 +35,19 @@ const STROKE_SEL = 'var(--board-line-sel)'
 export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard, draft, onAnchorDown, onEndpointDown, onSelect }: Props) {
   const cards = useMemo(() => new Map(board.cards.map((c) => [c.id, c])), [board.cards])
   const inv = 1 / scale
+  // row geometry of to-do cards (connectors can attach to single rows)
+  const rects = useItemRects((s) => s.byCard)
 
   const resolved = board.connectors
     .map((k) => {
-      const a = anchorPoint(k.from, cards)
-      const b = anchorPoint(k.to, cards)
+      const a = anchorPoint(k.from, cards, rects)
+      const b = anchorPoint(k.to, cards, rects)
       return a && b ? { k, a, b } : null
     })
     .filter(Boolean) as { k: Connector; a: { pt: Pt; side: Side | null }; b: { pt: Pt; side: Side | null } }[]
 
-  const draftA = draft ? anchorPoint(draft.fixed, cards) : null
-  const draftB = draft ? anchorPoint(draft.target, cards) : null
+  const draftA = draft ? anchorPoint(draft.fixed, cards, rects) : null
+  const draftB = draft ? anchorPoint(draft.target, cards, rects) : null
   const targetCard = draft && 'cardId' in draft.target ? cards.get(draft.target.cardId) : undefined
   const handleCards: Card[] = []
   if (!readOnly && !draft) {
@@ -156,6 +159,38 @@ export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard,
           )
         }),
       )}
+      {/* per-row handles on to-do cards: left and right of every item */}
+      {handleCards
+        .filter((c) => c.type === 'todo')
+        .flatMap((c) =>
+          Object.keys(rects[c.id] ?? {}).flatMap((itemId) =>
+            (['left', 'right'] as Side[]).map((side) => {
+              const p = itemPoint(c, itemId, side, rects)
+              if (!p || p.y <= c.y + 4 || p.y >= c.y + c.h - 4) return null // row scrolled out of view
+              return (
+                <div
+                  key={`${c.id}:${itemId}:${side}`}
+                  data-nodrag
+                  data-card={c.id}
+                  title="Connect this item"
+                  onPointerDown={(e) => onAnchorDown(e, { cardId: c.id, side, itemId })}
+                  className="absolute rounded-full border-2 opacity-70 hover:scale-125 hover:opacity-100 transition-transform"
+                  style={{
+                    borderColor: 'var(--board-line)',
+                    background: 'var(--board-bg)',
+                    left: p.x,
+                    top: p.y,
+                    width: 9,
+                    height: 9,
+                    transform: `translate(-50%, -50%) scale(${inv})`,
+                    zIndex: 100000,
+                    cursor: 'crosshair',
+                  }}
+                />
+              )
+            }),
+          ),
+        )}
 
       {/* selected connectors: endpoints + mini toolbar */}
       {!readOnly &&

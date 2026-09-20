@@ -426,13 +426,19 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     el.setPointerCapture(e.pointerId)
     const start = { x: e.clientX, y: e.clientY }
     const toBoard = (ev: { clientX: number; clientY: number }) => screenToBoard(useViewport.getState().get(board.id), ev.clientX, ev.clientY, rect)
+    /** to-do row under the pointer, if any (DOM hit test — row positions only exist in layout) */
+    const itemUnder = (ev: { clientX: number; clientY: number }) => {
+      const li = document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>('[data-item]')
+      const cardId = li?.closest<HTMLElement>('[data-card]')?.dataset.card
+      return li && cardId ? { cardId, itemId: li.dataset.item! } : null
+    }
     /** where the end would land right now — same rule as the drop itself */
-    const targetFor = (p: { x: number; y: number }): Anchor => {
+    const targetFor = (p: { x: number; y: number }, ev?: { clientX: number; clientY: number }): Anchor => {
       const live = useWorkspace.getState().boards[board.id]
       if (!live) return p
       const cards = new Map(live.cards.map((c) => [c.id, c]))
       const fixedPt = anchorPoint(fixed, cards)?.pt ?? p
-      return anchorForDrop(live, p, fixedPt, excludeCard)
+      return anchorForDrop(live, p, fixedPt, excludeCard, ev ? itemUnder(ev) : null)
     }
     const p0 = toBoard(e)
     setDraft({ fixed, moving: p0, editing, target: targetFor(p0) })
@@ -440,7 +446,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     setGlobalCursor('crosshair')
     const move = (ev: PointerEvent) => {
       const p = toBoard(ev)
-      setDraft((d) => (d ? { ...d, moving: p, target: targetFor(p) } : d))
+      setDraft((d) => (d ? { ...d, moving: p, target: targetFor(p, ev) } : d))
     }
     const up = (ev: PointerEvent) => {
       setGlobalCursor(null)
@@ -454,7 +460,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       }
       setDraft(null)
       if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 8) return // just a click
-      const dropped = targetFor(toBoard(ev))
+      const dropped = targetFor(toBoard(ev), ev)
       if (editing) {
         updateConnector(board.id, editing.id, { [editing.end]: dropped } as Partial<Connector>)
         select([editing.id])

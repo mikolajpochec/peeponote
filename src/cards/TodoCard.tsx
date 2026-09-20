@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useItemRects } from '../canvas/itemRects'
+import { useViewport } from '../canvas/viewport'
 import type { TodoCard as TodoCardT } from '../model/types'
 import { newId } from '../model/types'
 import { useWorkspace } from '../store/workspace'
@@ -10,6 +12,33 @@ export function TodoCard({ card, boardId, readOnly }: CardProps<TodoCardT>) {
   const done = card.items.filter((i) => i.done).length
 
   const setItems = (items: TodoCardT['items']) => updateCard(boardId, card.id, { items })
+  const list = useRef<HTMLUListElement>(null)
+
+  // tell the connector layer where each row is (board units, relative to the card) — on layout, scroll and resize
+  useEffect(() => {
+    const ul = list.current
+    const shell = ul?.closest('[data-card]') as HTMLElement | null
+    if (!ul || !shell) return
+    const report = () => {
+      const k = useViewport.getState().get(boardId).scale || 1
+      const top = shell.getBoundingClientRect().top
+      const rects: Record<string, { y: number; h: number }> = {}
+      for (const li of ul.querySelectorAll<HTMLElement>('[data-item]')) {
+        const r = li.getBoundingClientRect()
+        rects[li.dataset.item!] = { y: (r.top - top) / k, h: r.height / k }
+      }
+      useItemRects.getState().report(card.id, rects)
+    }
+    report()
+    const ro = new ResizeObserver(report)
+    ro.observe(ul)
+    ul.addEventListener('scroll', report, { passive: true })
+    return () => {
+      ro.disconnect()
+      ul.removeEventListener('scroll', report)
+    }
+  }, [boardId, card.id, card.items, card.w, card.h, card.style])
+  useEffect(() => () => useItemRects.getState().forget(card.id), [card.id])
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
@@ -26,9 +55,9 @@ export function TodoCard({ card, boardId, readOnly }: CardProps<TodoCardT>) {
           {done}/{card.items.length}
         </span>
       </div>
-      <ul className="min-h-0 flex-1 overflow-auto px-2 py-1 scrollbar-thin">
+      <ul ref={list} className="min-h-0 flex-1 overflow-auto px-2 py-1 scrollbar-thin">
         {card.items.map((it) => (
-          <li key={it.id} className="group/item flex items-start gap-2 px-1 py-0.5 text-[0.93em]">
+          <li key={it.id} data-item={it.id} className="group/item flex items-start gap-2 px-1 py-0.5 text-[0.93em]">
             <input
               data-nodrag
               type="checkbox"

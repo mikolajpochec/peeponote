@@ -118,7 +118,8 @@ export type Side = 'top' | 'right' | 'bottom' | 'left'
 export const SIDES: Side[] = ['top', 'right', 'bottom', 'left']
 
 /** where a connector end lives: glued to a card side, or a free point on the board */
-export type Anchor = { cardId: string; side: Side } | { x: number; y: number }
+/** a card side; with `itemId` the left/right edge of one row inside the card (to-do items) */
+export type Anchor = { cardId: string; side: Side; itemId?: string } | { x: number; y: number }
 export type ArrowStyle = 'end' | 'start' | 'both' | 'none'
 
 export interface Connector {

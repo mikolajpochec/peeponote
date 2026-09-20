@@ -60,7 +60,7 @@ const cardSchema = z.discriminatedUnion('type', [
 ])
 
 const anchorSchema = z.union([
-  z.object({ cardId: z.string(), side: z.enum(['top', 'right', 'bottom', 'left']) }),
+  z.object({ cardId: z.string(), side: z.enum(['top', 'right', 'bottom', 'left']), itemId: z.string().optional() }),
   z.object({ x: z.number(), y: z.number() }),
 ])
 
