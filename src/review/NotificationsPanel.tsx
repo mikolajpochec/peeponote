@@ -261,7 +261,7 @@ export function StatusPill({ status }: { status: ReturnType<typeof reviewStatus>
 /** a notification row: click opens it (and marks it seen); the checkbox selects it for the batch bar; the dot toggles seen */
 function Row({ n, picked, onPick, onOpen, onToggleSeen }: { n: Notification; picked: boolean; onPick: () => void; onOpen: () => void; onToggleSeen: () => void }) {
   return (
-    <div className={`group/row flex w-full items-start gap-2 px-2 py-2 text-left hover:bg-swamp-700 ${n.unseen ? 'bg-frog-900/20' : ''} ${picked ? 'bg-frog-800/40' : ''}`}>
+    <div className={`group/row flex w-full items-start gap-2 px-2 py-2 text-left hover:bg-swamp-700 ${n.unseen ? 'bg-frog-900/20' : 'opacity-50 hover:opacity-100'} ${picked ? 'bg-frog-800/40 opacity-100' : ''}`}>
       <input type="checkbox" checked={picked} onChange={onPick} className={`mt-2 accent-frog-500 ${picked ? '' : 'opacity-0 group-hover/row:opacity-100'}`} title="Select" />
       <button onClick={onOpen} className="flex min-w-0 flex-1 items-start gap-2 text-left">
         <div className="relative">
@@ -269,7 +269,7 @@ function Row({ n, picked, onPick, onOpen, onToggleSeen }: { n: Notification; pic
           <span className="absolute -bottom-1 -right-1 rounded-full bg-swamp-900 px-0.5 text-[10px] leading-none">{KIND_ICON[n.kind]}</span>
         </div>
         <div className="min-w-0 flex-1">
-          <div className={`text-[13px] leading-snug ${n.unseen ? '' : 'text-frog-100/80'}`}>
+          <div className="text-[13px] leading-snug">
             {n.who.email && <b>{n.who.name} </b>}
             {n.what}
             {!n.verified && <span className="ml-1 rounded bg-swamp-600 px-1 text-[9px] font-bold uppercase text-frog-200/60">unverified</span>}
