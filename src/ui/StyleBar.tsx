@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Card, CardStyle, FontFamily, ShapeKind, TextAlign } from '../model/types'
 import { useWorkspace } from '../store/workspace'
 import { FONT_LABEL, RADII, contrast, defaultBold, defaultFontSize } from '../canvas/styles'
@@ -41,7 +41,7 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
   const [menu, setMenu] = useState<'font' | 'align' | 'arrange' | 'shape' | null>(null)
   const shapes = cards.filter((c) => c.type === 'shape')
   const allShapes = shapes.length === cards.length
-  const strokeW = s.strokeWidth ?? (allShapes ? (s.border ? DEFAULT_SHAPE_STROKE : 0) : 2)
+  const strokeW = s.strokeWidth ?? (allShapes ? DEFAULT_SHAPE_STROKE : 2)
   const setShape = (kind: ShapeKind) => {
     for (const c of shapes) updateCard(boardId, c.id, { shape: kind } as Partial<Card>)
   }
@@ -72,7 +72,7 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
             </button>
             {menu === 'shape' && (
               <Menu>
-                <div className="grid grid-cols-3 gap-0.5">
+                <div className="grid gap-0.5" style={{ gridTemplateColumns: 'repeat(3, 2.25rem)' }}>
                   {SHAPES.map((sh) => (
                     <MenuItem
                       key={sh.kind}
@@ -80,7 +80,7 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
                       active={shapes.every((c) => (c as Extract<Card, { type: 'shape' }>).shape === sh.kind)}
                       onClick={() => (setShape(sh.kind), setMenu(null))}
                     >
-                      <span className="block w-6 text-center text-[16px]">{sh.icon}</span>
+                      <span className="block text-center text-[16px]">{sh.icon}</span>
                     </MenuItem>
                   ))}
                 </div>
@@ -91,7 +91,7 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
         </>
       )}
       {/* a new fill resets the ink so it re-derives its contrast automatically */}
-      <ColorPicker title="Fill (text color adapts)" icon="◼" value={s.bg} fallback={first.type === 'text' ? '#00000000' : '#fbf8ef'} onChange={(bg) => apply({ bg, fg: undefined })} />
+      <ColorPicker title="Fill (text color adapts)" icon="◼" value={s.bg} fallback={first.type === 'text' || allShapes ? '#00000000' : '#fbf8ef'} onChange={(bg) => apply({ bg, fg: undefined })} />
       <ColorPicker title="Text color" icon="A" value={s.fg} fallback={s.bg ? contrast(s.bg) : '#1b1d1a'} onChange={(fg) => apply({ fg })} />
       <ColorPicker title={allShapes ? 'Stroke color' : 'Border'} icon="◻" value={s.border} fallback="#00000000" onChange={(border) => apply({ border })} />
       {(allShapes || s.border) && (
@@ -257,8 +257,23 @@ function Sep() {
 }
 
 function Menu({ children, row }: { children: React.ReactNode; row?: boolean }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [dx, setDx] = useState(0)
+  // centered under its button, but nudged back inside the window when that would clip it
+  useLayoutEffect(() => {
+    const r = ref.current?.getBoundingClientRect()
+    if (!r) return
+    // the canvas clips its overlays, so stay inside it (or the window when used elsewhere)
+    const host = (ref.current!.closest('.canvas-bg') as HTMLElement | null)?.getBoundingClientRect() ?? { left: 0, right: window.innerWidth }
+    const over = Math.max(0, host.left + 8 - r.left) || Math.min(0, host.right - 8 - r.right)
+    if (over) setDx((d) => d + over)
+  }, [])
   return (
-    <div className={`absolute left-1/2 top-full z-10 mt-1 flex -translate-x-1/2 gap-0.5 rounded-lg border border-(--hair) bg-swamp-900 p-1 shadow-2xl ${row ? '' : 'flex-col'}`}>
+    <div
+      ref={ref}
+      className={`absolute left-1/2 top-full z-10 mt-1 flex gap-0.5 rounded-lg border border-(--hair) bg-swamp-900 p-1 shadow-2xl ${row ? '' : 'flex-col'}`}
+      style={{ transform: `translateX(calc(-50% + ${dx}px))` }}
+    >
       {children}
     </div>
   )

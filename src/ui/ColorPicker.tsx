@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { PALETTE, contrast } from '../canvas/styles'
 
 interface Props {
@@ -16,6 +16,17 @@ interface Props {
 export function ColorPicker({ value, swatches, onChange, title, fallback, icon }: Props) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
+  const pop = useRef<HTMLDivElement>(null)
+  const [dx, setDx] = useState(0)
+  useLayoutEffect(() => {
+    if (!open) return setDx(0)
+    const r = pop.current?.getBoundingClientRect()
+    if (!r) return
+    // the canvas clips its overlays, so stay inside it (or the window when used elsewhere)
+    const host = (pop.current!.closest('.canvas-bg') as HTMLElement | null)?.getBoundingClientRect() ?? { left: 0, right: window.innerWidth }
+    const over = Math.max(0, host.left + 8 - r.left) || Math.min(0, host.right - 8 - r.right)
+    if (over) setDx((d) => d + over)
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -41,7 +52,7 @@ export function ColorPicker({ value, swatches, onChange, title, fallback, icon }
         </span>
       </button>
       {open && (
-        <div className="absolute left-1/2 top-full z-10 mt-1 -translate-x-1/2 rounded-lg border border-(--hair) bg-swamp-900 p-2 shadow-2xl" style={{ width: swatches ? 176 : 268 }}>
+        <div ref={pop} className="absolute left-1/2 top-full z-10 mt-1 rounded-lg border border-(--hair) bg-swamp-900 p-2 shadow-2xl" style={{ width: swatches ? 176 : 268, transform: `translateX(calc(-50% + ${dx}px))` }}>
           <div className={`grid gap-1 ${swatches ? 'grid-cols-6' : 'grid-cols-12'}`}>
             {(swatches ?? PALETTE.flat()).map((c, i) => (
               <button

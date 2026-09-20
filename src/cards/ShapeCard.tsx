@@ -17,8 +17,9 @@ export const SHAPES: { kind: ShapeKind; label: string; icon: string }[] = [
   { kind: 'cloud', label: 'Cloud', icon: '☁' },
 ]
 
-export const DEFAULT_SHAPE_FILL = '#c9e0f7'
+/** shapes start as an outline in the board's ink; fill is opt-in via the style bar */
 export const DEFAULT_SHAPE_STROKE = 2
+const NO_FILL = (c: string | undefined) => !c || c === 'transparent' || c === '#00000000'
 
 /** Path for a shape in a w×h box (stroke inset by half the width so it isn't clipped). */
 export function shapePath(kind: ShapeKind, w: number, h: number, inset: number, radius: number): string {
@@ -81,12 +82,13 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
   const [draft, setDraft] = useState(card.label)
   const ta = useRef<HTMLTextAreaElement>(null)
   const s = card.style ?? {}
-  const fill = s.bg ?? DEFAULT_SHAPE_FILL
-  const stroke = s.border
-  const sw = s.strokeWidth ?? (stroke ? DEFAULT_SHAPE_STROKE : 0)
-  const inset = sw / 2
+  const filled = !NO_FILL(s.bg)
+  const fill = filled ? s.bg! : 'none'
+  const stroke = s.border ?? 'var(--board-fg)'
+  const sw = s.strokeWidth ?? DEFAULT_SHAPE_STROKE
+  const inset = Math.max(sw / 2, 1)
   const d = shapePath(card.shape, card.w, card.h, inset, s.radius ?? 12)
-  const ink = s.fg ?? contrast(fill === 'transparent' || fill === '#00000000' ? '#ffffff' : fill)
+  const ink = s.fg ?? (filled ? contrast(fill) : 'var(--board-fg)')
 
   useEffect(() => {
     if (editing) {
@@ -112,7 +114,7 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
         <path
           d={d}
           fill={fill}
-          stroke={sw ? stroke ?? contrast(fill) : 'none'}
+          stroke={sw ? stroke : 'none'}
           strokeWidth={sw}
           strokeDasharray={s.dashed ? `${sw * 3} ${sw * 2}` : undefined}
           strokeLinejoin="round"
