@@ -19,8 +19,9 @@ const field = 'w-full rounded-md bg-swamp-700 px-2 py-1.5 text-[13px] outline-no
 const btn = 'rounded-md bg-swamp-600 px-3 py-1.5 text-[13px] font-semibold hover:bg-swamp-500 disabled:opacity-40'
 const hint = 'text-[11px] leading-relaxed text-frog-200/50'
 
-type Tab = 'sync' | 'board' | 'storage' | 'look'
+type Tab = 'you' | 'sync' | 'board' | 'storage' | 'look'
 const TABS: { id: Tab; title: string; icon: string }[] = [
+  { id: 'you', title: 'You', icon: '🙂' },
   { id: 'sync', title: 'Sync', icon: '☁️' },
   { id: 'board', title: 'Workspace', icon: '🐸' },
   { id: 'storage', title: 'Storage', icon: '💾' },
@@ -34,7 +35,7 @@ const TABS: { id: Tab; title: string; icon: string }[] = [
  */
 export function SettingsDialog({ onClose }: { onClose: () => void }) {
   const remoteUrl = useWorkspace((s) => s.remoteUrl)
-  const [tab, setTab] = useState<Tab>(() => (remoteUrl ? 'board' : 'sync'))
+  const [tab, setTab] = useState<Tab>(() => (remoteUrl ? 'you' : 'sync'))
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -65,6 +66,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           ))}
         </div>
         <div className="min-h-0 flex-1 overflow-auto bg-swamp-700/60 p-5 scrollbar-thin">
+          {tab === 'you' && <YouTab />}
           {tab === 'sync' && <SyncTab />}
           {tab === 'board' && <WorkspaceTab />}
           {tab === 'storage' && <StorageTab />}
@@ -161,7 +163,6 @@ function SyncTab() {
         </div>
         <TokenHelp remote={remote} className="mt-2" />
       </Row>
-      <IdentityRow />
       <label className="flex items-start gap-2 text-[13px]">
         <input type="checkbox" checked={settings.autoPull} onChange={(e) => settings.set({ autoPull: e.target.checked })} className="mt-0.5 accent-frog-500" />
         <span>
@@ -207,13 +208,15 @@ function SyncTab() {
   )
 }
 
-function IdentityRow() {
+function YouTab() {
   const settings = useSettings()
   const identity = useReview((s) => s.identity)
   const open = () => window.dispatchEvent(new CustomEvent('peeponote:identify'))
   if (identity.kind === 'verified') {
     return (
-      <Row title="You" sub="Name and email are part of your identity key, so they're fixed now. Use the dialog to change the picture or log out on this device.">
+      <>
+        <p className={`mb-4 ${hint}`}>Who you are in this workspace: the author of your saves, and a verified voice in comments and reviews.</p>
+        <Row title="Identity" sub="Name and email are part of your identity key, so they're fixed now. Use the dialog to change the picture or log out on this device.">
         <div className="flex items-center gap-3 rounded-lg bg-swamp-800/60 p-2">
           <Avatar person={identity.account} size={36} />
           <div className="min-w-0 flex-1">
@@ -222,25 +225,28 @@ function IdentityRow() {
           </div>
           <span className="text-[11px] text-frog-300">✓ verified</span>
           <button className={btn} onClick={open}>
-            Identity…
+            Picture / log out…
           </button>
         </div>
-      </Row>
+        </Row>
+      </>
     )
   }
   return (
-    <Row title="Your name on commits" sub="Shown to others as the author of your saves. Set a password to comment and review — see the button.">
+    <>
+      <p className={`mb-4 ${hint}`}>Who you are in this workspace: the author of your saves, and — with a password — a verified voice in comments and reviews.</p>
+      <Row title="Your name on commits" sub="Shown to others as the author of your saves.">
       <div className="grid grid-cols-2 gap-2">
         <input className={field} placeholder="Name" value={settings.authorName} onChange={(e) => settings.set({ authorName: e.target.value })} />
         <input className={field} placeholder="email@example.com" value={settings.authorEmail} onChange={(e) => settings.set({ authorEmail: e.target.value })} />
       </div>
-      <div className="mt-2 flex items-center gap-2">
+      </Row>
+      <Row title="Password" sub={identity.kind === 'mismatch' ? "The password saved in this browser doesn't fit the account committed for your email." : 'Guest right now: you can edit boards, but not comment, review or get notifications.'}>
         <button className={`${btn} bg-frog-700/60 hover:bg-frog-600`} onClick={open}>
           🔑 {identity.kind === 'mismatch' ? 'Fix my password…' : 'Set a password…'}
         </button>
-        <span className={hint}>{identity.kind === 'mismatch' ? "The saved password doesn't fit your committed account." : 'Guest: you can edit, but not comment or review.'}</span>
-      </div>
-    </Row>
+      </Row>
+    </>
   )
 }
 
