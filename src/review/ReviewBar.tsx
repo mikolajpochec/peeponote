@@ -80,10 +80,9 @@ export function ReviewBar({ board, onHeight }: { board: Board; onHeight?: (h: nu
           </span>
           <StatusPill status={reviewStatus(review, vs, Object.values(comments))} />
           {vs.map((v) => (
-            <span key={v.reviewer.email} className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] ${v.verdict === 'approved' ? 'bg-frog-700/60 text-frog-50' : 'bg-amber-600/50 text-amber-50'}`} title={v.note || undefined}>
+            <span key={v.reviewer.email} className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] ${v.verdict === 'approved' ? 'bg-frog-700/60 text-frog-50' : 'bg-amber-600/50 text-amber-50'}`}>
               <Avatar person={v.reviewer} size={14} />
               {v.verdict === 'approved' ? '✓' : '✎'} {v.reviewer.name}
-              {v.note && <span className="max-w-48 truncate opacity-80">— {v.note}</span>}
             </span>
           ))}
         </>
@@ -141,6 +140,24 @@ export function ReviewBar({ board, onHeight }: { board: Board; onHeight?: (h: nu
           </div>
         </div>
       )}
+      {/* each reviewer's verdict with its note, same shape as the request above */}
+      {review &&
+        vs
+          .filter((v) => v.note)
+          .map((v) => (
+            <div
+              key={v.reviewer.email}
+              className={`flex w-full items-start gap-2 rounded-lg px-3 py-2 text-[14px] leading-snug text-frog-50 ${v.verdict === 'approved' ? 'bg-frog-900/40 ring-1 ring-frog-500/40' : 'bg-amber-900/30 ring-1 ring-amber-400/40'}`}
+            >
+              <Avatar person={v.reviewer} size={22} className="mt-0.5" />
+              <div className="min-w-0">
+                <span className={`mr-1.5 text-[11px] font-black uppercase tracking-wider ${v.verdict === 'approved' ? 'text-frog-300' : 'text-amber-200/90'}`}>
+                  {v.reviewer.name} {v.verdict === 'approved' ? 'approves' : 'requests changes'}
+                </span>
+                <span className="whitespace-pre-wrap">{v.note}</span>
+              </div>
+            </div>
+          ))}
       {asking && review && (
         <div className="flex w-full items-center gap-2 pt-1">
           <input
