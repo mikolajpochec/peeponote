@@ -76,7 +76,9 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       const cur = useViewport.getState().get(board.id)
       const rect = el.getBoundingClientRect()
       if (e.ctrlKey || e.metaKey) {
-        const factor = Math.exp(-e.deltaY * 0.01)
+        // gentle zoom: a mouse-wheel notch (~100 px, or one "line") is ~15 %, trackpad pinch deltas are a few px → ~1 % each
+        const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 100 : e.deltaY
+        const factor = Math.exp(-Math.max(-50, Math.min(50, dy)) * 0.003)
         setVp(board.id, zoomAt(cur, factor, e.clientX, e.clientY, rect))
       } else {
         setVp(board.id, { ...cur, x: cur.x - e.deltaX, y: cur.y - e.deltaY })
