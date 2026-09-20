@@ -45,6 +45,14 @@ export function TokenHelp({ remote, className = '' }: { remote: string; classNam
           </a>
           . Leave username empty.
         </p>
+        <p className="mt-1 rounded-md bg-amber-900/30 px-2 py-1 text-amber-100/90">
+          <b>Not your repo?</b> If someone else owns it and you're a collaborator, a fine-grained token <em>can't</em> be pointed at it (GitHub only lets you pick repos you own or your
+          organization owns). Use the{' '}
+          <a className={link} href={CLASSIC_URL} target="_blank" rel="noreferrer">
+            classic token with <code className={code}>repo</code> ↗
+          </a>{' '}
+          instead — it covers every repo you have access to.
+        </p>
         <details className="mt-1 rounded-lg bg-swamp-900/40 px-2 py-1 open:pb-2">
           <summary className="cursor-pointer select-none font-semibold text-frog-200/80">Step by step: how to create the token</summary>
           <ol className="mt-1 list-decimal space-y-1 pl-4 text-frog-200/70">
