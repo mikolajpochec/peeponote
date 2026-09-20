@@ -86,7 +86,19 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
         if (c.type === 'text' && c.autoSize !== false) (patch as Partial<Extract<Card, { type: 'text' }>>).autoSize = false
         updateCard(boardId, card.id, patch)
       },
-      onEnd: () => setGlobalCursor(null),
+      onEnd: (moved) => {
+        setGlobalCursor(null)
+        if (!moved || readOnly) return
+        // with snap-to-grid on, sizes land on the grid too (and the far edge stays on a grid line)
+        if (useWorkspace.getState().meta?.settings?.snapToGrid) {
+          const c = useWorkspace.getState().boards[boardId]?.cards.find((x) => x.id === card.id)
+          if (!c) return
+          const minW = c.type === 'text' ? 60 : MIN_W
+          const minH = c.type === 'text' ? 32 : MIN_H
+          const snapEdge = (pos: number, size: number, min: number) => Math.max(min, Math.round((pos + size) / GRID) * GRID - pos)
+          updateCard(boardId, card.id, { w: snapEdge(c.x, c.w, minW), h: snapEdge(c.y, c.h, minH) })
+        }
+      },
     },
     scale,
   )
