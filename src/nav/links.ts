@@ -71,6 +71,7 @@ export function describeLink(t: LinkTarget): { title: string; sub: string; icon?
 /** markdown → plain words for labels: **x** → x, [t](url) → t, `c` → c */
 export function stripMd(t: string): string {
   return t
+    .replace(/@\[([^\]]+)\]/g, '@$1')
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/(\*\*|__|~~|`)(.*?)\1/g, '$2')
     .replace(/(^|[^\w])[_*](.+?)[_*](?=[^\w]|$)/g, '$1$2')

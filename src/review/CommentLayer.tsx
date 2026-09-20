@@ -67,6 +67,16 @@ export function CommentLayer({ board, scale }: { board: Board; scale: number }) 
   const seen = me ? states[userKey(me.email)]?.seen ?? {} : {}
   const [sizes, setSizes] = useState<Record<string, number>>({})
   const [cascade, setCascade] = useState<{ cardId: string; el: HTMLElement } | null>(null)
+  // the cascade opens under the pointer: closing must wait a beat, and hovering the list itself keeps it open
+  const cascadeClose = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const openCascade = (cardId: string, el: HTMLElement) => {
+    if (cascadeClose.current) clearTimeout(cascadeClose.current)
+    setCascade((c) => (c?.cardId === cardId ? c : { cardId, el }))
+  }
+  const closeCascadeSoon = () => {
+    if (cascadeClose.current) clearTimeout(cascadeClose.current)
+    cascadeClose.current = setTimeout(() => setCascade(null), 180)
+  }
 
   const threads = useMemo(() => threadsOf(board, comments, rects), [board, comments, rects])
   const bubbles = mode.on && scale >= 0.5
@@ -171,8 +181,8 @@ export function CommentLayer({ board, scale }: { board: Board; scale: number }) 
                   ev.stopPropagation()
                   setOpenThread({ boardId: board.id, anchorKey: `card:${cardId}` })
                 }}
-                onPointerEnter={(ev) => setCascade({ cardId, el: ev.currentTarget })}
-                onPointerLeave={() => setCascade((c) => (c?.cardId === cardId ? null : c))}
+                onPointerEnter={(ev) => openCascade(cardId, ev.currentTarget)}
+                onPointerLeave={closeCascadeSoon}
                 title="Not enough room to show these without covering something — hover to list them, click to read"
                 className="pointer-events-auto absolute -right-2 -top-3 flex h-6 items-center gap-1 rounded-full bg-amber-400 px-2 text-[11px] font-black text-black shadow ring-2 ring-(--board-bg) comment-fade"
               >
@@ -225,6 +235,12 @@ export function CommentLayer({ board, scale }: { board: Board; scale: number }) 
       {/* cascade of threads for a crowded card */}
       {cascade && (
         <Popover anchor={cascade.el} onClose={() => setCascade(null)} sticky className="w-72 rounded-xl border border-(--hair) bg-swamp-800 p-1 shadow-2xl">
+          <div
+            onPointerEnter={() => {
+              if (cascadeClose.current) clearTimeout(cascadeClose.current)
+            }}
+            onPointerLeave={closeCascadeSoon}
+          >
           <div className="px-2 pb-1 pt-1 text-[10px] font-black uppercase tracking-wider text-frog-200/50">{byCard.get(cascade.cardId)?.threads.length} threads on this card — some don't fit around it</div>
           {(byCard.get(cascade.cardId)?.threads ?? []).map((t) => (
             <button
@@ -242,6 +258,7 @@ export function CommentLayer({ board, scale }: { board: Board; scale: number }) 
               </div>
             </button>
           ))}
+          </div>
         </Popover>
       )}
     </div>
