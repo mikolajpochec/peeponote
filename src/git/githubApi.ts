@@ -75,6 +75,7 @@ class Client {
       if (res.status === 404) msg = `${msg} — repo not found, or the token lacks access to ${this.owner}/${this.repo}.`
       throw new GitHubError(res.status, msg)
     }
+    if (res.status === 204) return undefined as T
     return (await res.json()) as T
   }
 
@@ -175,12 +176,32 @@ export async function ghPush(fs: PeepoFS, target: GitHubTarget, progress: Progre
     for (const e of rt.tree) known.add(e.sha)
   }
 
+  // The Git Data API refuses to create objects in a repo with no commits ("Git Repository is empty", 409).
+  // Seed it with a throwaway commit through the Contents API, then continue as usual; the seed lands on
+  // GitHub's default branch and is cleaned up after our real branch exists.
+  let seededBranch: string | null = null
+  const seedEmptyRepo = async () => {
+    progress('initializing empty repository…')
+    await gh.req('PUT', '/contents/.peeponote-init', { message: 'Initialize repository', content: toBase64(new TextEncoder().encode('peeponote\n')) })
+    const info = await gh.req<{ default_branch: string }>('GET', '')
+    seededBranch = info.default_branch
+  }
+  const isEmptyRepoError = (e: unknown) => e instanceof GitHubError && e.status === 409 && /empty/i.test(e.message)
+
   let uploaded = 0
   const ensureBlob = async (oid: string) => {
     if (known.has(oid)) return
     const { blob } = await git.readBlob({ fs, dir, oid })
     progress(`uploading file ${++uploaded}…`)
-    const r = await gh.req<{ sha: string }>('POST', '/git/blobs', { content: toBase64(blob), encoding: 'base64' })
+    const body = { content: toBase64(blob), encoding: 'base64' }
+    let r: { sha: string }
+    try {
+      r = await gh.req<{ sha: string }>('POST', '/git/blobs', body)
+    } catch (e) {
+      if (!isEmptyRepoError(e) || seededBranch) throw e
+      await seedEmptyRepo()
+      r = await gh.req<{ sha: string }>('POST', '/git/blobs', body)
+    }
     if (r.sha !== oid) throw new Error(`Blob id mismatch (${r.sha.slice(0, 7)} vs ${oid.slice(0, 7)})`)
     known.add(oid)
   }
@@ -214,8 +235,21 @@ export async function ghPush(fs: PeepoFS, target: GitHubTarget, progress: Progre
   }
 
   progress('updating branch…')
-  if (remote) await gh.req('PATCH', `/git/refs/heads/${encodeURIComponent(target.branch)}`, { sha: local, force })
-  else await gh.req('POST', '/git/refs', { ref: `refs/heads/${target.branch}`, sha: local })
+  const branchRef = `/git/refs/heads/${encodeURIComponent(target.branch)}`
+  if (remote) await gh.req('PATCH', branchRef, { sha: local, force })
+  else if (seededBranch === target.branch) await gh.req('PATCH', branchRef, { sha: local, force: true }) // replace the seed commit
+  else {
+    await gh.req('POST', '/git/refs', { ref: `refs/heads/${target.branch}`, sha: local })
+    if (seededBranch) {
+      // the seed went to a differently named default branch: point the repo at ours and drop it (best effort — needs admin rights)
+      try {
+        await gh.req('PATCH', '', { default_branch: target.branch })
+        await gh.req('DELETE', `/git/refs/heads/${encodeURIComponent(seededBranch)}`)
+      } catch {
+        /* token lacks admin permission; the extra branch is harmless */
+      }
+    }
+  }
   await git.writeRef({ fs, dir, ref: `refs/remotes/origin/${target.branch}`, value: local, force: true })
   return { pushed: toPush.length }
 }
