@@ -236,7 +236,15 @@ export async function ghPush(fs: PeepoFS, target: GitHubTarget, progress: Progre
 
   progress('updating branch…')
   const branchRef = `/git/refs/heads/${encodeURIComponent(target.branch)}`
-  if (remote) await gh.req('PATCH', branchRef, { sha: local, force })
+  if (remote) {
+    try {
+      await gh.req('PATCH', branchRef, { sha: local, force })
+    } catch (e) {
+      // someone pushed between our fetch and this update → let the sync layer fetch again and merge
+      if (e instanceof GitHubError && e.status === 422 && /fast.?forward/i.test(e.message)) throw new NotFastForwardError()
+      throw e
+    }
+  }
   else if (seededBranch === target.branch) await gh.req('PATCH', branchRef, { sha: local, force: true }) // replace the seed commit
   else {
     await gh.req('POST', '/git/refs', { ref: `refs/heads/${target.branch}`, sha: local })

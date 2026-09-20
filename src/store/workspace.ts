@@ -6,7 +6,7 @@ import {
 } from '../fs'
 import * as repo from '../git/repo'
 import { chooseTransport, compare, fetchRemote, mergeRemote, pushRemote, resetTo, type SyncCtx, type SyncState } from '../git/sync'
-import { ghClone, parseGitHubUrl } from '../git/githubApi'
+import { NotFastForwardError, ghClone, parseGitHubUrl } from '../git/githubApi'
 import {
   ASSETS_DIR, BOARDS_DIR, WORKSPACE_FILE, boardPath, newId,
   type Board, type BoardStyle, type Card, type CardStyle, type Connector, type ConnectorStyle, type ShapeKind, type WorkspaceMeta, type WorkspaceSettings,
@@ -828,11 +828,28 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
             if (!silent) toast.info('Already in sync.', 'peepoSit')
             break
           case 'remote-empty':
-          case 'ahead':
+          case 'ahead': {
             if (!ctx.auth.token) throw new Error('A token is needed to push. Add one in Settings.')
-            await pushRemote(ctx, progress)
+            try {
+              await pushRemote(ctx, progress)
+            } catch (e) {
+              if (!(e instanceof NotFastForwardError)) throw e
+              // the remote moved while we were pushing: look again and offer the merge dialog instead of failing
+              const remote2 = await fetchRemote(ctx, progress)
+              const st2 = await compare(fs, await repo.headOid(fs), remote2)
+              if (st2.relation === 'diverged') {
+                set({ divergence: st2 })
+                break
+              }
+              if (st2.relation === 'ahead') await pushRemote(ctx, progress)
+              else if (st2.relation === 'behind') {
+                await resetTo(fs, remote2!)
+                await reloadBoards(fs)
+              }
+            }
             toast.ok(`Pushed ${st.ahead || ''} ${st.ahead === 1 ? 'commit' : 'commits'}.`.replace('  ', ' '), 'peepoRun')
             break
+          }
           case 'local-empty':
           case 'behind':
             if (dirty) {
@@ -878,10 +895,17 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
           }
           return
         }
-        if (isDirty(get())) {
+        if (isDirty(get()) || !useSettings.getState().autoPull) {
+          // can't (or shouldn't) pull automatically — say so, once per remote head
           if (lastNotifiedRemote !== remote) {
             lastNotifiedRemote = remote
-            toast.info(`${await authorsBetween(fs, remote, local)} pushed changes — Save yours to pull them in.`, 'peepoShy')
+            const who = await authorsBetween(fs, remote, local)
+            toast.action(
+              isDirty(get()) ? `${who} pushed changes — Save yours to pull them in.` : `${who} pushed changes (${st.behind} ${st.behind === 1 ? 'commit' : 'commits'}).`,
+              isDirty(get()) ? 'Save' : 'Pull',
+              () => void (isDirty(get()) ? get().save() : get().sync()),
+              'peepoShy',
+            )
           }
           return
         }

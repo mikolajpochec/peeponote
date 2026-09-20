@@ -73,13 +73,12 @@ export default function App() {
     if (status === 'ready') reflectBoardInHash(currentBoardId)
   }, [status, currentBoardId])
 
-  // background pull: every 45s while visible, and right when the tab comes back into view
-  const autoPull = useSettings((s) => s.autoPull)
+  // background check every 30s while visible (and when the tab comes back): pulls when safe, otherwise toasts
   const remoteUrl = useWorkspace((s) => s.remoteUrl)
   useEffect(() => {
-    if (!autoPull || !remoteUrl || status !== 'ready') return
+    if (!remoteUrl || status !== 'ready') return
     const tick = () => void useWorkspace.getState().autoSync()
-    const id = setInterval(tick, 45_000)
+    const id = setInterval(tick, 30_000)
     const onVis = () => {
       if (document.visibilityState === 'visible') tick()
     }
@@ -90,7 +89,7 @@ export default function App() {
       clearTimeout(first)
       document.removeEventListener('visibilitychange', onVis)
     }
-  }, [autoPull, remoteUrl, status])
+  }, [remoteUrl, status])
 
   // edits are written to the working tree continuously; make sure the last ones land before we go
   useEffect(() => {

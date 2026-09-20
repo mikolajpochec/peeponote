@@ -226,7 +226,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           </div>
           <label className="flex items-center gap-2 text-[13px]">
             <input type="checkbox" checked={settings.autoPull} onChange={(e) => settings.set({ autoPull: e.target.checked })} className="accent-frog-500" />
-            Auto-pull: check the remote every ~45 s and bring in others' commits when nothing local would be lost
+            Auto-pull: bring in others' commits automatically when nothing local would be lost (the remote is checked every 30 s either way; with this off you get a toast with a Pull button)
           </label>
           <label className="flex items-center gap-2 text-[13px]">
             <input type="checkbox" checked={settings.separatePush} onChange={(e) => settings.set({ separatePush: e.target.checked })} className="accent-frog-500" />
