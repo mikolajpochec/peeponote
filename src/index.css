@@ -198,3 +198,8 @@ input:read-only, textarea:read-only { cursor: default; }
 .cm-md-h2 { font-size: 1.2em; font-weight: 800; }
 .cm-md-h3 { font-size: 1.05em; font-weight: 800; }
 .cm-md-quote { border-left: 3px solid var(--color-frog-300); padding-left: 0.6em; opacity: 0.85; }
+
+/* review mode: cards are things you point at, not text you edit — one cursor, no text selection, no hover affordances */
+.review-mode [data-card], .review-mode [data-card] * { cursor: pointer !important; user-select: none !important; -webkit-user-select: none !important; }
+.review-mode [data-card] input, .review-mode [data-card] textarea, .review-mode [data-card] button { pointer-events: none; }
+.review-mode [data-card] .group-hover\/item\:opacity-100, .review-mode [data-card] .group-hover\/line\:opacity-60 { opacity: 0 !important; }

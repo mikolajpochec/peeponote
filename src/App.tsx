@@ -11,6 +11,9 @@ import { BootScreen } from './ui/BootScreen'
 import { Onboarding } from './ui/Onboarding'
 import { IdentityDialog, shouldPromptIdentity } from './review/IdentityDialog'
 import { useReview } from './store/review'
+import { NotificationsPanel } from './review/NotificationsPanel'
+import { RequestReviewDialog } from './review/RequestReviewDialog'
+import { ThreadDialog } from './review/ThreadDialog'
 import { SyncDialog } from './ui/SyncDialog'
 import { ConfirmDialog } from './ui/ConfirmDialog'
 import { PropertiesDialog } from './ui/PropertiesDialog'
@@ -50,6 +53,9 @@ export default function App() {
   // the review files are loaded (plain-language prompt, snoozable for a week)
   const [identity, setIdentity] = useState<null | { intro: boolean }>(null)
   const reviewLoaded = useReview((s) => s.loaded)
+  const reviewOn = useReview((s) => s.mode.on)
+  const notifOpen = useReview((s) => s.panelOpen)
+  const setNotifOpen = useReview((s) => s.setPanelOpen)
   const identityKind = useReview((s) => s.identity.kind)
   useEffect(() => {
     const open = () => setIdentity({ intro: false })
@@ -166,7 +172,7 @@ export default function App() {
         <div className="relative flex min-h-0 flex-1">
           <div className="relative min-w-0 flex-1">
             {board && currentBoardId ? (
-              <Canvas key={`${board.id}:${viewingRef ?? 'live'}`} board={board} readOnly={!!viewingRef} />
+              <Canvas key={`${board.id}:${viewingRef ?? 'live'}`} board={board} readOnly={!!viewingRef || reviewOn} />
             ) : (
               <div className="flex h-full items-center justify-center text-frog-200/60">Board not found</div>
             )}
@@ -180,11 +186,14 @@ export default function App() {
               </div>
             )}
           </div>
-          {showHistory && <HistoryPanel onClose={() => setShowHistory(false)} mobile={mobile} />}
+          {showHistory && !notifOpen && <HistoryPanel onClose={() => setShowHistory(false)} mobile={mobile} />}
+          {notifOpen && <NotificationsPanel onClose={() => setNotifOpen(false)} mobile={mobile} />}
         </div>
       </div>
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
       {showOnboarding && <Onboarding onFinish={() => setShowOnboarding(false)} />}
+      <RequestReviewDialog />
+      <ThreadDialog />
       {identity && !showOnboarding && <IdentityDialog intro={identity.intro} onClose={() => setIdentity(null)} />}
       <SyncDialog />
       <ConfirmDialog />

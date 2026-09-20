@@ -185,6 +185,8 @@ export interface Board {
 /** Shared, committed workspace settings (everyone who clones gets these) */
 export interface WorkspaceSettings {
   snapToGrid?: boolean
+  /** review: who may resolve threads / close reviews (default: the author / requester only) */
+  review?: { anyoneCanClose?: boolean }
 }
 
 export interface WorkspaceMeta {

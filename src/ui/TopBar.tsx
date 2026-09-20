@@ -5,6 +5,8 @@ import { useSettings } from '../store/settings'
 import { Peepo } from './Peepo'
 import { ColorPicker } from './ColorPicker'
 import { resolveTheme } from '../theme/themes'
+import { useReview } from '../store/review'
+import { useUnseenCount } from '../review/notifications'
 
 export function TopBar({
   onToggleHistory,
@@ -26,7 +28,8 @@ export function TopBar({
   const viewingRef = useWorkspace((s) => s.viewingRef)
   const themeCanvas = useSettings((s) => resolveTheme(s.theme).canvas)
   const board = currentId ? boards[currentId] : undefined
-  const readOnly = !!viewingRef
+  const reviewOn = useReview((s) => s.mode.on)
+  const readOnly = !!viewingRef || reviewOn
 
   const crumbs: Board[] = []
   for (let b = board; b; b = b.parentId ? boards[b.parentId] : undefined) crumbs.unshift(b)
@@ -82,7 +85,9 @@ export function TopBar({
         </div>
       )}
       <div className="flex-1" />
-      <SaveBar compact={!!onToggleSidebar} />
+      {reviewOn ? <ReviewToggle compact={!!onToggleSidebar} /> : <SaveBar compact={!!onToggleSidebar} />}
+      {!reviewOn && <ReviewToggle compact={!!onToggleSidebar} />}
+      <Bell compact={!!onToggleSidebar} />
       <button
         onClick={onToggleHistory}
         title="History"
@@ -94,6 +99,38 @@ export function TopBar({
         ⚙
       </button>
     </header>
+  )
+}
+
+/** Review mode: the board is read-only, you comment. Toggles from anywhere. */
+function ReviewToggle({ compact }: { compact: boolean }) {
+  const on = useReview((s) => s.mode.on)
+  const setMode = useReview((s) => s.setMode)
+  return (
+    <button
+      onClick={() => setMode({ on: !on })}
+      title={on ? 'Leave review mode (back to editing)' : 'Review mode: look and comment without changing anything'}
+      className={`flex h-8 items-center gap-1.5 rounded-md px-2 py-1 text-[13px] font-bold ${on ? 'bg-amber-500 text-black hover:bg-amber-400' : 'hover:bg-(--hover-strong)'} max-md:h-9 ${compact && !on ? 'w-9 px-0' : ''}`}
+    >
+      🔍{(!compact || on) && <span>{on ? 'Reviewing — exit' : 'Review'}</span>}
+    </button>
+  )
+}
+
+function Bell({ compact }: { compact: boolean }) {
+  const n = useUnseenCount()
+  const open = useReview((s) => s.panelOpen)
+  const setOpen = useReview((s) => s.setPanelOpen)
+  return (
+    <button
+      onClick={() => setOpen(!open)}
+      title="Notifications: review requests, comments, mentions"
+      className={`relative rounded-md px-2 py-1 text-[13px] font-semibold hover:bg-(--hover-strong) max-md:h-9 max-md:w-9 max-md:px-0 ${open ? 'bg-(--hover-strong)' : ''}`}
+    >
+      🔔
+      {n > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-center text-[10px] font-black leading-4 text-black">{n > 99 ? '99+' : n}</span>}
+      {!compact && <span className="max-md:hidden"> </span>}
+    </button>
   )
 }
 

@@ -100,7 +100,7 @@ export const workspaceSchema = z.object({
   version: z.literal(1),
   name: z.string(),
   rootBoardId: z.string(),
-  settings: z.object({ snapToGrid: z.boolean().optional() }).optional(),
+  settings: z.object({ snapToGrid: z.boolean().optional(), review: z.object({ anyoneCanClose: z.boolean().optional() }).optional() }).optional(),
 })
 
 /** Older files stored the text variant under `style`. */

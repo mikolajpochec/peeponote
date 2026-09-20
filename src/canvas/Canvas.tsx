@@ -26,6 +26,9 @@ import { toast } from '../store/toast'
 import { removeCardsChecked } from '../store/removeCards'
 import { useProperties } from '../ui/PropertiesDialog'
 import { useSettings } from '../store/settings'
+import { useReview } from '../store/review'
+import { CommentLayer } from '../review/CommentLayer'
+import { ReviewBar } from '../review/ReviewBar'
 import { resolveTheme } from '../theme/themes'
 import { LONG_PRESS_MS, LONG_PRESS_SLOP, activeTouches, isDuplicateDblClick, markLongPress, registerTap, shouldSwallowContextMenu, useIsMobile } from './touch'
 
@@ -51,6 +54,9 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
   const updateConnector = useWorkspace((s) => s.updateConnector)
   const removeConnectors = useWorkspace((s) => s.removeConnectors)
   const [marquee, setMarquee] = useState<Marquee | null>(null)
+  const reviewOn = useReview((s) => s.mode.on)
+  const reviewId = useReview((s) => s.mode.reviewId)
+  const clickStart = useRef<{ x: number; y: number } | null>(null)
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   const [draft, setDraft] = useState<DraftConnector | null>(null)
   const [menu, setMenu] = useState<{ x: number; y: number; at: { x: number; y: number }; cardId: string | null; connectorId: string | null } | null>(null)
@@ -376,6 +382,9 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       if (one?.type === 'board') items.push({ kind: 'item', label: 'Open board', icon: '🐸', shortcut: 'dbl-click', onClick: () => navigate(one.boardId) }, sep)
       if (one?.type === 'asset') items.push({ kind: 'item', label: 'Download original', icon: '⬇', onClick: () => void downloadAsset(one) }, sep)
       items.push(
+        { kind: 'item', label: n > 1 ? `Ask for review of ${n} cards…` : 'Ask for review…', icon: '👀', onClick: () => useReview.getState().setRequestDialog({ boardId: board.id, targets: [...sel] }) },
+        { kind: 'item', label: 'Comments…', icon: '💬', onClick: () => useReview.getState().setOpenThread({ boardId: board.id, anchorKey: `card:${[...sel][0]}` }) },
+        sep,
         { kind: 'item', label: n > 1 ? `Copy ${n} items` : 'Copy', icon: '⧉', shortcut: '⌘C', onClick: () => copySelection(live, sel) },
         ...(one
           ? [
@@ -436,6 +445,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
           toast.ok('Link copied — paste it anywhere to make a link card.', 'peepoHey')
         },
       },
+      { kind: 'item', label: 'Ask for review of this board…', icon: '👀', onClick: () => useReview.getState().setRequestDialog({ boardId: board.id, targets: [] }) },
       sep,
       ...TOOLS.filter((t) => t.id !== 'file').map<MenuItem>((t) =>
         t.children
@@ -652,13 +662,12 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
   return (
     <div
       ref={ref}
-      className={`canvas-bg relative h-full w-full overflow-hidden touch-none ${dragOver ? 'outline outline-4 -outline-offset-4 outline-frog-300/60' : ''}`}
+      className={`canvas-bg relative h-full w-full overflow-hidden touch-none ${reviewOn ? 'review-mode' : ''} ${dragOver ? 'outline outline-4 -outline-offset-4 outline-frog-300/60' : ''}`}
       style={{
         ...boardVars(board, theme.canvas),
         backgroundColor: 'var(--board-bg)',
       }}
       onPointerDown={onBackgroundPointerDown}
-      onPointerDownCapture={onPointerDownCapture}
       onContextMenu={onContextMenu}
       onPointerMove={(e) => {
         if (draft) return
@@ -666,6 +675,28 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         if (id !== hoveredCard) setHoveredCard(id)
       }}
       onPointerLeave={() => setHoveredCard(null)}
+      onPointerDownCapture={(e) => {
+        onPointerDownCapture(e)
+        clickStart.current = { x: e.clientX, y: e.clientY }
+      }}
+      onClick={(e) => {
+        // review mode: a plain click (no drag) on a card / row / empty spot starts a comment there
+        if (!reviewOn) return
+        const st = clickStart.current
+        if (!st || Math.hypot(e.clientX - st.x, e.clientY - st.y) > 4) return
+        const t = e.target as HTMLElement
+        if (t.closest('[data-bubble],[data-badge],[data-comments]')) return
+        const cardEl = t.closest('[data-card]') as HTMLElement | null
+        const rect = ref.current!.getBoundingClientRect()
+        if (cardEl) {
+          // cards are read-only here, so anything inside one (rows, text, checkboxes) is a click on the card
+          const row = t.closest('[data-item]') as HTMLElement | null
+          useReview.getState().setDraft({ boardId: board.id, anchor: { cardId: cardEl.dataset.card!, itemId: row?.dataset.item }, reviewId })
+        } else if (t === e.currentTarget || (t as HTMLElement).dataset.layer) {
+          const p = screenToBoard(useViewport.getState().get(board.id), e.clientX, e.clientY, rect)
+          useReview.getState().setDraft({ boardId: board.id, anchor: { x: Math.round(p.x), y: Math.round(p.y) }, reviewId })
+        }
+      }}
       onDoubleClick={onDoubleClick}
       onDragOver={(e) => {
         e.preventDefault()
@@ -714,6 +745,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         {board.cards.map((card) => (
           <CardView key={card.id} card={card} boardId={board.id} selected={selection.has(card.id)} readOnly={readOnly} scale={scale} />
         ))}
+        <CommentLayer board={board} scale={vp.scale} />
         {marquee && (
           <div
             className="absolute border"
@@ -736,6 +768,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         </div>
       )}
       {!readOnly && <Palette board={board} />}
+      {reviewOn && <ReviewBar board={board} />}
       {backTo && (
         <button
           onClick={goBack}

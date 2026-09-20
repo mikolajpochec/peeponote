@@ -272,6 +272,19 @@ function WorkspaceTab() {
         />
         Snap cards to the dot grid (move and resize)
       </label>
+      <label className="mb-4 flex items-start gap-2 text-[13px]">
+        <input
+          type="checkbox"
+          checked={!!meta?.settings?.review?.anyoneCanClose}
+          disabled={locked}
+          onChange={(e) => updateMeta({ settings: { ...meta?.settings, review: { anyoneCanClose: e.target.checked } } })}
+          className="mt-0.5 accent-frog-500"
+        />
+        <span>
+          Anyone may resolve threads and close reviews
+          <div className={hint}>Off: only the comment's author resolves it and only the person who asked closes the review.</div>
+        </span>
+      </label>
       <Row
         title="Folder in the repo"
         sub={

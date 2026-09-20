@@ -3,6 +3,7 @@
  * (see src/model/review.ts). Writes land in the working tree immediately and are committed on their own a few
  * seconds later (`Review: …` commits, never mixed with board edits), then pushed by the normal sync.
  */
+import { useMemo } from 'react'
 import { create } from 'zustand'
 import { abs, exists, readBytes, readText, writeBytes, writeText, type PeepoFS } from '../fs'
 import { wp } from '../fs/wsroot'
@@ -51,6 +52,8 @@ interface ReviewState {
   verdicts: Record<string, Verdict> // `${reviewId}.${userKey}`
   comments: Record<string, Comment>
   states: Record<string, UserState> // userKey → state
+  /** unique git commit authors (reviewer picker, mentions) */
+  authors: Person[]
   /** object id → signature checks out against the author's account */
   verified: Record<string, boolean>
   identity: IdentityStatus
@@ -60,6 +63,8 @@ interface ReviewState {
   openThread: { boardId: string; anchorKey: string } | null
   /** a comment being written (not yet a file) */
   draft: { boardId: string; anchor: CommentAnchor; reviewId?: string } | null
+  /** "Ask for review" dialog target */
+  requestDialog: { boardId: string; targets: string[] } | null
 
   load: (fs: PeepoFS) => Promise<void>
   /** derive keys from the stored password and check them against the committed account */
@@ -86,6 +91,7 @@ interface ReviewState {
   setPanelOpen: (open: boolean) => void
   setOpenThread: (t: ReviewState['openThread']) => void
   setDraft: (d: ReviewState['draft']) => void
+  setRequestDialog: (d: ReviewState['requestDialog']) => void
 
   /** commit whatever review files are waiting (debounced normally; call to flush) */
   commitNow: () => Promise<void>
@@ -159,12 +165,14 @@ export const useReview = create<ReviewState>((set, get) => {
     verdicts: {},
     comments: {},
     states: {},
+    authors: [],
     verified: {},
     identity: { kind: 'guest' },
     mode: { on: false },
     panelOpen: false,
     openThread: null,
     draft: null,
+    requestDialog: null,
 
     load: async (fs) => {
       const parse = async <T,>(dir: string, schema: { safeParse: (v: unknown) => { success: boolean; data?: T } }, key: (f: string, v: T) => string) => {
@@ -200,7 +208,16 @@ export const useReview = create<ReviewState>((set, get) => {
       }
       for (const url of Object.values(get().pictures)) URL.revokeObjectURL(url)
       const verified = await verifyAll({ accounts, reviews, verdicts, comments, states })
-      set({ loaded: true, accounts, reviews, verdicts, comments, states, pictures, verified })
+      const authors: Person[] = []
+      const seenAuthors = new Set<string>()
+      for (const c of await repo.log(fs, 300)) {
+        const a = c.commit.author
+        const e = a.email.trim().toLowerCase()
+        if (!e || seenAuthors.has(e)) continue
+        seenAuthors.add(e)
+        authors.push({ name: a.name, email: e })
+      }
+      set({ loaded: true, accounts, reviews, verdicts, comments, states, pictures, verified, authors })
       await get().refreshIdentity()
     },
 
@@ -376,6 +393,7 @@ export const useReview = create<ReviewState>((set, get) => {
     setPanelOpen: (panelOpen) => set({ panelOpen }),
     setOpenThread: (openThread) => set({ openThread }),
     setDraft: (draft) => set({ draft }),
+    setRequestDialog: (requestDialog) => set({ requestDialog }),
 
     commitNow: async () => {
       clearTimeout(commitTimer)
@@ -407,3 +425,9 @@ export const useReview = create<ReviewState>((set, get) => {
 
 // the last few seconds of review activity must not be lost when the tab closes
 if (typeof window !== 'undefined') window.addEventListener('pagehide', () => void useReview.getState().commitNow())
+
+/** the verified me, stable across renders (null for guests) */
+export function useMe(): Person | null {
+  const id = useReview((s) => s.identity)
+  return useMemo(() => (id.kind === 'verified' ? { name: id.account.name, email: id.account.email } : null), [id])
+}
