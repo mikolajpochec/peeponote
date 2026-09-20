@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Card, CardStyle, FontFamily, TextAlign } from '../model/types'
+import type { Card, CardStyle, FontFamily, ShapeKind, TextAlign } from '../model/types'
 import { useWorkspace } from '../store/workspace'
 import { FONT_LABEL, RADII, contrast, defaultBold, defaultFontSize } from '../canvas/styles'
 import { ALIGN_LABEL, alignCards, distributeCards, type AlignMode } from '../canvas/arrange'
 import { ColorPicker } from './ColorPicker'
+import { DEFAULT_SHAPE_STROKE, SHAPES } from '../cards/ShapeCard'
 
 const ALIGN_ICON: Record<TextAlign, string> = { left: '⫷', center: '☰', right: '⫸' }
 const ARRANGE: [AlignMode, string][] = [
@@ -23,6 +24,7 @@ const on = 'bg-frog-600 text-white hover:bg-frog-500'
 export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] }) {
   const styleCards = useWorkspace((s) => s.styleCards)
   const moveCards = useWorkspace((s) => s.moveCards)
+  const updateCard = useWorkspace((s) => s.updateCard)
   const groupCards = useWorkspace((s) => s.groupCards)
   const ungroupCards = useWorkspace((s) => s.ungroupCards)
   const ids = cards.map((c) => c.id)
@@ -36,7 +38,13 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
   const textual = cards.some((c) => c.type !== 'asset' && c.type !== 'board')
   const size = s.fontSize ?? defaultFontSize(first)
   const bold = s.bold ?? defaultBold(first)
-  const [menu, setMenu] = useState<'font' | 'align' | 'arrange' | null>(null)
+  const [menu, setMenu] = useState<'font' | 'align' | 'arrange' | 'shape' | null>(null)
+  const shapes = cards.filter((c) => c.type === 'shape')
+  const allShapes = shapes.length === cards.length
+  const strokeW = s.strokeWidth ?? (allShapes ? (s.border ? DEFAULT_SHAPE_STROKE : 0) : 2)
+  const setShape = (kind: ShapeKind) => {
+    for (const c of shapes) updateCard(boardId, c.id, { shape: kind } as Partial<Card>)
+  }
   const root = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -56,10 +64,54 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
       onDoubleClick={(e) => e.stopPropagation()}
       className="flex items-center gap-0.5 rounded-xl border border-(--hair) bg-swamp-900/95 p-1 shadow-2xl shadow-black/50 backdrop-blur"
     >
+      {allShapes && (
+        <>
+          <div className="relative">
+            <button className={btn} title="Shape" onClick={() => setMenu(menu === 'shape' ? null : 'shape')}>
+              {SHAPES.find((x) => x.kind === (shapes[0] as Extract<Card, { type: 'shape' }>).shape)?.icon ?? '◇'}
+            </button>
+            {menu === 'shape' && (
+              <Menu>
+                <div className="grid grid-cols-3 gap-0.5">
+                  {SHAPES.map((sh) => (
+                    <MenuItem
+                      key={sh.kind}
+                      title={sh.label}
+                      active={shapes.every((c) => (c as Extract<Card, { type: 'shape' }>).shape === sh.kind)}
+                      onClick={() => (setShape(sh.kind), setMenu(null))}
+                    >
+                      <span className="block w-6 text-center text-[16px]">{sh.icon}</span>
+                    </MenuItem>
+                  ))}
+                </div>
+              </Menu>
+            )}
+          </div>
+          <Sep />
+        </>
+      )}
       {/* a new fill resets the ink so it re-derives its contrast automatically */}
       <ColorPicker title="Fill (text color adapts)" icon="◼" value={s.bg} fallback={first.type === 'text' ? '#00000000' : '#fbf8ef'} onChange={(bg) => apply({ bg, fg: undefined })} />
       <ColorPicker title="Text color" icon="A" value={s.fg} fallback={s.bg ? contrast(s.bg) : '#1b1d1a'} onChange={(fg) => apply({ fg })} />
-      <ColorPicker title="Border" icon="◻" value={s.border} fallback="#00000000" onChange={(border) => apply({ border })} />
+      <ColorPicker title={allShapes ? 'Stroke color' : 'Border'} icon="◻" value={s.border} fallback="#00000000" onChange={(border) => apply({ border })} />
+      {(allShapes || s.border) && (
+        <>
+          <button
+            className={btn}
+            title={`Stroke width: ${strokeW}px`}
+            onClick={() => {
+              const steps = [0, 1, 2, 4, 6, 10]
+              const next = steps[(steps.indexOf(strokeW) + 1) % steps.length]
+              apply({ strokeWidth: next })
+            }}
+          >
+            <span className="block w-4 rounded-full bg-current" style={{ height: Math.max(1, Math.min(strokeW, 8)) }} />
+          </button>
+          <button className={`${btn} ${s.dashed ? on : ''}`} title="Dashed" onClick={() => apply({ dashed: s.dashed ? undefined : true })}>
+            ┅
+          </button>
+        </>
+      )}
 
       {textual && (
         <>
@@ -192,7 +244,7 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
         className={btn}
         title="Reset style"
         disabled={!cards.some((c) => c.style)}
-        onClick={() => apply({ bg: undefined, fg: undefined, fontSize: undefined, font: undefined, bold: undefined, italic: undefined, align: undefined, border: undefined, radius: undefined, opacity: undefined })}
+        onClick={() => apply({ bg: undefined, fg: undefined, fontSize: undefined, font: undefined, bold: undefined, italic: undefined, align: undefined, border: undefined, radius: undefined, opacity: undefined, strokeWidth: undefined, dashed: undefined })}
       >
         ↺
       </button>

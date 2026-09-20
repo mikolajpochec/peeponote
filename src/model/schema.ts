@@ -12,6 +12,8 @@ const cardStyleSchema = z.object({
   border: z.string().optional(),
   radius: z.number().optional(),
   opacity: z.number().optional(),
+  strokeWidth: z.number().optional(),
+  dashed: z.boolean().optional(),
 })
 
 const base = {
@@ -36,6 +38,12 @@ const cardSchema = z.discriminatedUnion('type', [
   }),
   z.object({ ...base, type: z.literal('link'), url: z.string(), title: z.string() }),
   z.object({ ...base, type: z.literal('board'), boardId: z.string() }),
+  z.object({
+    ...base,
+    type: z.literal('shape'),
+    shape: z.enum(['rect', 'ellipse', 'diamond', 'triangle', 'hexagon', 'star', 'arrow', 'parallelogram', 'cloud']),
+    label: z.string().default(''),
+  }),
   z.object({
     ...base,
     type: z.literal('asset'),

@@ -57,17 +57,18 @@ export function cardStyles(card: Card): { shell: CSSProperties; inner: CSSProper
   const s: CardStyle = card.style ?? {}
   const radius = s.radius ?? 12
   const bold = s.bold ?? defaultBold(card)
+  const shape = card.type === 'shape' // draws its own fill and stroke in SVG
   const shell: CSSProperties = {
     borderRadius: radius,
     opacity: s.opacity !== undefined ? s.opacity / 100 : undefined,
-    outline: s.border ? `2px solid ${s.border}` : undefined,
-    outlineOffset: s.border ? -1 : undefined,
+    outline: s.border && !shape ? `${s.strokeWidth ?? 2}px ${s.dashed ? 'dashed' : 'solid'} ${s.border}` : undefined,
+    outlineOffset: s.border && !shape ? -1 : undefined,
   }
   const inner: CSSProperties = {
-    borderRadius: radius,
-    background: s.bg,
+    borderRadius: shape ? undefined : radius,
+    background: shape ? undefined : s.bg,
     // explicit text color, else auto-contrast against a custom fill, else the board ink for free text
-    color: s.fg ?? (s.bg ? contrast(s.bg) : card.type === 'text' ? 'var(--board-fg)' : undefined),
+    color: shape ? undefined : s.fg ?? (s.bg ? contrast(s.bg) : card.type === 'text' ? 'var(--board-fg)' : undefined),
     fontSize: s.fontSize ?? defaultFontSize(card),
     fontFamily: s.font ? FONT_FAMILY[s.font] : undefined,
     fontWeight: s.bold !== undefined || card.type === 'text' ? (bold ? 800 : 400) : undefined,

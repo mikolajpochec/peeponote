@@ -24,6 +24,9 @@ export interface CardStyle {
   border?: string
   radius?: number
   opacity?: number
+  /** outline / shape stroke width in px (shapes default to 2) */
+  strokeWidth?: number
+  dashed?: boolean
 }
 
 export interface ConnectorStyle {
@@ -99,7 +102,16 @@ export interface AssetCard extends CardBase {
   view?: { pos: [number, number, number]; target: [number, number, number] }
 }
 
-export type Card = NoteCard | TextCard | TodoCard | LinkCard | BoardCard | AssetCard
+export type ShapeKind = 'rect' | 'ellipse' | 'diamond' | 'triangle' | 'hexagon' | 'star' | 'arrow' | 'parallelogram' | 'cloud'
+
+export interface ShapeCard extends CardBase {
+  type: 'shape'
+  shape: ShapeKind
+  /** optional centered label */
+  label: string
+}
+
+export type Card = NoteCard | TextCard | TodoCard | LinkCard | BoardCard | AssetCard | ShapeCard
 export type CardType = Card['type']
 
 export type Side = 'top' | 'right' | 'bottom' | 'left'
