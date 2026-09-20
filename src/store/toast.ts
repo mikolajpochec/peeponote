@@ -8,6 +8,8 @@ export interface Toast {
   peepo: PeepoName
   kind: 'ok' | 'err' | 'info'
   action?: { label: string; onClick: () => void }
+  /** stays until dismissed or its action runs */
+  sticky?: boolean
 }
 
 interface ToastState {
@@ -22,7 +24,7 @@ export const useToasts = create<ToastState>((set) => ({
   push: (t) => {
     const id = seq++
     set((s) => ({ toasts: [...s.toasts, { ...t, id }] }))
-    setTimeout(() => set((s) => ({ toasts: s.toasts.filter((x) => x.id !== id) })), t.kind === 'err' ? 7000 : t.action ? 8000 : 3500)
+    if (!t.sticky) setTimeout(() => set((s) => ({ toasts: s.toasts.filter((x) => x.id !== id) })), t.kind === 'err' ? 7000 : t.action ? 8000 : 3500)
   },
   dismiss: (id) => set((s) => ({ toasts: s.toasts.filter((x) => x.id !== id) })),
 }))

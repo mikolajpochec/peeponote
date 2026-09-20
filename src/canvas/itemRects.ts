@@ -1,6 +1,5 @@
 import { useEffect, type RefObject } from 'react'
 import { create } from 'zustand'
-import { useViewport } from './viewport'
 
 /**
  * Where a card's inner items (to-do rows) sit, in board units relative to the card's top-left.
@@ -55,13 +54,10 @@ export function useItemRectsReporter(boardId: string, cardId: string, container:
     const shell = el?.closest('[data-card]') as HTMLElement | null
     if (!el || !shell || el.closest('[data-preview]')) return
     const report = () => {
-      const k = useViewport.getState().get(boardId).scale || 1
-      const top = shell.getBoundingClientRect().top
+      // offsets, not getBoundingClientRect: unaffected by the canvas zoom and by any transform
+      // animating the card (arrival glow, drag), so anchors always land on the real rows
       const rects: Record<string, ItemRect> = {}
-      for (const row of el.querySelectorAll<HTMLElement>('[data-item]')) {
-        const r = row.getBoundingClientRect()
-        rects[row.dataset.item!] = { y: (r.top - top) / k, h: r.height / k }
-      }
+      for (const row of el.querySelectorAll<HTMLElement>('[data-item]')) rects[row.dataset.item!] = { y: offsetWithin(row, shell), h: row.offsetHeight }
       useItemRects.getState().report(cardId, rects)
     }
     report()
@@ -69,11 +65,21 @@ export function useItemRectsReporter(boardId: string, cardId: string, container:
     ro.observe(el)
     const scrollers = [el, ...el.querySelectorAll<HTMLElement>('.overflow-auto')]
     for (const s of scrollers) s.addEventListener('scroll', report, { passive: true })
+    shell.addEventListener('animationend', report)
     return () => {
       ro.disconnect()
       for (const s of scrollers) s.removeEventListener('scroll', report)
+      shell.removeEventListener('animationend', report)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardId, cardId, ...deps])
   useEffect(() => () => useItemRects.getState().forget(cardId), [cardId])
+}
+
+/** `el`'s top edge relative to `root`'s top edge, in the card's own (unscaled) pixels, minus scrolling in between */
+function offsetWithin(el: HTMLElement, root: HTMLElement): number {
+  let y = 0
+  for (let cur: HTMLElement | null = el; cur && cur !== root && root.contains(cur); cur = cur.offsetParent as HTMLElement | null) y += cur.offsetTop
+  for (let s: HTMLElement | null = el.parentElement; s && s !== root; s = s.parentElement) y -= s.scrollTop
+  return y
 }

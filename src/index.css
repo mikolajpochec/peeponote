@@ -110,10 +110,11 @@ input, textarea, [contenteditable="true"], pre, code, .selectable { user-select:
 
 /* a card that just arrived from someone else's push: drop in, glow, settle */
 @keyframes card-arrive {
-  0%   { transform: scale(0.85) translateY(-14px); opacity: 0; box-shadow: 0 0 0 0 color-mix(in srgb, var(--board-line-sel) 90%, transparent); }
-  35%  { transform: scale(1.04) translateY(0); opacity: 1; box-shadow: 0 0 0 6px color-mix(in srgb, var(--board-line-sel) 70%, transparent), 0 0 40px 8px color-mix(in srgb, var(--board-line-sel) 45%, transparent); }
-  60%  { transform: scale(1); box-shadow: 0 0 0 6px color-mix(in srgb, var(--board-line-sel) 55%, transparent), 0 0 30px 6px color-mix(in srgb, var(--board-line-sel) 30%, transparent); }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in srgb, var(--board-line-sel) 0%, transparent); }
+  /* glow only — no transform, so the card never drifts away from its arrows, handles and ring */
+  0%   { opacity: 0.35; box-shadow: 0 0 0 0 color-mix(in srgb, var(--board-line-sel) 90%, transparent); }
+  25%  { opacity: 1; box-shadow: 0 0 0 6px color-mix(in srgb, var(--board-line-sel) 75%, transparent), 0 0 40px 10px color-mix(in srgb, var(--board-line-sel) 45%, transparent); }
+  60%  { box-shadow: 0 0 0 6px color-mix(in srgb, var(--board-line-sel) 55%, transparent), 0 0 30px 6px color-mix(in srgb, var(--board-line-sel) 30%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--board-line-sel) 0%, transparent); }
 }
 .card-arrive { animation: card-arrive 2.4s cubic-bezier(.2,.8,.2,1) both; }
 

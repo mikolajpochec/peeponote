@@ -12,7 +12,7 @@ import type { Board, Card, Connector } from '../model/types'
 import { BOARDS_DIR, WORKSPACE_FILE } from '../model/types'
 import { unwp } from '../fs/wsroot'
 import { NotFastForwardError, ghFetch, ghPush, parseGitHubUrl, type Progress } from './githubApi'
-import { currentBranch, headOid, type GitIdentity, type RemoteAuth } from './repo'
+import { currentBranch, headOid, stampMessage, type GitIdentity, type RemoteAuth } from './repo'
 
 export type TransportPref = 'auto' | 'api' | 'proxy'
 export type Transport = 'api' | 'proxy'
@@ -275,7 +275,7 @@ export async function mergeRemote(fs: PeepoFS, ours: string, theirs: string, pre
     fs,
     dir,
     commit: {
-      message: `Merge remote changes${conflicts ? ` (${conflicts} conflict${conflicts === 1 ? '' : 's'} resolved, preferring ${prefer === 'ours' ? 'mine' : 'theirs'})` : ''}\n`,
+      message: stampMessage(`Merge remote changes${conflicts ? ` (${conflicts} conflict${conflicts === 1 ? '' : 's'} resolved, preferring ${prefer === 'ours' ? 'mine' : 'theirs'})` : ''}`),
       tree,
       parent: [ours, theirs],
       author: person(who),

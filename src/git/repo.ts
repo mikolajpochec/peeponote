@@ -75,10 +75,21 @@ export async function hasChanges(fs: PeepoFS): Promise<boolean> {
   return matrix.some(([, h, w, s]) => !(h === 1 && w === 1 && s === 1))
 }
 
+export const APP_TAG = '[peeponote]'
+export const APP_TRAILER = 'Co-Authored-By: peeponote <peeponote@noreply.github.io>'
+
+/** "[peeponote] Save: update 1 file" + a co-author trailer, so app-made commits are recognisable in any git UI */
+export function stampMessage(message: string): string {
+  const [title, ...rest] = message.trim().split('\n')
+  const head = title.startsWith(APP_TAG) ? title : `${APP_TAG} ${title}`
+  const body = rest.join('\n').trim()
+  return `${head}\n\n${body ? `${body}\n\n` : ''}${APP_TRAILER}\n`
+}
+
 export async function commit(fs: PeepoFS, message: string, who: GitIdentity): Promise<string> {
   return git.commit({
     ...ctx(fs),
-    message,
+    message: stampMessage(message),
     author: { name: who.name || 'peepo', email: who.email || 'peepo@peeponote.local' },
   })
 }

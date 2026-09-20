@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['peepo/*.webp', 'favicon.webp'],
       manifest: {
         name: 'peeponote',
