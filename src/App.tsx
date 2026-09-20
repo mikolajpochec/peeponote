@@ -185,7 +185,7 @@ export default function App() {
             )}
             {viewingRef ? <HistoryBanner /> : <UncommittedBanner />}
             {busy && busy !== 'saving' && (
-              <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
+              <div className="pointer-events-none absolute bottom-14 right-3 flex justify-end max-md:bottom-24">
                 <div className="flex items-center gap-2 rounded-full bg-swamp-600/90 px-3 py-1 text-sm shadow">
                   <Peepo name={busy === 'pushing' || busy === 'syncing' ? 'peepoRun' : busy === 'cloning' ? 'peepoLeave' : 'peepoThink'} size={22} className="peepo-bounce" />
                   {busyDetail ?? `${busy}…`}
