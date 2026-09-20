@@ -62,9 +62,15 @@ side are combined; a card changed on both sides goes to whichever side you pick)
 
 Auth is a personal access token stored in `localStorage` of this browser only:
 
-- **GitHub**: fine-grained PAT with *Contents: read & write* on the repo (or classic `repo` scope). Leave username empty.
-- **GitLab**: token with `write_repository`; set username to `oauth2`.
-- **Gitea/Forgejo**: token; leave username empty.
+- **GitHub**: [create a fine-grained token](https://github.com/settings/personal-access-tokens/new) → *Only select
+  repositories* → your boards repo → *Repository permissions → Contents: Read and write*. (Or a
+  [classic token with the `repo` scope](https://github.com/settings/tokens/new?scopes=repo&description=peeponote).)
+  Leave username empty.
+- **GitLab**: [personal access token](https://gitlab.com/-/user_settings/personal_access_tokens?name=peeponote&scopes=write_repository,read_repository)
+  with `read_repository` + `write_repository`; set username to `oauth2`.
+- **Gitea/Forgejo**: *Settings → Applications → Generate token* with repository read/write; leave username empty.
+
+The Settings dialog and the onboarding wizard show these links for whichever host your remote URL points at.
 
 With a remote and token configured, **Save commits and pushes** in one go. Prefer them apart? Tick *Separate commit and push* in Settings to get a dedicated Push button.
 

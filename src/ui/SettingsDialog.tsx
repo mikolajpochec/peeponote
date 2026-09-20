@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supportsFolderAccess } from '../fs'
 import { wipeBrowserFS } from '../fs/lightning'
 import { DEFAULT_CORS_PROXY } from '../git/repo'
+import { TokenHelp } from './TokenHelp'
 import { useSettings } from '../store/settings'
 import { useWorkspace } from '../store/workspace'
 import { toast } from '../store/toast'
@@ -170,6 +171,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               {showToken ? 'Hide' : 'Show'}
             </button>
           </div>
+          <TokenHelp remote={remote} />
           <input
             className={field}
             placeholder="Username (leave empty for GitHub; use 'oauth2' for GitLab)"

@@ -4,6 +4,7 @@ import { useSettings } from '../store/settings'
 import { useWorkspace } from '../store/workspace'
 import { toast } from '../store/toast'
 import { Peepo } from './Peepo'
+import { TokenHelp } from './TokenHelp'
 
 const field = 'w-full rounded-md bg-swamp-700 px-3 py-2 text-[14px] outline-none focus:ring-1 focus:ring-frog-400 placeholder:text-frog-200/30'
 const primary = 'rounded-lg bg-frog-500 px-4 py-2 text-[14px] font-bold text-white hover:bg-frog-400 disabled:opacity-40'
@@ -101,9 +102,13 @@ export function Onboarding({ onFinish }: { onFinish: () => void }) {
               <input className={field} placeholder="https://github.com/you/my-boards.git" value={remote} onChange={(e) => setRemoteDraft(e.target.value)} />
               <input className={field} type="password" placeholder="Personal access token (repo / contents: read+write)" value={settings.token} onChange={(e) => settings.set({ token: e.target.value })} />
               <p className="text-[11px] text-frog-200/50">
-                Create an empty repo on GitHub first. Browsers can't reach git hosts directly, so pushes go through a CORS proxy (default: the public isomorphic-git one — fine to
-                start, self-host later).
+                Create an empty repo first (e.g.{' '}
+                <a className="underline hover:text-frog-200" href="https://github.com/new" target="_blank" rel="noreferrer">
+                  github.com/new ↗
+                </a>
+                ) and paste its URL above. GitHub is talked to via its REST API directly; other hosts go through a CORS proxy (configurable in Settings).
               </p>
+              <TokenHelp remote={remote} />
             </div>
           </>
         )}
