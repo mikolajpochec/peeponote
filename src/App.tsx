@@ -103,7 +103,16 @@ export default function App() {
     }
   }, [])
 
-  if (status !== 'ready') return <BootScreen onOpenSettings={() => setShowSettings(true)} />
+  // not ready yet (or the folder is gone): the boot screen, but Settings and toasts must still work from here
+  if (status !== 'ready')
+    return (
+      <>
+        <BootScreen onOpenSettings={() => setShowSettings(true)} />
+        {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
+        <ErrorDialog />
+        <Toasts />
+      </>
+    )
 
   return (
     <div className="flex h-full w-full">

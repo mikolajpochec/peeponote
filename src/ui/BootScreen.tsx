@@ -7,6 +7,9 @@ export function BootScreen({ onOpenSettings }: { onOpenSettings: () => void }) {
   const grantFolder = useWorkspace((s) => s.grantFolder)
   const switchToBrowser = useWorkspace((s) => s.switchToBrowser)
   const pendingHandle = useWorkspace((s) => s.pendingHandle)
+  const switchToFolder = useWorkspace((s) => s.switchToFolder)
+  const fs = useWorkspace((s) => s.fs)
+  const missing = /not.*found|NotFound|could not be found/i.test(error ?? '')
 
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-6 text-center">
@@ -30,8 +33,18 @@ export function BootScreen({ onOpenSettings }: { onOpenSettings: () => void }) {
       )}
       {status === 'error' && (
         <>
-          <p className="max-w-lg text-red-300">{error}</p>
-          <div className="flex gap-2">
+          {missing && fs?.kind === 'folder' ? (
+            <p className="max-w-lg text-frog-200/80">
+              The folder <b>{fs.label.replace(/^Folder:\s*/, '')}</b> can't be read any more — it was probably moved, renamed or deleted. Pick where it is now, or start over in the
+              browser.
+            </p>
+          ) : (
+            <p className="max-w-lg text-red-300">{error}</p>
+          )}
+          <div className="flex flex-wrap justify-center gap-2">
+            <button onClick={switchToFolder} className="rounded-lg bg-frog-500 px-4 py-2 font-bold text-white hover:bg-frog-400">
+              📁 Pick a folder…
+            </button>
             <button onClick={switchToBrowser} className="rounded-lg bg-swamp-600 px-4 py-2 font-bold hover:bg-swamp-500">
               Use browser storage
             </button>
