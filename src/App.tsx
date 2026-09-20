@@ -103,6 +103,18 @@ export default function App() {
     }
   }, [])
 
+  // closing the tab / window with uncommitted changes: the browser asks first. (The drafts themselves survive
+  // a reload — this is about not forgetting to Save so others get the work.)
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!selectDirty(useWorkspace.getState())) return
+      e.preventDefault()
+      e.returnValue = 'You have unsaved changes.'
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [])
+
   // not ready yet (or the folder is gone): the boot screen, but Settings and toasts must still work from here
   if (status !== 'ready')
     return (
