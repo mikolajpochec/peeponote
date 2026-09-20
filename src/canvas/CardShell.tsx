@@ -6,6 +6,7 @@ import { isInteractiveTarget, useDrag } from './useDrag'
 import { setGlobalCursor } from './cursor'
 import { cardStyles } from './styles'
 import { useArrivals } from './arrivals'
+import { removeCardsChecked } from '../store/removeCards'
 
 export const GRID = 20
 export const MIN_W = 120
@@ -29,7 +30,6 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
   const moveCards = useWorkspace((s) => s.moveCards)
   const updateCard = useWorkspace((s) => s.updateCard)
   const bringToFront = useWorkspace((s) => s.bringToFront)
-  const removeCards = useWorkspace((s) => s.removeCards)
   const [editTick, setEditTick] = useState(0)
   const arrived = useArrivals((s) => !!s.cards[card.id])
 
@@ -131,7 +131,7 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
             title="Delete (Del)"
             onClick={(e) => {
               e.stopPropagation()
-              removeCards(boardId, [card.id])
+              void removeCardsChecked(boardId, [card.id])
             }}
             className={`absolute -right-2 -top-2 h-6 w-6 items-center justify-center rounded-full bg-swamp-600 text-xs text-frog-100 shadow hover:bg-red-700 pointer-coarse:h-8 pointer-coarse:w-8 pointer-coarse:-right-3 pointer-coarse:-top-3 ${
               selected ? 'flex' : 'hidden group-hover:flex'

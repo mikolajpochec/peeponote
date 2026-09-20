@@ -10,6 +10,7 @@ import { Peepo } from './ui/Peepo'
 import { BootScreen } from './ui/BootScreen'
 import { Onboarding } from './ui/Onboarding'
 import { SyncDialog } from './ui/SyncDialog'
+import { ConfirmDialog } from './ui/ConfirmDialog'
 import { useSettings } from './store/settings'
 import { applyTheme, resolveTheme } from './theme/themes'
 import { useIsMobile } from './canvas/touch'
@@ -147,6 +148,7 @@ export default function App() {
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
       {showOnboarding && <Onboarding onFinish={() => setShowOnboarding(false)} />}
       <SyncDialog />
+      <ConfirmDialog />
       <Toasts />
     </div>
   )

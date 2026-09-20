@@ -20,6 +20,7 @@ import { bbox } from './arrange'
 import { useLastStyle } from '../store/lastStyle'
 import { copyLink } from '../nav/links'
 import { toast } from '../store/toast'
+import { removeCardsChecked } from '../store/removeCards'
 import { useSettings } from '../store/settings'
 import { resolveTheme } from '../theme/themes'
 import { LONG_PRESS_MS, LONG_PRESS_SLOP, activeTouches, isDuplicateDblClick, markLongPress, registerTap, shouldSwallowContextMenu, useIsMobile } from './touch'
@@ -144,7 +145,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
           const cardIds = board.cards.filter((c) => sel.has(c.id)).map((c) => c.id)
           const connIds = board.connectors.filter((k) => sel.has(k.id)).map((k) => k.id)
           if (connIds.length) removeConnectors(board.id, connIds)
-          if (cardIds.length) removeCards(board.id, cardIds)
+          if (cardIds.length) void removeCardsChecked(board.id, cardIds)
         }
       }
       if (e.key === 'Escape') clearSelection()
@@ -192,7 +193,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       if (!live || !sel.size) return
       e.preventDefault()
       const p = copySelection(live, sel, e.clipboardData)
-      removeCards(board.id, p.cards.map((c) => c.id))
+      void removeCardsChecked(board.id, p.cards.map((c) => c.id))
     }
     const onPaste = (e: ClipboardEvent) => {
       if (isTyping() || readOnly) return
@@ -374,7 +375,16 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
               } as MenuItem,
             ]
           : []),
-        { kind: 'item', label: 'Cut', icon: '✂', shortcut: '⌘X', disabled: readOnly, onClick: () => (copySelection(live, sel), removeCards(board.id, ids)) },
+        {
+          kind: 'item',
+          label: 'Cut',
+          icon: '✂',
+          shortcut: '⌘X',
+          disabled: readOnly,
+          onClick: async () => {
+            if (await removeCardsChecked(board.id, ids)) copySelection(live, sel)
+          },
+        },
         { kind: 'item', label: 'Duplicate', icon: '⊕', shortcut: '⌘D', disabled: readOnly, onClick: () => duplicateSelection(live, sel) },
         paste,
         sep,
@@ -388,7 +398,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
           ? [{ kind: 'item', label: `Group ${n} items`, icon: '⧉', shortcut: '⌘G', disabled: readOnly, onClick: () => groupCards(board.id, ids) } as MenuItem]
           : []),
         ...(n > 1 || selCards.some((c) => c.groupId) ? [sep] : []),
-        { kind: 'item', label: n > 1 ? `Delete ${n} items` : 'Delete', icon: '✕', shortcut: '⌫', danger: true, disabled: readOnly, onClick: () => removeCards(board.id, ids) },
+        { kind: 'item', label: n > 1 ? `Delete ${n} items` : 'Delete', icon: '✕', shortcut: '⌫', danger: true, disabled: readOnly, onClick: () => void removeCardsChecked(board.id, ids) },
       )
       return items
     }

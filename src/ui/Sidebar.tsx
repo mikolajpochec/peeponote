@@ -5,6 +5,7 @@ import { Peepo } from './Peepo'
 import { BoardIconView } from './BoardIcon'
 import { useArrivals } from '../canvas/arrivals'
 import { copyLink } from '../nav/links'
+import { countItems } from '../store/removeCards'
 import { toast } from '../store/toast'
 import { contrast } from '../canvas/styles'
 import { ContextMenu, sep, type MenuItem } from './ContextMenu'
@@ -186,12 +187,6 @@ function isInside(id: string | null, ancestorId: string, boards: Record<string, 
 }
 
 /** cards in this board and every nested board */
-function countItems(board: Board, boards: Record<string, Board>): number {
-  let n = board.cards.length
-  for (const c of board.cards) if (c.type === 'board' && boards[c.boardId]) n += countItems(boards[c.boardId], boards)
-  return n
-}
-
 function BoardNode({
   board,
   boards,
