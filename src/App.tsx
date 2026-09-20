@@ -79,7 +79,7 @@ export default function App() {
   useEffect(() => {
     if (!remoteUrl || status !== 'ready') return
     const tick = () => void useWorkspace.getState().autoSync()
-    const id = setInterval(tick, 30_000)
+    const id = setInterval(tick, 15_000)
     const onVis = () => {
       if (document.visibilityState === 'visible') tick()
     }

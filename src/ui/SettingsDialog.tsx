@@ -226,7 +226,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           </div>
           <label className="flex items-center gap-2 text-[13px]">
             <input type="checkbox" checked={settings.autoPull} onChange={(e) => settings.set({ autoPull: e.target.checked })} className="accent-frog-500" />
-            Auto-pull: bring in others' commits automatically when nothing local would be lost (the remote is checked every 30 s either way; with this off you get a toast with a Pull button)
+            Auto-pull: bring in others' commits automatically when nothing local would be lost (the remote is checked every 15 s either way; with this off you get a toast with a Pull button). Others' commits that don't touch what you're editing slide in under your unsaved edits.
           </label>
         </section>
 

@@ -5,7 +5,7 @@ import {
   writeBytes, writeText, type PeepoFS,
 } from '../fs'
 import * as repo from '../git/repo'
-import { chooseTransport, compare, fetchRemote, mergeRemote, pushRemote, resetTo, type SyncCtx, type SyncState } from '../git/sync'
+import { chooseTransport, compare, fetchRemote, mergeBoardJson, mergeJsonShallow, mergeRemote, pushRemote, resetTo, type SyncCtx, type SyncState } from '../git/sync'
 import { NotFastForwardError, ghClone, parseGitHubUrl } from '../git/githubApi'
 import {
   ASSETS_DIR, BOARDS_DIR, WORKSPACE_FILE, boardPath, newId,
@@ -367,6 +367,67 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       selection: new Set(),
     })
     await get().refreshGit()
+  }
+
+  /**
+   * Fast-forward to `remote` while keeping uncommitted edits: for every board I changed, three-way merge
+   * (base = my HEAD version, ours = my draft, theirs = remote version). Refuses (returns false, changes
+   * nothing) when the same card / board setting was touched on both sides.
+   */
+  async function pullUnderDrafts(fs: PeepoFS, local: string, remote: string): Promise<boolean> {
+    await get().flush()
+    const s = get()
+    const at = async (ref: string, rel: string) => {
+      try {
+        return await repo.readTextAt(fs, ref, wp(rel))
+      } catch {
+        return undefined
+      }
+    }
+    const plan: { id: string; json: string }[] = []
+    for (const id of s.dirtyBoards) {
+      const mine = s.boards[id]
+      if (!mine) continue
+      const rel = boardPath(id)
+      const [base, theirs] = await Promise.all([at(local, rel), at(remote, rel)])
+      if (theirs === undefined) {
+        if (base !== undefined) return false // they deleted a board I'm editing
+        plan.push({ id, json: JSON.stringify(mine, null, 2) }) // my new board
+        continue
+      }
+      if (base === theirs) {
+        plan.push({ id, json: JSON.stringify(mine, null, 2) }) // untouched by them: keep my draft
+        continue
+      }
+      const m = mergeBoardJson(base, JSON.stringify(mine, null, 2), theirs, 'ours')
+      if (m.conflicts > 0) return false
+      plan.push({ id, json: m.json })
+    }
+    for (const id of s.deletedBoards) {
+      const rel = boardPath(id)
+      const [base, theirs] = await Promise.all([at(local, rel), at(remote, rel)])
+      if (theirs !== undefined && theirs !== base) return false // I deleted it, they changed it
+    }
+    let metaJson: string | undefined
+    if (s.metaDirty && s.meta) {
+      const [base, theirs] = await Promise.all([at(local, WORKSPACE_FILE), at(remote, WORKSPACE_FILE)])
+      if (theirs !== undefined && theirs !== base) metaJson = mergeJsonShallow(base, JSON.stringify(s.meta, null, 2), theirs, 'ours')
+    }
+
+    // nothing clashes: move HEAD, then lay the drafts back on top
+    await resetTo(fs, remote)
+    await reloadBoards(fs)
+    const boards = { ...get().boards }
+    const dirty = new Set<string>()
+    for (const p of plan) {
+      boards[p.id] = parseBoard(p.json)
+      dirty.add(p.id)
+    }
+    for (const id of s.deletedBoards) delete boards[id]
+    const meta = metaJson ? parseWorkspace(metaJson) : s.metaDirty ? s.meta : get().meta
+    set({ boards, dirtyBoards: dirty, deletedBoards: new Set(s.deletedBoards), meta, metaDirty: s.metaDirty, assetsTouched: s.assetsTouched })
+    await get().flush()
+    return true
   }
 
   let flushTimer: ReturnType<typeof setTimeout> | undefined
@@ -854,7 +915,9 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
           case 'local-empty':
           case 'behind':
             if (dirty) {
-              toast.err('Remote has new changes — Save yours first, then pull.', 'peepoShy')
+              if (local && (await pullUnderDrafts(fs, local, remote!))) {
+                toast.ok(`Pulled ${st.behind} ${st.behind === 1 ? 'commit' : 'commits'} — your unsaved edits are still here.`, 'peepoGlad')
+              } else toast.err('Others changed a card you are editing — Save yours first, then they get combined.', 'peepoShy')
               break
             }
             progress('updating working tree…')
@@ -921,6 +984,18 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
             set({ divergence: { ...st, who, dirty } })
           }
           return
+        }
+        if (isDirty(get()) && useSettings.getState().autoPull && !get().busy) {
+          // others' commits don't touch what I'm editing → pull them in and keep my drafts on top
+          set({ busy: 'syncing', busyDetail: 'bringing in changes…' })
+          const who = await authorsBetween(fs, remote, local)
+          const ok = await pullUnderDrafts(fs, local!, remote)
+          set({ busy: null, busyDetail: null })
+          if (ok) {
+            lastNotifiedRemote = remote
+            toast.ok(`${who} added changes (${st.behind} ${st.behind === 1 ? 'commit' : 'commits'}) — your unsaved edits are still here.`, 'peepoHey')
+            return
+          }
         }
         if (isDirty(get()) || !useSettings.getState().autoPull) {
           // can't (or shouldn't) pull automatically — say so, once per remote head

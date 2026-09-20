@@ -212,7 +212,7 @@ export function mergeBoardJson(base: string | undefined, ours: string, theirs: s
   return { json: JSON.stringify(merged, null, 2), conflicts: cards.conflicts + connectors.conflicts }
 }
 
-function mergeJsonShallow(base: string | undefined, ours: string, theirs: string, prefer: Prefer): string {
+export function mergeJsonShallow(base: string | undefined, ours: string, theirs: string, prefer: Prefer): string {
   const b = base ? (JSON.parse(base) as Record<string, unknown>) : undefined
   const o = JSON.parse(ours) as Record<string, unknown>
   const t = JSON.parse(theirs) as Record<string, unknown>
