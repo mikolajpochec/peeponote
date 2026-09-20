@@ -139,11 +139,31 @@ async function seedWorkspace(fs: PeepoFS): Promise<void> {
   // Home + the "How to use peeponote" walkthrough
   for (const b of tutorialBoards(rootId)) await writeText(fs, abs(fs, boardPath(b.id)), JSON.stringify(b, null, 2))
   await writeText(fs, abs(fs, '.gitignore'), '.DS_Store\n')
-  await writeText(
-    fs,
-    abs(fs, 'README.md'),
-    '# peeponote board\n\nThis repository is a [peeponote](https://github.com/) workspace. Boards live in `boards/`, files in `assets/`.\n',
-  )
+  await writeText(fs, abs(fs, 'README.md'), workspaceReadme())
+}
+
+const PROJECT_URL = 'https://github.com/mikolajpochec/peeponote'
+
+/** README committed into every fresh workspace repo: says what this is and how to open it */
+function workspaceReadme(): string {
+  // the app that created this workspace — hosted URL or wherever it runs
+  const app = typeof location !== 'undefined' ? `${location.origin}${location.pathname}` : PROJECT_URL
+  return [
+    '# peeponote board',
+    '',
+    `This repository is a [peeponote](${PROJECT_URL}) workspace — a visual board app where every Save is a git commit.`,
+    '',
+    `**Open it:** go to [${app}](${app}) → Settings → *Clone an existing peeponote repo* → paste this repository's URL.`,
+    '',
+    '## Layout',
+    '',
+    '- `peeponote.json` — workspace name, root board id, shared settings',
+    '- `boards/<id>.json` — one file per board: cards, connectors, style',
+    '- `assets/<sha>-<name>` — files dropped onto boards (images, audio, 3D models, code, …), content-addressed',
+    '',
+    'Everything is plain JSON and regular files, so it diffs, merges and greps like any other repo.',
+    '',
+  ].join('\n')
 }
 
 async function sha1Short(buf: ArrayBuffer): Promise<string> {
