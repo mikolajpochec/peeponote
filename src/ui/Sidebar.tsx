@@ -265,7 +265,8 @@ function BoardNode({
             onDoubleClick={() => !readOnly && setRenaming(board.id)}
             className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-left"
           >
-            {bg && !active && <span className="h-2 w-2 shrink-0 rounded-full ring-1 ring-black/20" style={{ background: bg }} />}
+            {/* always occupies its slot so the label doesn't jump when the row becomes active */}
+            {bg && <span className="h-2 w-2 shrink-0 rounded-full ring-1 ring-black/20" style={{ background: bg, opacity: active ? 0 : 1 }} />}
             <BoardIconView icon={board.icon} size={16} className="shrink-0" />
             <span className="truncate">{board.name || 'Untitled'}</span>
           </button>
