@@ -31,6 +31,9 @@ html, body, #root {
   height: 100%;
   margin: 0;
   overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
   background: var(--color-swamp-900);
   color: var(--color-frog-50);
   font-family: var(--font-sans);
@@ -146,3 +149,12 @@ input:read-only, textarea:read-only { cursor: default; }
 .hljs-emphasis { font-style: italic; }
 .hljs-strong { font-weight: 700; }
 .hljs-subst { color: #d8dfd6; }
+
+/* phones: dynamic viewport so the browser chrome doesn't hide the bottom bar */
+@supports (height: 100dvh) {
+  html, body, #root { height: 100dvh; }
+}
+/* dialogs must be scrollable on small screens */
+@media (max-width: 767px) {
+  .fixed.inset-0 > .rounded-2xl { max-height: 100%; overflow: auto; }
+}

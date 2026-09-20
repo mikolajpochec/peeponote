@@ -76,8 +76,8 @@ export function Palette({ board }: { board: Board }) {
   }
 
   return (
-    <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center">
-      <div className="pointer-events-auto flex flex-col gap-0.5 rounded-2xl border border-(--hair) bg-swamp-900/90 p-1.5 shadow-2xl shadow-black/50 backdrop-blur">
+    <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center max-md:inset-x-2 max-md:inset-y-auto max-md:bottom-3 max-md:justify-center">
+      <div className="pointer-events-auto flex flex-col gap-0.5 rounded-2xl border border-(--hair) bg-swamp-900/90 p-1.5 shadow-2xl shadow-black/50 backdrop-blur max-md:max-w-full max-md:flex-row max-md:overflow-x-auto">
         {TOOLS.map((tool) => (
           <button
             key={tool.id}

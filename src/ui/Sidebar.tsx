@@ -12,11 +12,15 @@ interface Menu {
   confirmDelete?: boolean
 }
 
-export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
+export function Sidebar({ onOpenSettings, onNavigate, onClose }: { onOpenSettings: () => void; onNavigate?: () => void; onClose?: () => void }) {
   const boards = useWorkspace(selectBoards)
   const meta = useWorkspace((s) => s.meta)
   const current = useWorkspace((s) => s.currentBoardId)
-  const navigate = useWorkspace((s) => s.navigate)
+  const navigateRaw = useWorkspace((s) => s.navigate)
+  const navigate = (id: string) => {
+    navigateRaw(id)
+    onNavigate?.()
+  }
   const createBoard = useWorkspace((s) => s.createBoard)
   const removeCards = useWorkspace((s) => s.removeCards)
   const readOnly = useWorkspace((s) => !!s.viewingRef)
@@ -91,7 +95,7 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
     ]
   }
 
-  if (collapsed) {
+  if (collapsed && !onClose) {
     return (
       <div className="flex w-12 flex-col items-center gap-3 border-r border-(--hair) bg-swamp-900 py-3">
         <button onClick={() => setCollapsed(false)} title="Expand">
@@ -103,7 +107,7 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
 
   return (
     <aside
-      className="flex w-60 shrink-0 flex-col border-r border-(--hair) bg-swamp-900"
+      className="flex h-full w-60 shrink-0 flex-col border-r border-(--hair) bg-swamp-900"
       onContextMenu={(e) => {
         const t = e.target as HTMLElement
         if (t.closest('input')) return
@@ -120,8 +124,8 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
           </div>
           <div className="truncate text-[11px] text-frog-200/60">{fs?.label}</div>
         </div>
-        <button onClick={() => setCollapsed(true)} className="text-frog-200/50 hover:text-frog-100" title="Collapse">
-          «
+        <button onClick={() => (onClose ? onClose() : setCollapsed(true))} className="px-2 py-1 text-frog-200/50 hover:text-frog-100" title={onClose ? 'Close' : 'Collapse'}>
+          {onClose ? '✕' : '«'}
         </button>
       </div>
       <div className="flex items-center px-3 pb-1">

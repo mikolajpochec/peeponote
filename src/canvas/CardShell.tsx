@@ -131,7 +131,9 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
               e.stopPropagation()
               removeCards(boardId, [card.id])
             }}
-            className="absolute -right-2 -top-2 hidden h-6 w-6 items-center justify-center rounded-full bg-swamp-600 text-xs text-frog-100 shadow group-hover:flex hover:bg-red-700"
+            className={`absolute -right-2 -top-2 h-6 w-6 items-center justify-center rounded-full bg-swamp-600 text-xs text-frog-100 shadow hover:bg-red-700 pointer-coarse:h-8 pointer-coarse:w-8 pointer-coarse:-right-3 pointer-coarse:-top-3 ${
+              selected ? 'flex' : 'hidden group-hover:flex'
+            }`}
           >
             ✕
           </button>
@@ -143,7 +145,7 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
               if (card.type === 'text') updateCard(boardId, card.id, { autoSize: true } as Partial<Card>)
             }}
             title={card.type === 'text' ? 'Drag to resize · double-click to fit content' : 'Drag to resize'}
-            className="absolute -bottom-1 -right-1 hidden h-4 w-4 cursor-nwse-resize rounded-sm bg-frog-300 group-hover:block"
+            className="absolute -bottom-1 -right-1 hidden h-4 w-4 cursor-nwse-resize rounded-sm bg-frog-300 group-hover:block pointer-coarse:-bottom-2 pointer-coarse:-right-2 pointer-coarse:h-7 pointer-coarse:w-7 pointer-coarse:rounded-md"
             style={{ display: selected ? 'block' : undefined }}
           />
         </>

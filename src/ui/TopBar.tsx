@@ -6,7 +6,18 @@ import { Peepo } from './Peepo'
 import { ColorPicker } from './ColorPicker'
 import { resolveTheme } from '../theme/themes'
 
-export function TopBar({ onToggleHistory, historyOpen, onOpenSettings }: { onToggleHistory: () => void; historyOpen: boolean; onOpenSettings: () => void }) {
+export function TopBar({
+  onToggleHistory,
+  historyOpen,
+  onOpenSettings,
+  onToggleSidebar,
+}: {
+  onToggleHistory: () => void
+  historyOpen: boolean
+  onOpenSettings: () => void
+  /** present on phones: the sidebar is a drawer behind this button */
+  onToggleSidebar?: () => void
+}) {
   const boards = useWorkspace(selectBoards)
   const currentId = useWorkspace((s) => s.currentBoardId)
   const navigate = useWorkspace((s) => s.navigate)
@@ -21,9 +32,19 @@ export function TopBar({ onToggleHistory, historyOpen, onOpenSettings }: { onTog
   for (let b = board; b; b = b.parentId ? boards[b.parentId] : undefined) crumbs.unshift(b)
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-(--hair) bg-swamp-900 px-3">
+    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-(--hair) bg-swamp-900 px-3 max-md:gap-1 max-md:px-2">
+      {onToggleSidebar && (
+        <button onClick={onToggleSidebar} title="Boards" className="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-lg hover:bg-(--hover-strong)">
+          ☰
+        </button>
+      )}
+      {onToggleSidebar && crumbs.length > 1 && (
+        <button onClick={() => navigate(crumbs[crumbs.length - 2].id)} title="Up" className="flex h-9 w-8 shrink-0 items-center justify-center rounded-md text-lg hover:bg-(--hover-strong)">
+          ‹
+        </button>
+      )}
       <nav className="flex min-w-0 items-center gap-1 text-[13px]">
-        {crumbs.map((b, i) => (
+        {(onToggleSidebar ? crumbs.slice(-1) : crumbs).map((b, i) => (
           <span key={b.id} className="flex items-center gap-1">
             {i > 0 && <span className="text-frog-200/40">/</span>}
             {i === crumbs.length - 1 ? (
@@ -31,7 +52,7 @@ export function TopBar({ onToggleHistory, historyOpen, onOpenSettings }: { onTog
                 readOnly={readOnly}
                 value={b.name}
                 onChange={(e) => renameBoard(b.id, e.target.value)}
-                className="min-w-0 rounded bg-transparent px-1 font-extrabold outline-none hover:bg-(--hover) focus:bg-(--hover-strong)"
+                className="min-w-0 max-w-[40vw] rounded bg-transparent px-1 font-extrabold outline-none hover:bg-(--hover) focus:bg-(--hover-strong)"
                 style={{ width: `${Math.max(4, b.name.length + 1)}ch` }}
               />
             ) : (
@@ -43,7 +64,7 @@ export function TopBar({ onToggleHistory, historyOpen, onOpenSettings }: { onTog
         ))}
       </nav>
       {board && !readOnly && (
-        <div className="ml-1 flex items-center gap-0.5 rounded-lg bg-swamp-700/60 px-1" title="Board style">
+        <div className="ml-1 flex items-center gap-0.5 rounded-lg bg-swamp-700/60 px-1 max-md:hidden" title="Board style">
           <ColorPicker
             title="Board background"
             icon="◼"
@@ -62,22 +83,22 @@ export function TopBar({ onToggleHistory, historyOpen, onOpenSettings }: { onTog
         </div>
       )}
       <div className="flex-1" />
-      <SaveBar />
+      <SaveBar compact={!!onToggleSidebar} />
       <button
         onClick={onToggleHistory}
         title="History"
-        className={`rounded-md px-2 py-1 text-[13px] font-semibold hover:bg-(--hover-strong) ${historyOpen ? 'bg-(--hover-strong)' : ''}`}
+        className={`rounded-md px-2 py-1 text-[13px] font-semibold hover:bg-(--hover-strong) max-md:h-9 max-md:w-9 max-md:px-0 ${historyOpen ? 'bg-(--hover-strong)' : ''}`}
       >
-        🕰 History
+        🕰<span className="max-md:hidden"> History</span>
       </button>
-      <button onClick={onOpenSettings} title="Settings (⌘,)" className="rounded-md px-2 py-1 text-[13px] font-semibold hover:bg-(--hover-strong)">
+      <button onClick={onOpenSettings} title="Settings (⌘,)" className="rounded-md px-2 py-1 text-[13px] font-semibold hover:bg-(--hover-strong) max-md:h-9 max-md:w-9 max-md:px-0">
         ⚙
       </button>
     </header>
   )
 }
 
-function SaveBar() {
+function SaveBar({ compact }: { compact: boolean }) {
   const dirty = useWorkspace(selectDirty)
   const busy = useWorkspace((s) => s.busy)
   const save = useWorkspace((s) => s.save)
@@ -101,24 +122,26 @@ function SaveBar() {
         className={`h-2.5 w-2.5 rounded-full ${dirty ? 'bg-amber-400 shadow-[0_0_8px_2px_rgba(251,191,36,0.5)]' : 'bg-frog-400'}`}
         title={dirty ? 'Unsaved changes' : 'All committed'}
       />
-      <input
-        value={msg}
-        onChange={(e) => setMsg(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') doSave()
-        }}
-        placeholder={dirty ? 'commit message (optional)' : 'nothing to commit'}
-        disabled={!!viewingRef}
-        className="w-52 rounded-md bg-swamp-700 px-2 py-1 text-[13px] outline-none placeholder:text-frog-200/40 focus:ring-1 focus:ring-frog-400"
-      />
+      {!compact && (
+        <input
+          value={msg}
+          onChange={(e) => setMsg(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') doSave()
+          }}
+          placeholder={dirty ? 'commit message (optional)' : 'nothing to commit'}
+          disabled={!!viewingRef}
+          className="w-52 rounded-md bg-swamp-700 px-2 py-1 text-[13px] outline-none placeholder:text-frog-200/40 focus:ring-1 focus:ring-frog-400"
+        />
+      )}
       <button
         onClick={doSave}
         disabled={!dirty || !!busy || !!viewingRef}
         title={willPush ? `Save = git commit + push → ${remoteUrl} (⌘S)` : 'Save = git commit (⌘S)'}
-        className="flex items-center gap-1.5 rounded-md bg-frog-500 px-3 py-1 text-[13px] font-bold text-white hover:bg-frog-400 disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-8 items-center gap-1.5 rounded-md bg-frog-500 px-3 py-1 text-[13px] font-bold text-white hover:bg-frog-400 disabled:cursor-not-allowed disabled:opacity-40 max-md:px-2"
       >
         <Peepo name={willPush ? 'peepoRun' : 'peepoClap'} size={20} />
-        {busy === 'saving' ? 'Saving…' : busy === 'syncing' ? 'Syncing…' : willPush ? 'Save & push' : 'Save'}
+        {busy === 'saving' ? 'Saving…' : busy === 'syncing' ? 'Syncing…' : compact ? 'Save' : willPush ? 'Save & push' : 'Save'}
       </button>
       {separatePush && (
         <button
@@ -134,7 +157,7 @@ function SaveBar() {
         onClick={pull}
         disabled={!remoteUrl || !!busy || !!viewingRef}
         title="Sync: fetch, then pull or push (asks if histories diverged)"
-        className="rounded-md bg-swamp-600 px-2 py-1 text-[13px] font-bold text-frog-50 hover:bg-swamp-500 disabled:cursor-not-allowed disabled:opacity-40"
+        className="h-8 rounded-md bg-swamp-600 px-2 py-1 text-[13px] font-bold text-frog-50 hover:bg-swamp-500 disabled:cursor-not-allowed disabled:opacity-40"
       >
         ⇅
       </button>

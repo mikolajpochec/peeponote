@@ -1,4 +1,5 @@
 import { useRef, type PointerEvent as RPointerEvent } from 'react'
+import { activeTouches } from './touch'
 
 export interface DragHandlers {
   onStart?: (e: RPointerEvent) => boolean | void
@@ -23,6 +24,12 @@ export function useDrag(handlers: DragHandlers, scale: () => number, threshold =
     const move = (ev: PointerEvent) => {
       const s = state.current
       if (!s || ev.pointerId !== s.id) return
+      // a second finger means the user is pinching the canvas, not dragging this
+      if (ev.pointerType === 'touch' && activeTouches() > 1) {
+        s.lx = ev.clientX
+        s.ly = ev.clientY
+        return
+      }
       if (!s.moved && Math.hypot(ev.clientX - s.sx, ev.clientY - s.sy) < threshold) return
       s.moved = true
       const k = scale()

@@ -18,6 +18,7 @@ import { downloadAsset } from '../cards/AssetCard'
 import { boardVars } from './styles'
 import { useSettings } from '../store/settings'
 import { resolveTheme } from '../theme/themes'
+import { LONG_PRESS_MS, LONG_PRESS_SLOP, isDuplicateDblClick, markLongPress, registerTap, shouldSwallowContextMenu, useIsMobile } from './touch'
 
 interface Marquee {
   x0: number
@@ -67,6 +68,49 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
+  }, [board.id, setVp])
+
+  // two fingers: pinch to zoom, drag to pan (touch events see both fingers even when one is captured by a card)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let prev: { cx: number; cy: number; d: number } | null = null
+    const read = (e: TouchEvent) => {
+      const [a, b] = [e.touches[0], e.touches[1]]
+      return { cx: (a.clientX + b.clientX) / 2, cy: (a.clientY + b.clientY) / 2, d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) }
+    }
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        prev = read(e)
+        e.preventDefault()
+      }
+    }
+    const onMove = (e: TouchEvent) => {
+      if (e.touches.length !== 2) return
+      e.preventDefault()
+      const cur = read(e)
+      if (prev) {
+        const rect = el.getBoundingClientRect()
+        let v = useViewport.getState().get(board.id)
+        v = { ...v, x: v.x + cur.cx - prev.cx, y: v.y + cur.cy - prev.cy }
+        if (prev.d > 0) v = zoomAt(v, cur.d / prev.d, cur.cx, cur.cy, rect)
+        setVp(board.id, v)
+      }
+      prev = cur
+    }
+    const onEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) prev = null
+    }
+    el.addEventListener('touchstart', onStart, { passive: false })
+    el.addEventListener('touchmove', onMove, { passive: false })
+    el.addEventListener('touchend', onEnd)
+    el.addEventListener('touchcancel', onEnd)
+    return () => {
+      el.removeEventListener('touchstart', onStart)
+      el.removeEventListener('touchmove', onMove)
+      el.removeEventListener('touchend', onEnd)
+      el.removeEventListener('touchcancel', onEnd)
+    }
   }, [board.id, setVp])
 
   // keyboard
@@ -181,19 +225,63 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     return { x: (w / 2 - cur.x) / cur.scale, y: (h / 2 - cur.y) / cur.scale }
   }
 
-  const onContextMenu = (e: React.MouseEvent) => {
-    const t = e.target as HTMLElement
-    // let native menus work inside text fields
-    if (t.closest('input, textarea, [contenteditable="true"]')) return
-    e.preventDefault()
+  const openMenuAt = (clientX: number, clientY: number, t: HTMLElement) => {
     const rect = ref.current!.getBoundingClientRect()
-    const at = screenToBoard(useViewport.getState().get(board.id), e.clientX, e.clientY, rect)
+    const at = screenToBoard(useViewport.getState().get(board.id), clientX, clientY, rect)
     const cardId = t.closest('[data-card]')?.getAttribute('data-card') ?? null
     const connectorId = t.closest('[data-connector]')?.getAttribute('data-connector') ?? null
     const sel = useWorkspace.getState().selection
     if (cardId && !sel.has(cardId)) select([cardId])
     if (connectorId && !sel.has(connectorId)) select([connectorId])
-    setMenu({ x: e.clientX, y: e.clientY, at, cardId, connectorId })
+    setMenu({ x: clientX, y: clientY, at, cardId, connectorId })
+  }
+
+  const onContextMenu = (e: React.MouseEvent) => {
+    const t = e.target as HTMLElement
+    // let native menus work inside text fields
+    if (t.closest('input, textarea, [contenteditable="true"]')) return
+    e.preventDefault()
+    if (shouldSwallowContextMenu()) return // long-press already opened ours
+    openMenuAt(e.clientX, e.clientY, t)
+  }
+
+  // touch: long-press → context menu, double-tap → edit/open (runs in capture phase so it also sees captured card drags)
+  const onPointerDownCapture = (e: React.PointerEvent) => {
+    if (e.pointerType !== 'touch') return
+    const t = e.target as HTMLElement
+    if (t.closest('input, textarea, button, a, select, [contenteditable="true"], [data-nodrag]')) return
+    const el = ref.current!
+    const { clientX: sx, clientY: sy, pointerId } = e
+    let fired = false
+    const cancel = () => {
+      clearTimeout(timer)
+      el.removeEventListener('pointermove', move, true)
+      el.removeEventListener('pointerup', up, true)
+      el.removeEventListener('pointercancel', cancel, true)
+    }
+    const move = (ev: PointerEvent) => {
+      if (ev.pointerId === pointerId && Math.hypot(ev.clientX - sx, ev.clientY - sy) > LONG_PRESS_SLOP) cancel()
+    }
+    const up = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return
+      cancel()
+      if (fired || Math.hypot(ev.clientX - sx, ev.clientY - sy) > LONG_PRESS_SLOP) return
+      if (registerTap(ev)) {
+        const card = t.closest('[data-card]') as HTMLElement | null
+        if (card) card.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, clientX: ev.clientX, clientY: ev.clientY }))
+        else if (t === el || t.dataset.layer) openNoteAt(ev.clientX, ev.clientY)
+      }
+    }
+    const timer = setTimeout(() => {
+      fired = true
+      cancel()
+      markLongPress()
+      if ('vibrate' in navigator) navigator.vibrate(10)
+      openMenuAt(sx, sy, t)
+    }, LONG_PRESS_MS)
+    el.addEventListener('pointermove', move, true)
+    el.addEventListener('pointerup', up, true)
+    el.addEventListener('pointercancel', cancel, true)
   }
 
   const menuItems = (): MenuItem[] => {
@@ -262,7 +350,8 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     if (e.target !== e.currentTarget && !(e.target as HTMLElement).dataset.layer) return
     const el = ref.current!
     const rect = el.getBoundingClientRect()
-    const pan = e.button === 1 || spaceHeld.current || e.altKey
+    // a finger on empty canvas pans; marquee stays a mouse/pen gesture
+    const pan = e.button === 1 || spaceHeld.current || e.altKey || e.pointerType === 'touch'
     el.setPointerCapture(e.pointerId)
     let lx = e.clientX
     let ly = e.clientY
@@ -355,16 +444,21 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     el.addEventListener('pointercancel', up)
   }
 
-  const onDoubleClick = (e: React.MouseEvent) => {
+  const openNoteAt = (clientX: number, clientY: number) => {
     if (readOnly) return
-    if (e.target !== e.currentTarget && !(e.target as HTMLElement).dataset.layer) return
     const rect = ref.current!.getBoundingClientRect()
-    const p = screenToBoard(vp, e.clientX, e.clientY, rect)
+    const p = screenToBoard(useViewport.getState().get(board.id), clientX, clientY, rect)
     const z = board.cards.reduce((m, c) => Math.max(m, c.z), 0) + 1
     const id = newId()
     autoEdit.id = id
     addCard(board.id, { id, type: 'note', x: p.x - 110, y: p.y - 40, w: 220, h: 120, z, md: '' })
     select([id])
+  }
+
+  const onDoubleClick = (e: React.MouseEvent) => {
+    if (e.target !== e.currentTarget && !(e.target as HTMLElement).dataset.layer) return
+    if (isDuplicateDblClick()) return
+    openNoteAt(e.clientX, e.clientY)
   }
 
   const onDrop = async (e: React.DragEvent) => {
@@ -392,6 +486,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
   }
 
   const theme = useSettings((s) => resolveTheme(s.theme))
+  const mobile = useIsMobile()
 
   // style bar floats (unscaled) above the selected cards
   const selectedCards = board.cards.filter((c) => selection.has(c.id))
@@ -419,6 +514,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         backgroundImage: board.style?.dots === false ? 'none' : undefined,
       }}
       onPointerDown={onBackgroundPointerDown}
+      onPointerDownCapture={onPointerDownCapture}
       onContextMenu={onContextMenu}
       onPointerMove={(e) => {
         if (draft) return
@@ -474,7 +570,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3" style={{ color: 'var(--board-fg-muted)' }}>
           <Peepo name="peepoSit" size={96} className="peepo-bounce opacity-80" />
           <div className="text-lg font-bold">Empty board. peepoSit</div>
-          <div className="text-sm">Double-click to write a note · drop files anywhere · use the toolbar</div>
+          <div className="px-6 text-center text-sm">{mobile ? 'Double-tap to write a note · long-press for the menu · use the toolbar below' : 'Double-click to write a note · drop files anywhere · use the toolbar'}</div>
         </div>
       )}
       {!readOnly && <Palette board={board} />}
@@ -483,7 +579,11 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         <div
           className="absolute z-30"
           style={{
-            left: Math.max(180, Math.min(styleBarPos.x, (ref.current?.clientWidth ?? 800) - 180)),
+            left: (() => {
+              const cw = ref.current?.clientWidth ?? 800
+              const half = Math.min(180, cw / 2 - 8)
+              return Math.max(half, Math.min(styleBarPos.x, cw - half))
+            })(),
             top: styleBarPos.y,
             transform: styleBarPos.below ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
           }}
@@ -491,7 +591,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
           <StyleBar boardId={board.id} cards={selectedCards} />
         </div>
       )}
-      <div className="pointer-events-none absolute bottom-2 right-3 rounded px-2 py-0.5 text-[11px]" style={{ color: 'var(--board-fg-muted)', background: 'color-mix(in srgb, var(--board-fg) 8%, transparent)' }}>
+      <div className="pointer-events-none absolute bottom-2 right-3 rounded px-2 py-0.5 text-[11px] max-md:hidden" style={{ color: 'var(--board-fg-muted)', background: 'color-mix(in srgb, var(--board-fg) 8%, transparent)' }}>
         {Math.round(vp.scale * 100)}%
       </div>
     </div>

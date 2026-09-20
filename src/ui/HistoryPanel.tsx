@@ -10,7 +10,7 @@ function timeAgo(ts: number) {
   return new Date(ts * 1000).toLocaleDateString()
 }
 
-export function HistoryPanel({ onClose }: { onClose: () => void }) {
+export function HistoryPanel({ onClose, mobile }: { onClose: () => void; mobile?: boolean }) {
   const commits = useWorkspace((s) => s.commits)
   const viewingRef = useWorkspace((s) => s.viewingRef)
   const viewCommit = useWorkspace((s) => s.viewCommit)
@@ -22,7 +22,7 @@ export function HistoryPanel({ onClose }: { onClose: () => void }) {
   }, [refreshGit])
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col border-l border-(--hair) bg-swamp-900">
+    <aside className={`flex shrink-0 flex-col border-l border-(--hair) bg-swamp-900 ${mobile ? 'absolute inset-0 z-30 w-full' : 'w-80'}`}>
       <div className="flex items-center gap-2 border-b border-(--hair) px-3 py-2">
         <Peepo name="peepoThink" size={24} />
         <div className="flex-1 text-sm font-extrabold">History</div>
