@@ -334,6 +334,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     const b = get().boards[boardId]
     if (!b || get().viewingRef) return
     const next = fn(b)
+    if (next === b) return // a no-op (e.g. bringing the top card to front) must not mark anything unsaved
     const dirtyBoards = new Set(get().dirtyBoards)
     dirtyBoards.add(boardId)
     set({ boards: { ...get().boards, [boardId]: next }, dirtyBoards })
