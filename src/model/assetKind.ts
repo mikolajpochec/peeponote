@@ -3,8 +3,8 @@ import type { AssetKind } from './types'
 const EXT: Record<string, AssetKind> = {
   // images (photos)
   jpg: 'image', jpeg: 'image', gif: 'image', svg: 'image', avif: 'image', bmp: 'image', ico: 'image',
-  // textures / spritesheets — pixel-perfect preview
-  png: 'texture', webp: 'texture', tga: 'other', dds: 'other', ktx: 'other', ktx2: 'other',
+  // (png/webp are images too; the card offers a pixel-perfect "texture" view as a toggle)
+  png: 'image', webp: 'image', tga: 'other', dds: 'other', ktx: 'other', ktx2: 'other',
   // audio
   mp3: 'audio', wav: 'audio', ogg: 'audio', flac: 'audio', m4a: 'audio', aac: 'audio', opus: 'audio',
   // video

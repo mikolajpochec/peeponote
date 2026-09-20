@@ -6,7 +6,7 @@ import { TextCard } from './TextCard'
 import { TodoCard } from './TodoCard'
 import { LinkCard } from './LinkCard'
 import { BoardCard } from './BoardCard'
-import { AssetCard } from './AssetCard'
+import { AssetCard, ImageAssetCard, isPicture } from './AssetCard'
 import { useWorkspace } from '../store/workspace'
 
 export interface CardProps<C extends Card = Card> {
@@ -55,6 +55,12 @@ export const CardView = memo(function CardView({ card, boardId, readOnly, select
         </CardShell>
       )
     case 'asset':
+      if (isPicture(card))
+        return (
+          <CardShell {...common} scale={scale} bare>
+            <ImageAssetCard {...common} card={card} />
+          </CardShell>
+        )
       return (
         <CardShell {...common} scale={scale} className="bg-swamp-700 text-frog-50">
           <AssetCard {...common} card={card} />

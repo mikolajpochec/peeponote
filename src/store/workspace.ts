@@ -192,6 +192,20 @@ function dissolveSingletons(cards: Card[]): Card[] {
   })
 }
 
+/** natural aspect of a dropped picture, scaled to fit the default card footprint */
+async function pictureSize(file: File): Promise<{ w: number; h: number } | null> {
+  try {
+    const bmp = await createImageBitmap(file)
+    const { width, height } = bmp
+    bmp.close()
+    if (!width || !height) return null
+    const k = Math.min(1, 360 / width, 360 / height)
+    return { w: Math.max(40, Math.round(width * k)), h: Math.max(40, Math.round(height * k)) }
+  } catch {
+    return null // svg without intrinsic size, or an undecodable file
+  }
+}
+
 async function sha1Short(buf: ArrayBuffer): Promise<string> {
   const d = await crypto.subtle.digest('SHA-1', buf)
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 8)
@@ -508,7 +522,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         const path = `${ASSETS_DIR}/${hash}-${safeName(file.name)}`
         await writeBytes(fs, abs(fs, path), new Uint8Array(buf))
         const kind = detectKind(file.name, file.type)
-        const size = kind === 'audio' ? { w: 300, h: 130 } : kind === 'code' || kind === 'data' ? { w: 320, h: 260 } : { w: 280, h: 280 }
+        let size = kind === 'audio' ? { w: 300, h: 130 } : kind === 'code' || kind === 'data' ? { w: 320, h: 260 } : { w: 280, h: 280 }
+        if (kind === 'image' || kind === 'texture') size = (await pictureSize(file)) ?? size
         const b = get().boards[boardId]
         const z = b ? b.cards.reduce((m, c) => Math.max(m, c.z), 0) + 1 : 1
         get().addCard(boardId, {
