@@ -5,6 +5,7 @@ import { ConnectorLayer, type DraftConnector } from './ConnectorLayer'
 import { anchorForDrop, anchorPoint } from './connectors'
 import { useWorkspace } from '../store/workspace'
 import { CardView } from '../cards/CardView'
+import { GRID } from './CardShell'
 import { MAX_SCALE, MIN_SCALE, screenToBoard, useViewport, zoomAt } from './viewport'
 import { Peepo } from '../ui/Peepo'
 import { autoEdit } from '../cards/autoEdit'
@@ -654,8 +655,9 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       className={`canvas-bg relative h-full w-full overflow-hidden touch-none ${dragOver ? 'outline outline-4 -outline-offset-4 outline-frog-300/60' : ''}`}
       style={{
         ...boardVars(board, theme.canvas),
-        backgroundSize: `${24 * vp.scale}px ${24 * vp.scale}px`,
-        backgroundPosition: `${vp.x}px ${vp.y}px`,
+        // dots sit exactly on the snap grid: same spacing as GRID, and the 1 px dot centre pulled back onto the tile origin
+        backgroundSize: `${GRID * vp.scale}px ${GRID * vp.scale}px`,
+        backgroundPosition: `${vp.x - 1}px ${vp.y - 1}px`,
         backgroundColor: 'var(--board-bg)',
         backgroundImage: board.style?.dots === false ? 'none' : undefined,
       }}
