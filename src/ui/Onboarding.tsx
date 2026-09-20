@@ -4,14 +4,16 @@ import { useSettings } from '../store/settings'
 import { useWorkspace } from '../store/workspace'
 import { toast } from '../store/toast'
 import { Peepo } from './Peepo'
+import { WhyPassword } from '../review/IdentityDialog'
+import { useReview } from '../store/review'
 import { TokenHelp } from './TokenHelp'
 
 const field = 'w-full rounded-md bg-swamp-700 px-3 py-2 text-[14px] outline-none focus:ring-1 focus:ring-frog-400 placeholder:text-frog-200/30'
 const primary = 'rounded-lg bg-frog-500 px-4 py-2 text-[14px] font-bold text-white hover:bg-frog-400 disabled:opacity-40'
 const ghost = 'rounded-lg px-4 py-2 text-[14px] font-semibold text-frog-200 hover:bg-(--hover-strong)'
 
-type Step = 'hello' | 'storage' | 'remote' | 'done'
-const ORDER: Step[] = ['hello', 'storage', 'remote', 'done']
+type Step = 'hello' | 'password' | 'storage' | 'remote' | 'done'
+const ORDER: Step[] = ['hello', 'password', 'storage', 'remote', 'done']
 
 /** First-run wizard: git identity → where the repo lives → optional remote. Everything here is a local setting. */
 export function Onboarding({ onFinish }: { onFinish: () => void }) {
@@ -23,6 +25,10 @@ export function Onboarding({ onFinish }: { onFinish: () => void }) {
   const remoteUrl = useWorkspace((s) => s.remoteUrl)
   const busy = useWorkspace((s) => s.busy)
   const [step, setStep] = useState<Step>('hello')
+  const [pw, setPw] = useState('')
+  const [pw2, setPw2] = useState('')
+  const [pwError, setPwError] = useState<string | null>(null)
+  const createAccount = useReview((s) => s.createAccount)
   const [remote, setRemoteDraft] = useState(remoteUrl ?? '')
   const idx = ORDER.indexOf(step)
 
@@ -55,6 +61,24 @@ export function Onboarding({ onFinish }: { onFinish: () => void }) {
               <input className={field} autoFocus placeholder="Your name (shows up as the commit author)" value={settings.authorName} onChange={(e) => settings.set({ authorName: e.target.value })} />
               <input className={field} type="email" placeholder="Email for commits" value={settings.authorEmail} onChange={(e) => settings.set({ authorEmail: e.target.value })} />
               <p className="text-[11px] text-frog-200/50">Stored only in this browser. Use the same email as your GitHub account if you want commits attributed to you there.</p>
+            </div>
+          </>
+        )}
+
+        {step === 'password' && (
+          <>
+            <div className="mb-4 flex items-center gap-3">
+              <Peepo name="peepoShy" size={56} />
+              <div>
+                <h2 className="text-2xl font-black tracking-tight">Choose a password</h2>
+                <p className="text-[13px] text-frog-200/70">Optional — skip to use peeponote as a guest. Guests can edit boards but can't comment, review or get notifications.</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <WhyPassword />
+              <input className={field} type="password" placeholder="Password" value={pw} onChange={(e) => setPw(e.target.value)} />
+              <input className={field} type="password" placeholder="Password again" value={pw2} onChange={(e) => setPw2(e.target.value)} />
+              {pwError && <div className="text-[12px] text-red-200">{pwError}</div>}
             </div>
           </>
         )}
@@ -148,12 +172,18 @@ export function Onboarding({ onFinish }: { onFinish: () => void }) {
                     await setRemote(remote)
                     if (remote.trim()) toast.ok('Remote saved', 'FeelsOkayMan')
                   }
+                  if (step === 'password' && pw) {
+                    setPwError(null)
+                    if (pw !== pw2) return setPwError("The two passwords don't match.")
+                    const err = await createAccount(settings.authorName, settings.authorEmail, pw)
+                    if (err) return setPwError(err)
+                  }
                   next()
                 }}
-                disabled={step === 'hello' && !settings.authorName.trim()}
+                disabled={(step === 'hello' && !settings.authorName.trim()) || (step === 'password' && !!pw && pw !== pw2)}
                 className={primary}
               >
-                {step === 'remote' && !remote.trim() ? 'Skip this' : 'Next'}
+                {(step === 'remote' && !remote.trim()) || (step === 'password' && !pw) ? 'Skip this' : 'Next'}
               </button>
             )}
           </div>

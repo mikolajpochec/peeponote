@@ -212,6 +212,19 @@ export function mergeBoardJson(base: string | undefined, ours: string, theirs: s
   return { json: JSON.stringify(merged, null, 2), conflicts: cards.conflicts + connectors.conflicts }
 }
 
+/** which of two JSON texts carries the later `updatedAt` / `editedAt` / `at` / `createdAt` stamp */
+function newerOf(ours: string, theirs: string): 'ours' | 'theirs' {
+  const stamp = (txt: string) => {
+    try {
+      const j = JSON.parse(txt) as Record<string, string | undefined>
+      return Date.parse(j.updatedAt ?? j.editedAt ?? j.at ?? j.createdAt ?? '') || 0
+    } catch {
+      return 0
+    }
+  }
+  return stamp(theirs) > stamp(ours) ? 'theirs' : 'ours'
+}
+
 export function mergeJsonShallow(base: string | undefined, ours: string, theirs: string, prefer: Prefer): string {
   const b = base ? (JSON.parse(base) as Record<string, unknown>) : undefined
   const o = JSON.parse(ours) as Record<string, unknown>
@@ -258,6 +271,10 @@ export async function mergeRemote(fs: PeepoFS, ours: string, theirs: string, pre
       } else if (rel === WORKSPACE_FILE) {
         const json = mergeJsonShallow(b ? await text(b) : undefined, await text(o), await text(t), prefer)
         pick = await git.writeBlob({ fs, dir, blob: new TextEncoder().encode(json) })
+      } else if (rel && rel.startsWith('review/')) {
+        // review objects have exactly one writer each — only the same person on two devices lands here.
+        // Take the more recently updated file; never a conflict.
+        pick = newerOf(await text(o), await text(t)) === 'theirs' ? t : o
       } else {
         conflicts++
         pick = prefer === 'ours' ? o : t

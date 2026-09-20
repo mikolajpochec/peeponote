@@ -9,6 +9,8 @@ import { Toasts } from './ui/Toasts'
 import { Peepo } from './ui/Peepo'
 import { BootScreen } from './ui/BootScreen'
 import { Onboarding } from './ui/Onboarding'
+import { IdentityDialog, shouldPromptIdentity } from './review/IdentityDialog'
+import { useReview } from './store/review'
 import { SyncDialog } from './ui/SyncDialog'
 import { ConfirmDialog } from './ui/ConfirmDialog'
 import { PropertiesDialog } from './ui/PropertiesDialog'
@@ -43,6 +45,20 @@ export default function App() {
 
   const themeName = useSettings((s) => s.theme)
   useEffect(() => applyTheme(resolveTheme(themeName)), [themeName])
+
+  // identity: "Set password" buttons anywhere open the dialog; existing users without a password get asked once
+  // the review files are loaded (plain-language prompt, snoozable for a week)
+  const [identity, setIdentity] = useState<null | { intro: boolean }>(null)
+  const reviewLoaded = useReview((s) => s.loaded)
+  const identityKind = useReview((s) => s.identity.kind)
+  useEffect(() => {
+    const open = () => setIdentity({ intro: false })
+    window.addEventListener('peeponote:identify', open)
+    return () => window.removeEventListener('peeponote:identify', open)
+  }, [])
+  useEffect(() => {
+    if (status === 'ready' && reviewLoaded && !showOnboarding && shouldPromptIdentity()) setIdentity({ intro: true })
+  }, [status, reviewLoaded, showOnboarding, identityKind])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -169,6 +185,7 @@ export default function App() {
       </div>
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
       {showOnboarding && <Onboarding onFinish={() => setShowOnboarding(false)} />}
+      {identity && !showOnboarding && <IdentityDialog intro={identity.intro} onClose={() => setIdentity(null)} />}
       <SyncDialog />
       <ConfirmDialog />
       <PropertiesDialog />

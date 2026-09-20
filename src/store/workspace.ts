@@ -21,6 +21,8 @@ import { diffWorkspaces, formatAuthors, useArrivals } from '../canvas/arrivals'
 import { rememberedStyle, styleKeyOf, useLastStyle } from './lastStyle'
 import { boardSlug, cardSlug, validateSlug } from '../nav/peepoUrl'
 import { slotFor } from '../fs/lightning'
+import { useReview } from './review'
+import { REVIEW_DIR } from '../model/review'
 import { findWorkspaces, rootHasOtherFiles, setWsPrefix, unwp, wp, wsPrefix } from '../fs/wsroot'
 import { cardSummary } from '../nav/links'
 
@@ -367,10 +369,11 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         deletedBoards: new Set(),
         assetsTouched: false,
         metaDirty: false,
-        treeDirty: await repo.hasChanges(fs, wsPrefix()),
+        treeDirty: await repo.hasChanges(fs, wsPrefix(), wp(REVIEW_DIR)),
         selection: new Set(),
       })
       await get().refreshGit()
+      await useReview.getState().load(fs)
       // the repo we're on shows up in the "previous repos" list, with the token that opened it
       const remote = get().remoteUrl
       if (fs.kind === 'browser' && remote) useSettings.getState().rememberRepo({ url: remote, token: useSettings.getState().token, slot: activeSlot().name })
@@ -456,10 +459,11 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       deletedBoards: new Set(),
       assetsTouched: false,
       metaDirty: false,
-      treeDirty: await repo.hasChanges(fs, wsPrefix()),
+      treeDirty: await repo.hasChanges(fs, wsPrefix(), wp(REVIEW_DIR)),
       selection: new Set(),
     })
     await get().refreshGit()
+    await useReview.getState().load(fs)
   }
 
   /**
@@ -975,7 +979,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
             if (!referenced.has(`${ASSETS_DIR}/${f}`)) await fs.promises.unlink(`${assetsDir}/${f}`)
           }
         }
-        const changes = await repo.stageAll(fs, wsPrefix())
+        const changes = await repo.stageAll(fs, wsPrefix(), wp(REVIEW_DIR))
         const n = changes.added.length + changes.modified.length + changes.deleted.length
         if (n === 0) {
           set({ dirtyBoards: new Set(), deletedBoards: new Set(), assetsTouched: false, metaDirty: false, treeDirty: false })

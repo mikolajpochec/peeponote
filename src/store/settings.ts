@@ -28,6 +28,10 @@ export interface Settings {
   /** first-run wizard finished (or skipped) */
   onboarded: boolean
   theme: ThemeName
+  /** proves it's you on comments/reviews; stays in this browser, re-derived into keys on boot */
+  identityPassword: string
+  /** "Later" on the identify-yourself prompt: don't ask again before this time */
+  identityPromptSnoozedUntil: number
   set: (patch: Partial<Omit<Settings, 'set' | 'reset' | 'rememberRepo' | 'forgetRepo'>>) => void
   /** back to factory defaults (token gone, wizard shows again) */
   reset: () => void
@@ -46,6 +50,8 @@ const DEFAULTS: Omit<Settings, 'set' | 'reset' | 'rememberRepo' | 'forgetRepo'> 
   autoPull: true,
   onboarded: false,
   theme: 'dark',
+  identityPassword: '',
+  identityPromptSnoozedUntil: 0,
 }
 
 export const useSettings = create<Settings>()(

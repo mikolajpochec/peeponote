@@ -55,13 +55,14 @@ export interface ChangeSummary {
 /** `filepath` is inside `within` ('' = whole repo) */
 const inside = (filepath: string, within: string) => !within || filepath === within || filepath.startsWith(`${within}/`)
 
-/** Stage every change in the working tree (only under `within`, when given). Returns what changed. */
-export async function stageAll(fs: PeepoFS, within = ''): Promise<ChangeSummary> {
+/** Stage every change in the working tree (only under `within`, never under `exclude`). Returns what changed. */
+export async function stageAll(fs: PeepoFS, within = '', exclude?: string): Promise<ChangeSummary> {
   const matrix = await git.statusMatrix({ ...ctx(fs) })
   const out: ChangeSummary = { added: [], modified: [], deleted: [] }
   for (const [filepath, head, workdir, stage] of matrix) {
     if (head === 1 && workdir === 1 && stage === 1) continue
     if (!inside(filepath, within)) continue // stray files elsewhere in a monorepo are not ours to commit
+    if (exclude && inside(filepath, exclude)) continue // review files travel in their own commits
     if (workdir === 0) {
       await git.remove({ ...ctx(fs), filepath })
       out.deleted.push(filepath)
@@ -74,9 +75,25 @@ export async function stageAll(fs: PeepoFS, within = ''): Promise<ChangeSummary>
   return out
 }
 
-export async function hasChanges(fs: PeepoFS, within = ''): Promise<boolean> {
+export async function hasChanges(fs: PeepoFS, within = '', exclude?: string): Promise<boolean> {
   const matrix = await git.statusMatrix({ ...ctx(fs) })
-  return matrix.some(([f, h, w, s]) => inside(f, within) && !(h === 1 && w === 1 && s === 1))
+  return matrix.some(([f, h, w, s]) => inside(f, within) && !(exclude && inside(f, exclude)) && !(h === 1 && w === 1 && s === 1))
+}
+
+/**
+ * Commit just these paths (added/changed → add, missing → remove), leaving everything else in the working
+ * tree uncommitted. Between saves the index equals HEAD, so the commit contains exactly `filepaths`.
+ */
+export async function commitPaths(fs: PeepoFS, filepaths: string[], message: string, who: GitIdentity): Promise<string | null> {
+  for (const filepath of filepaths) {
+    if (await exists(fs, abs(fs, filepath))) await git.add({ ...ctx(fs), filepath })
+    else await git.remove({ ...ctx(fs), filepath }).catch(() => {})
+  }
+  // nothing actually differs from HEAD (e.g. a file created and deleted within the same batch) → no empty commit
+  const matrix = await git.statusMatrix({ ...ctx(fs), filepaths })
+  const staged = matrix.some(([, head, , stage]) => (head === 1 ? stage !== 1 : stage !== 0))
+  if (!staged) return null
+  return commit(fs, message, who)
 }
 
 /** Folders ('' = root) holding peeponote.json in the commit `ref` points at. */
