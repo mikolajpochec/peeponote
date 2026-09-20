@@ -101,6 +101,7 @@ function SaveBar({ compact }: { compact: boolean }) {
   const dirty = useWorkspace(selectDirty)
   const busy = useWorkspace((s) => s.busy)
   const save = useWorkspace((s) => s.save)
+  const discardChanges = useWorkspace((s) => s.discardChanges)
   const remoteUrl = useWorkspace((s) => s.remoteUrl)
   const viewingRef = useWorkspace((s) => s.viewingRef)
   const token = useSettings((s) => s.token)
@@ -129,6 +130,16 @@ function SaveBar({ compact }: { compact: boolean }) {
           disabled={!!viewingRef}
           className="w-52 rounded-md bg-swamp-700 px-2 py-1 text-[13px] outline-none placeholder:text-frog-200/40 focus:ring-1 focus:ring-frog-400"
         />
+      )}
+      {dirty && !viewingRef && (
+        <button
+          onClick={discardChanges}
+          disabled={!!busy}
+          title="Discard changes: throw away everything since the last save (asks first)"
+          className="flex h-8 items-center rounded-md px-2 text-[13px] font-semibold text-frog-200 hover:bg-red-900/40 hover:text-red-100 disabled:opacity-40"
+        >
+          {compact ? '↺' : 'Discard'}
+        </button>
       )}
       <button
         onClick={doSave}

@@ -6,6 +6,7 @@ import { isInteractiveTarget, useDrag } from './useDrag'
 import { setGlobalCursor } from './cursor'
 import { cardStyles } from './styles'
 import { useArrivals } from './arrivals'
+import { pictureAspect } from './pictureAspect'
 import { removeCardsChecked } from '../store/removeCards'
 
 export const GRID = 20
@@ -82,6 +83,13 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
         const minW = c.type === 'text' ? 60 : MIN_W
         const minH = c.type === 'text' ? 32 : MIN_H
         const patch: Partial<Card> = { w: Math.max(minW, c.w + dx), h: Math.max(minH, c.h + dy) }
+        // pictures keep their aspect ratio: whichever edge you pull further wins, the other follows
+        const aspect = c.type === 'asset' && c.kind !== 'texture' ? pictureAspect.get(c.id) : undefined
+        if (aspect) {
+          const w = Math.max(minW, Math.max(c.w + dx, (c.h + dy) * aspect))
+          patch.w = Math.round(w)
+          patch.h = Math.max(minH, Math.round(w / aspect))
+        }
         // hand-resizing a text card pins its size
         if (c.type === 'text' && c.autoSize !== false) (patch as Partial<Extract<Card, { type: 'text' }>>).autoSize = false
         updateCard(boardId, card.id, patch)

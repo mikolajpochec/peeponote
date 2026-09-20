@@ -47,13 +47,17 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
       if (!c || c.type !== 'text') return
       const k = useViewport.getState().get(boardId).scale || 1
       const r = m.getBoundingClientRect()
+      // fractional measurement (offsetWidth rounds down → last word wraps), snapped to 0.1 px first so the
+      // scale division can't flip a ceil by one between zoom levels (that dirtied boards just by opening them)
+      const px = (v: number) => Math.ceil(Math.round((v / k) * 10) / 10)
       if (c.autoSize !== false) {
-        // fractional measurement (offsetWidth rounds down → last word wraps), plus a little slack
-        const w = Math.max(60, Math.ceil(r.width / k) + (editing ? 6 : 2))
-        const h = Math.max(32, Math.ceil(r.height / k) + 1)
-        if (w !== c.w || h !== c.h) updateCard(boardId, card.id, { w, h })
+        const w = Math.max(60, px(r.width) + (editing ? 6 : 2))
+        const h = Math.max(32, px(r.height) + 1)
+        // the view lays text out at its own natural width, so a few px of drift never wraps or clips —
+        // only resize past that tolerance (fixes boards turning "unsaved" just by being opened)
+        if (Math.abs(w - c.w) > 3 || Math.abs(h - c.h) > 3) updateCard(boardId, card.id, { w, h })
       } else {
-        const needed = Math.ceil(editing ? r.height / k : (view.current?.scrollHeight ?? 0))
+        const needed = editing ? px(r.height) : Math.ceil(view.current?.scrollHeight ?? 0)
         if (needed > c.h + 1) updateCard(boardId, card.id, { h: needed })
       }
     }
@@ -112,7 +116,12 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
   return (
     <>
       {measurer}
-      <div ref={view} className={`h-full w-full overflow-hidden whitespace-pre-wrap break-words p-2 ${cls}`}>
+      <div
+        ref={view}
+        className={`h-full whitespace-pre-wrap break-words p-2 ${cls} ${auto ? 'overflow-visible' : 'w-full overflow-hidden'}`}
+        // auto-size: natural width (wrapping at maxW) instead of the card's, so a card a couple of px too narrow can't wrap the last word
+        style={auto ? { width: 'max-content', maxWidth: maxW, minWidth: '100%' } : undefined}
+      >
         {card.text ? <InlineMd text={card.text} /> : <span className="text-frog-200/30">{placeholder}</span>}
       </div>
     </>

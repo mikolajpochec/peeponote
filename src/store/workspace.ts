@@ -16,6 +16,7 @@ import { detectKind } from '../model/assetKind'
 import { tutorialBoards } from '../model/tutorial'
 import { useSettings } from './settings'
 import { toast } from './toast'
+import { confirm } from '../ui/confirm'
 import { diffWorkspaces, formatAuthors, useArrivals } from '../canvas/arrivals'
 import { rememberedStyle, styleKeyOf, useLastStyle } from './lastStyle'
 import { boardSlug, cardSlug, validateSlug } from '../nav/peepoUrl'
@@ -123,6 +124,8 @@ interface WorkspaceState {
   refreshGit: () => Promise<void>
   viewCommit: (oid: string | null) => Promise<void>
   restoreCommit: (oid: string) => Promise<void>
+  /** drop every unsaved edit and go back to the last save (asks first) */
+  discardChanges: () => Promise<void>
 }
 
 const isDirty = (s: Pick<WorkspaceState, 'dirtyBoards' | 'deletedBoards' | 'assetsTouched' | 'treeDirty' | 'metaDirty'>) =>
@@ -1168,6 +1171,31 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       }
     },
 
+    discardChanges: async () => {
+      const fs = get().fs
+      if (!fs || !isDirty(get())) return
+      const n = get().dirtyBoards.size + get().deletedBoards.size
+      const ok = await confirm({
+        title: 'Throw away your unsaved changes?',
+        message: `Everything since your last save goes${n ? ` — edits on ${n} board${n === 1 ? '' : 's'}${get().assetsTouched || get().treeDirty ? ', plus added files' : ''}` : ''}. This cannot be undone.`,
+        confirmLabel: 'Discard changes',
+        danger: true,
+        peepo: 'peepoThink',
+      })
+      if (!ok) return
+      // a pending draft flush must not write the edits back while we're resetting
+      clearTimeout(flushTimer)
+      set({ busy: 'loading', dirtyBoards: new Set(), deletedBoards: new Set(), metaDirty: false, assetsTouched: false })
+      try {
+        if (await repo.headOid(fs)) await repo.discardWorktree(fs)
+        await reloadBoards(fs)
+        toast.ok('Back to your last save.', 'peepoSit')
+      } catch (e) {
+        toast.fail('Discard failed', e)
+      } finally {
+        set({ busy: null })
+      }
+    },
     restoreCommit: async (oid) => {
       const fs = get().fs
       if (!fs) return

@@ -1,12 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { Card, CardStyle, FontFamily, ShapeKind, TextAlign } from '../model/types'
+import type { Card, CardStyle, FontFamily, ShapeKind } from '../model/types'
 import { useWorkspace } from '../store/workspace'
 import { FONT_LABEL, RADII, contrast, defaultBold, defaultFontSize } from '../canvas/styles'
+import { AlignButtons } from './AlignButtons'
 import { ALIGN_LABEL, alignCards, distributeCards, type AlignMode } from '../canvas/arrange'
 import { ColorPicker } from './ColorPicker'
 import { DEFAULT_SHAPE_STROKE, SHAPES } from '../cards/ShapeCard'
 
-const ALIGN_ICON: Record<TextAlign, string> = { left: '⫷', center: '☰', right: '⫸' }
 const ARRANGE: [AlignMode, string][] = [
   ['left', '⇤'],
   ['hcenter', '↔'],
@@ -38,7 +38,7 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
   const textual = cards.some((c) => c.type !== 'asset' && c.type !== 'board')
   const size = s.fontSize ?? defaultFontSize(first)
   const bold = s.bold ?? defaultBold(first)
-  const [menu, setMenu] = useState<'font' | 'align' | 'arrange' | 'shape' | null>(null)
+  const [menu, setMenu] = useState<'font' | 'arrange' | 'shape' | null>(null)
   const shapes = cards.filter((c) => c.type === 'shape')
   const allShapes = shapes.length === cards.length
   const strokeW = s.strokeWidth ?? (allShapes ? DEFAULT_SHAPE_STROKE : 2)
@@ -145,20 +145,7 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
           <button className={`${btn} italic ${s.italic ? on : ''}`} title="Italic" onClick={() => apply({ italic: s.italic ? undefined : true })}>
             I
           </button>
-          <div className="relative">
-            <button className={`${btn} ${s.align ? on : ''}`} title="Align" onClick={() => setMenu(menu === 'align' ? null : 'align')}>
-              {ALIGN_ICON[s.align ?? 'left']}
-            </button>
-            {menu === 'align' && (
-              <Menu row>
-                {(['left', 'center', 'right'] as TextAlign[]).map((a) => (
-                  <MenuItem key={a} active={(s.align ?? 'left') === a} onClick={() => (apply({ align: a === 'left' ? undefined : a }), setMenu(null))}>
-                    {ALIGN_ICON[a]}
-                  </MenuItem>
-                ))}
-              </Menu>
-            )}
-          </div>
+          <AlignButtons value={s.align} onChange={(a) => apply({ align: a })} />
         </>
       )}
 

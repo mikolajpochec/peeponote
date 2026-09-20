@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useEditing } from '../store/editing'
 import { LinkPicker } from './LinkPicker'
 import { Popover } from './Popover'
+import { AlignButtons } from './AlignButtons'
+import { useWorkspace } from '../store/workspace'
 
 const btn = 'flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 text-[13px] font-bold text-frog-100 hover:bg-(--hover-strong)'
 
@@ -17,6 +19,10 @@ export function FormatBar() {
   const [linkOpen, setLinkOpen] = useState(false)
   const bar = useRef<HTMLDivElement>(null)
   const linkRequest = useEditing((s) => s.linkRequest)
+  const boardId = useEditing((s) => s.boardId)
+  const cardId = useEditing((s) => s.cardId)
+  const align = useWorkspace((s) => (boardId && cardId ? s.boards[boardId]?.cards.find((c) => c.id === cardId)?.style?.align : undefined))
+  const styleCards = useWorkspace((s) => s.styleCards)
   useEffect(() => {
     if (linkRequest && handle) {
       setHold(true)
@@ -55,6 +61,13 @@ export function FormatBar() {
         <button className={`${btn} font-mono text-[12px]`} title="Code" onPointerDown={keep} onClick={() => handle.wrap('`')}>
           {'</>'}
         </button>
+        {boardId && cardId && (
+          <>
+            <span className="mx-0.5 h-5 w-px bg-(--hair)" />
+            <AlignButtons value={align} onChange={(a) => styleCards(boardId, [cardId], { align: a })} keepFocus={keep} />
+            <span className="mx-0.5 h-5 w-px bg-(--hair)" />
+          </>
+        )}
         <button
           className={`${btn} ${linkOpen || hold ? 'bg-frog-600 text-white' : ''}`}
           title="Link (⌘K) — web URL or a place in this project"

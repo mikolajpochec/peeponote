@@ -8,7 +8,7 @@ const cardStyleSchema = z.object({
   font: z.enum(['sans', 'serif', 'mono', 'hand']).optional(),
   bold: z.boolean().optional(),
   italic: z.boolean().optional(),
-  align: z.enum(['left', 'center', 'right']).optional(),
+  align: z.enum(['left', 'center', 'right', 'justify']).optional(),
   border: z.string().optional(),
   radius: z.number().optional(),
   opacity: z.number().optional(),

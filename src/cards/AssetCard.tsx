@@ -2,6 +2,8 @@ import { lazy, Suspense } from 'react'
 import type { AssetCard as AssetCardT } from '../model/types'
 import { KIND_LABEL, detectKind, extOf, formatBytes } from '../model/assetKind'
 import { readAssetBytes, useWorkspace } from '../store/workspace'
+import { pictureAspect } from '../canvas/pictureAspect'
+import { MIN_H } from '../canvas/CardShell'
 import { toast } from '../store/toast'
 import { Peepo } from '../ui/Peepo'
 import type { CardProps } from './CardView'
@@ -62,9 +64,18 @@ export function ImageAssetCard({ card: stored, boardId, readOnly }: CardProps<As
   const card = stored.kind === 'other' ? { ...stored, kind: detectKind(stored.path, stored.mime) } : stored
   const { stem, ext } = splitName(card)
   const pixel = card.kind === 'texture'
+  // the card box follows the picture's aspect ratio (plain view only — the pixel view has its own control strip),
+  // so a frame/outline hugs the image instead of a letterboxed square
+  const onDims = (nw: number, nh: number) => {
+    if (!nw || !nh) return
+    pictureAspect.set(card.id, nw / nh)
+    if (readOnly || pixel) return
+    const h = Math.max(MIN_H, Math.round((card.w * nh) / nw))
+    if (Math.abs(h - card.h) > 1) updateCard(boardId, card.id, { h })
+  }
   return (
     <div className="group/img relative h-full w-full">
-      {pixel ? <TexturePreview card={card} boardId={boardId} readOnly={readOnly} /> : <ImagePreview card={card} />}
+      {pixel ? <TexturePreview card={card} boardId={boardId} readOnly={readOnly} onDims={onDims} /> : <ImagePreview card={card} onDims={onDims} />}
       {/* hover / selection toolbar: name, pixel view toggle, download */}
       <div
         data-nodrag

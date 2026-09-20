@@ -5,7 +5,7 @@ import { useAssetUrl } from '../useAssetUrl'
 import { Loading } from './Loading'
 
 /** Pixel-perfect preview (transparency shows the board), with optional spritesheet frame stepping. */
-export function TexturePreview({ card, boardId, readOnly }: { card: AssetCard; boardId: string; readOnly: boolean }) {
+export function TexturePreview({ card, boardId, readOnly, onDims }: { card: AssetCard; boardId: string; readOnly: boolean; onDims?: (w: number, h: number) => void }) {
   const { url, error } = useAssetUrl(card.path, card.mime)
   const updateCard = useWorkspace((s) => s.updateCard)
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null)
@@ -21,7 +21,10 @@ export function TexturePreview({ card, boardId, readOnly }: { card: AssetCard; b
   useEffect(() => {
     if (!url) return
     const img = new Image()
-    img.onload = () => setDims({ w: img.naturalWidth, h: img.naturalHeight })
+    img.onload = () => {
+      setDims({ w: img.naturalWidth, h: img.naturalHeight })
+      onDims?.(img.naturalWidth, img.naturalHeight)
+    }
     img.src = url
   }, [url])
 
@@ -45,7 +48,7 @@ export function TexturePreview({ card, boardId, readOnly }: { card: AssetCard; b
             />
           </div>
         ) : (
-          <img src={url} alt={card.name} draggable={false} className="pixelated h-full w-full object-contain" />
+          <img src={url} alt={card.name} draggable={false} className="pixelated h-full w-full rounded-[inherit] object-contain" />
         )}
         {dims && (
           <div className="absolute left-1 top-1 rounded bg-black/50 px-1 text-[10px] text-frog-100">

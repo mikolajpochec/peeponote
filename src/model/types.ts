@@ -10,7 +10,7 @@ export type AssetKind =
   | 'other'
 
 export type FontFamily = 'sans' | 'serif' | 'mono' | 'hand'
-export type TextAlign = 'left' | 'center' | 'right'
+export type TextAlign = 'left' | 'center' | 'right' | 'justify'
 
 /** Visual overrides; every field optional, absent = type default */
 export interface CardStyle {

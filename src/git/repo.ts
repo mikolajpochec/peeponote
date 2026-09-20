@@ -183,6 +183,18 @@ export async function readTextAt(fs: PeepoFS, ref: string, filepath: string): Pr
 }
 
 /** Reset the working tree + index to a commit (hard reset, moves the branch). */
+/** Throw away everything not committed: tracked files back to HEAD, new files deleted. */
+export async function discardWorktree(fs: PeepoFS): Promise<void> {
+  const matrix = await git.statusMatrix({ ...ctx(fs) })
+  for (const [filepath, head, workdir] of matrix) {
+    if (head === 0 && workdir !== 0) {
+      await git.remove({ ...ctx(fs), filepath }).catch(() => {})
+      await fs.promises.unlink(abs(fs, filepath)).catch(() => {})
+    }
+  }
+  await git.checkout({ ...ctx(fs), ref: await currentBranch(fs), force: true })
+}
+
 export async function hardResetTo(fs: PeepoFS, oid: string): Promise<void> {
   const ref = await currentBranch(fs)
   await git.writeRef({ ...ctx(fs), ref: `refs/heads/${ref}`, value: oid, force: true })
