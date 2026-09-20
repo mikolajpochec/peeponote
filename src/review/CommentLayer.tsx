@@ -84,7 +84,13 @@ export function CommentLayer({ board, scale }: { board: Board; scale: number }) 
 
   const showResolved = useReview((s) => s.showResolved)
   // resolved threads stay out of the way unless asked for (the thread dialog always lists them)
-  const threads = useMemo(() => threadsOf(board, comments, rects).filter((t) => showResolved || !t.root.resolved), [board, comments, rects, showResolved])
+  // inside a specific request only its own threads are shown (other reviews / loose comments stay out of the way);
+  // resolved ones are hidden unless asked for in general review mode
+  const scope = mode.on ? mode.reviewId : undefined
+  const threads = useMemo(
+    () => threadsOf(board, comments, rects).filter((t) => (scope ? t.root.reviewId === scope && !t.root.resolved : showResolved || !t.root.resolved)),
+    [board, comments, rects, showResolved, scope],
+  )
   const bubbles = mode.on && scale >= 0.5
   const draftHere = draft && draft.boardId === board.id ? draft : null
 

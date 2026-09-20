@@ -90,7 +90,7 @@ export function ReviewBar({ board, onHeight }: { board: Board; onHeight?: (h: nu
         <span className="text-frog-200/80">Click a card, a row or an empty spot to comment. Nothing on the board can change while reviewing.</span>
       )}
       <span className="flex-1" />
-      {resolvedHere > 0 && (
+      {resolvedHere > 0 && !mode.reviewId && (
         <label className="flex items-center gap-1 text-[12px] text-frog-200/80" title="Resolved threads are hidden by default">
           <input type="checkbox" className="accent-frog-500" checked={showResolved} onChange={(e) => setShowResolved(e.target.checked)} />
           Show {resolvedHere} resolved
