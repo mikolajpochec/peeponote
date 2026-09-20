@@ -71,7 +71,7 @@ export function ImageAssetCard({ card: stored, boardId, readOnly }: CardProps<As
     pictureAspect.set(card.id, nw / nh)
     if (readOnly || pixel) return
     const h = Math.max(MIN_H, Math.round((card.w * nh) / nw))
-    if (Math.abs(h - card.h) > 1) updateCard(boardId, card.id, { h })
+    if (Math.abs(h - card.h) > 1) updateCard(boardId, card.id, { h }, { quiet: true })
   }
   return (
     <div className="group/img relative h-full w-full">

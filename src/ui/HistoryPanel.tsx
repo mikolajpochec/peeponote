@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useWorkspace } from '../store/workspace'
 import { Peepo } from './Peepo'
 
@@ -16,17 +16,33 @@ export function HistoryPanel({ onClose, mobile }: { onClose: () => void; mobile?
   const viewCommit = useWorkspace((s) => s.viewCommit)
   const refreshGit = useWorkspace((s) => s.refreshGit)
   const head = useWorkspace((s) => s.head)
+  const historyDone = useWorkspace((s) => s.historyDone)
+  const historyLoading = useWorkspace((s) => s.historyLoading)
+  const loadMore = useWorkspace((s) => s.loadMoreHistory)
+  const sentinel = useRef<HTMLLIElement>(null)
 
   useEffect(() => {
     refreshGit()
   }, [refreshGit])
+
+  // load the next page when the end of the list scrolls into view
+  useEffect(() => {
+    const el = sentinel.current
+    if (!el || historyDone) return
+    const io = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && loadMore(), { rootMargin: '200px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [historyDone, loadMore, commits.length])
 
   return (
     <aside className={`flex shrink-0 flex-col border-l border-(--hair) bg-swamp-900 ${mobile ? 'absolute inset-0 z-30 w-full' : 'w-80'}`}>
       <div className="flex items-center gap-2 border-b border-(--hair) px-3 py-2">
         <Peepo name="peepoThink" size={24} />
         <div className="flex-1 text-sm font-extrabold">History</div>
-        <span className="text-[11px] text-frog-200/50">{commits.length} commits</span>
+        <span className="text-[11px] text-frog-200/50">
+          {commits.length}
+          {historyDone ? '' : '+'} commits
+        </span>
         <button onClick={onClose} className="text-frog-200/60 hover:text-white">
           ✕
         </button>
@@ -57,6 +73,11 @@ export function HistoryPanel({ onClose, mobile }: { onClose: () => void; mobile?
           )
         })}
         {commits.length === 0 && <li className="p-4 text-sm text-frog-200/50">No commits yet. Hit Save.</li>}
+        {commits.length > 0 && (
+          <li ref={sentinel} className="p-3 text-center text-[11px] text-frog-200/40">
+            {historyDone ? 'That\'s the whole history.' : historyLoading ? 'Loading older commits…' : ''}
+          </li>
+        )}
       </ul>
       <div className="border-t border-(--hair) p-2 text-[11px] text-frog-200/50">Click a commit to peek at that version. Restore from the banner.</div>
     </aside>

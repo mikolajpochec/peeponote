@@ -55,10 +55,11 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
         const h = Math.max(32, px(r.height) + 1)
         // the view lays text out at its own natural width, so a few px of drift never wraps or clips —
         // only resize past that tolerance (fixes boards turning "unsaved" just by being opened)
-        if (Math.abs(w - c.w) > 3 || Math.abs(h - c.h) > 3) updateCard(boardId, card.id, { w, h })
+        // while editing it's your edit; otherwise (mount, zoom, font load, another machine's fonts) it's a quiet correction
+        if (Math.abs(w - c.w) > 3 || Math.abs(h - c.h) > 3) updateCard(boardId, card.id, { w, h }, { quiet: !editing })
       } else {
         const needed = editing ? px(r.height) : Math.ceil(view.current?.scrollHeight ?? 0)
-        if (needed > c.h + 1) updateCard(boardId, card.id, { h: needed })
+        if (needed > c.h + 1) updateCard(boardId, card.id, { h: needed }, { quiet: !editing })
       }
     }
     apply()

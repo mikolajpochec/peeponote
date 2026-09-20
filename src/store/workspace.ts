@@ -59,6 +59,11 @@ interface WorkspaceState {
   remoteUrl: string | null
   head: ReadCommitResult | null
   commits: ReadCommitResult[]
+  /** the log has been walked to the root — nothing more to load */
+  historyDone: boolean
+  historyLoading: boolean
+  /** append the next page of commits to `commits` (History panel scrolls) */
+  loadMoreHistory: () => Promise<void>
   /** when set, we're read-only viewing an old commit */
   viewingRef: string | null
   viewingBoards: Record<string, Board>
@@ -81,7 +86,7 @@ interface WorkspaceState {
 
   // editing
   addCard: (boardId: string, card: Card) => void
-  updateCard: (boardId: string, cardId: string, patch: Partial<Card>) => void
+  updateCard: (boardId: string, cardId: string, patch: Partial<Card>, opts?: { quiet?: boolean }) => void
   moveCards: (boardId: string, deltas: Record<string, { x: number; y: number }>) => void
   removeCards: (boardId: string, ids: string[]) => void
   groupCards: (boardId: string, ids: string[]) => void
@@ -130,6 +135,8 @@ interface WorkspaceState {
   /** drop every unsaved edit and go back to the last save (asks first) */
   discardChanges: () => Promise<void>
 }
+
+const HISTORY_PAGE = 40
 
 const isDirty = (s: Pick<WorkspaceState, 'dirtyBoards' | 'deletedBoards' | 'assetsTouched' | 'treeDirty' | 'metaDirty'>) =>
   s.dirtyBoards.size > 0 || s.deletedBoards.size > 0 || s.assetsTouched || s.treeDirty || s.metaDirty
@@ -398,11 +405,20 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     scheduleFlush()
   }
 
-  function mutateBoard(boardId: string, fn: (b: Board) => Board) {
+  /**
+   * `quiet`: a layout correction (auto-sized text, a picture snapping to its aspect ratio) — shown, but not
+   * counted as your edit: no undo step, no "unsaved" state, no commit. It rides along with the next real edit
+   * of that board. Otherwise two machines with different font rendering would "fix" each other's sizes forever.
+   */
+  function mutateBoard(boardId: string, fn: (b: Board) => Board, quiet = false) {
     const b = get().boards[boardId]
     if (!b || get().viewingRef) return
     const next = fn(b)
     if (next === b) return // a no-op (e.g. bringing the top card to front) must not mark anything unsaved
+    if (quiet) {
+      set({ boards: { ...get().boards, [boardId]: next } })
+      return
+    }
     record()
     const dirtyBoards = new Set(get().dirtyBoards)
     dirtyBoards.add(boardId)
@@ -538,6 +554,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     remoteUrl: null,
     head: null,
     commits: [],
+    historyDone: false,
+    historyLoading: false,
     viewingRef: null,
     viewingBoards: {},
 
@@ -678,12 +696,16 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     // new cards start with the style you last gave a card of that kind
     addCard: (boardId, card) => mutateBoard(boardId, (b) => ({ ...b, cards: [...b.cards, withRemembered(card)] })),
 
-    updateCard: (boardId, cardId, patch) => {
+    updateCard: (boardId, cardId, patch, opts) => {
       if ('shape' in patch && patch.shape) useLastStyle.getState().rememberShape(patch.shape as ShapeKind)
-      mutateBoard(boardId, (b) => ({
-        ...b,
-        cards: b.cards.map((c) => (c.id === cardId ? ({ ...c, ...patch } as Card) : c)),
-      }))
+      mutateBoard(
+        boardId,
+        (b) => ({
+          ...b,
+          cards: b.cards.map((c) => (c.id === cardId ? ({ ...c, ...patch } as Card) : c)),
+        }),
+        opts?.quiet,
+      )
     },
 
     moveCards: (boardId, deltas) =>
@@ -1190,8 +1212,25 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     refreshGit: async () => {
       const fs = get().fs
       if (!fs) return
-      const [commits, remoteUrl] = await Promise.all([repo.log(fs), repo.getRemoteUrl(fs)])
-      set({ commits, head: commits[0] ?? null, remoteUrl })
+      // first page only; the History panel asks for more as you scroll (a long log would stall the UI otherwise)
+      const [commits, remoteUrl] = await Promise.all([repo.log(fs, HISTORY_PAGE), repo.getRemoteUrl(fs)])
+      set({ commits, head: commits[0] ?? null, remoteUrl, historyDone: commits.length < HISTORY_PAGE })
+    },
+
+    loadMoreHistory: async () => {
+      const { fs, commits, historyDone, historyLoading } = get()
+      if (!fs || historyDone || historyLoading || !commits.length) return
+      set({ historyLoading: true })
+      try {
+        const last = commits[commits.length - 1]
+        // log from the last commit we have (inclusive) → drop it, keep the rest
+        const more = (await repo.log(fs, HISTORY_PAGE + 1, last.oid)).slice(1)
+        const seen = new Set(commits.map((c) => c.oid))
+        const fresh = more.filter((c) => !seen.has(c.oid))
+        set({ commits: [...get().commits, ...fresh], historyDone: more.length < HISTORY_PAGE })
+      } finally {
+        set({ historyLoading: false })
+      }
     },
 
     viewCommit: async (oid) => {
