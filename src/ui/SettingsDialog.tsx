@@ -11,6 +11,7 @@ import { exportRepoZip } from '../git/exportZip'
 import { Peepo } from './Peepo'
 import { THEMES, type ThemeName } from '../theme/themes'
 import { confirm } from './confirm'
+import { ChangeRepoDialog } from './ChangeRepoDialog'
 
 const field = 'w-full rounded-md bg-swamp-700 px-2 py-1.5 text-[13px] outline-none focus:ring-1 focus:ring-frog-400 placeholder:text-frog-200/30'
 const btn = 'rounded-md bg-swamp-600 px-3 py-1.5 text-[13px] font-semibold hover:bg-swamp-500 disabled:opacity-40'
@@ -106,6 +107,8 @@ function SyncTab() {
   const setRemote = useWorkspace((s) => s.setRemote)
   const [remote, setRemoteDraft] = useState(remoteUrl ?? '')
   const [showToken, setShowToken] = useState(false)
+  const [changing, setChanging] = useState(false)
+  const repos = useSettings((s) => s.repos)
   useEffect(() => setRemoteDraft(remoteUrl ?? ''), [remoteUrl])
 
   const saveRemote = async () => {
@@ -121,6 +124,13 @@ function SyncTab() {
         {ready ? <b className="text-frog-200">Sharing is on.</b> : 'Fill in the two fields below to share boards.'}
       </p>
       <Row title="Repository" sub="Where the boards are shared. Everyone on the team uses the same URL.">
+        <div className="mb-2 flex items-center gap-2">
+          <button className={`${btn} bg-frog-700/60 hover:bg-frog-600`} onClick={() => setChanging(true)}>
+            ⇄ Change repo…
+          </button>
+          <span className={hint}>{repos.length > 1 ? `${repos.length - 1} other repo${repos.length === 2 ? '' : 's'} remembered` : 'Open another shared repo, or go back to a previous one.'}</span>
+        </div>
+        {changing && <ChangeRepoDialog onClose={() => setChanging(false)} />}
         <div className="flex gap-2">
           <input
             className={field}

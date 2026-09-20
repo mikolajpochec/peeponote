@@ -1,11 +1,21 @@
 import LightningFS from '@isomorphic-git/lightning-fs'
 import type { PeepoFS, PeepoFSPromises } from './types'
 
-export function createBrowserFS(name = 'peeponote'): PeepoFS {
+/** IndexedDB database name for a remote: one local repo per remote, so switching back is instant */
+export function slotFor(remoteUrl: string): string {
+  const clean = remoteUrl
+    .trim()
+    .replace(/^https?:\/\//, '')
+    .replace(/\.git$/, '')
+    .replace(/[^\w.-]+/g, '_')
+  return `peeponote:${clean}`
+}
+
+export function createBrowserFS(name = 'peeponote', label = 'Browser storage (IndexedDB)'): PeepoFS {
   const lfs = new LightningFS(name)
   return {
     kind: 'browser',
-    label: 'Browser storage (IndexedDB)',
+    label,
     dir: '/repo',
     promises: lfs.promises as unknown as PeepoFSPromises,
   }

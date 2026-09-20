@@ -5,7 +5,17 @@ import { DEFAULT_CORS_PROXY } from '../git/repo'
 import type { ThemeName } from '../theme/themes'
 import type { TransportPref } from '../git/sync'
 
+/** a repo you've opened before: URL + the token that worked for it, so going back is one click */
+export interface RepoEntry {
+  url: string
+  token: string
+  /** browser-storage slot holding its clone */
+  slot: string
+  lastUsed: number
+}
+
 export interface Settings {
+  repos: RepoEntry[]
   authorName: string
   authorEmail: string
   token: string
@@ -18,12 +28,15 @@ export interface Settings {
   /** first-run wizard finished (or skipped) */
   onboarded: boolean
   theme: ThemeName
-  set: (patch: Partial<Omit<Settings, 'set' | 'reset'>>) => void
+  set: (patch: Partial<Omit<Settings, 'set' | 'reset' | 'rememberRepo' | 'forgetRepo'>>) => void
   /** back to factory defaults (token gone, wizard shows again) */
   reset: () => void
+  rememberRepo: (e: Omit<RepoEntry, 'lastUsed'>) => void
+  forgetRepo: (url: string) => void
 }
 
-const DEFAULTS: Omit<Settings, 'set' | 'reset'> = {
+const DEFAULTS: Omit<Settings, 'set' | 'reset' | 'rememberRepo' | 'forgetRepo'> = {
+  repos: [],
   authorName: '',
   authorEmail: '',
   token: '',
@@ -41,6 +54,9 @@ export const useSettings = create<Settings>()(
       ...DEFAULTS,
       set: (patch) => set(patch),
       reset: () => set({ ...DEFAULTS }),
+      rememberRepo: (e) =>
+        set((s) => ({ repos: [{ ...e, lastUsed: Date.now() }, ...s.repos.filter((r) => r.url !== e.url)].slice(0, 20) })),
+      forgetRepo: (url) => set((s) => ({ repos: s.repos.filter((r) => r.url !== url) })),
     }),
     { name: 'peeponote-settings' },
   ),

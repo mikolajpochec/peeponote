@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { ReadCommitResult } from 'isomorphic-git'
 import {
-  abs, exists, mkdirp, mountLast, pickFolder, readBytes, readText, requestFolderPermission, useBrowserStorage,
+  abs, activeSlot, exists, mkdirp, mountLast, pickFolder, readBytes, readText, requestFolderPermission, useBrowserStorage,
   writeBytes, writeText, type PeepoFS,
 } from '../fs'
 import * as repo from '../git/repo'
@@ -20,6 +20,7 @@ import { confirm } from '../ui/confirm'
 import { diffWorkspaces, formatAuthors, useArrivals } from '../canvas/arrivals'
 import { rememberedStyle, styleKeyOf, useLastStyle } from './lastStyle'
 import { boardSlug, cardSlug, validateSlug } from '../nav/peepoUrl'
+import { slotFor } from '../fs/lightning'
 import { findWorkspaces, rootHasOtherFiles, setWsPrefix, unwp, wp, wsPrefix } from '../fs/wsroot'
 import { cardSummary } from '../nav/links'
 
@@ -68,6 +69,8 @@ interface WorkspaceState {
   switchToFolder: () => Promise<void>
   switchToBrowser: () => Promise<void>
   cloneInto: (url: string) => Promise<void>
+  /** open another remote (cloning it into its own browser-storage slot the first time) with the token that works for it */
+  switchRepo: (url: string, token: string) => Promise<boolean>
 
   // navigation / selection
   navigate: (boardId: string) => void
@@ -361,6 +364,9 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         selection: new Set(),
       })
       await get().refreshGit()
+      // the repo we're on shows up in the "previous repos" list, with the token that opened it
+      const remote = get().remoteUrl
+      if (fs.kind === 'browser' && remote) useSettings.getState().rememberRepo({ url: remote, token: useSettings.getState().token, slot: activeSlot().name })
     } catch (e) {
       console.error(e)
       set({ status: 'error', error: (e as Error).message })
@@ -581,6 +587,33 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         await openFs(fs)
       } catch (e) {
         toast.fail('Clone failed', e, { url, transport: chooseTransport(url, useSettings.getState().transport) })
+      } finally {
+        set({ busy: null, busyDetail: null })
+      }
+    },
+
+    switchRepo: async (url, token) => {
+      const u = url.trim()
+      await get().flush()
+      const slot = slotFor(u)
+      const label = `Browser storage · ${u.replace(/^https?:\/\//, '').replace(/\.git$/, '')}`
+      useSettings.getState().set({ token })
+      useSettings.getState().rememberRepo({ url: u, token, slot })
+      const fs = await useBrowserStorage({ name: slot, label })
+      set({ busy: 'cloning' })
+      try {
+        if (!(await repo.isRepo(fs))) {
+          if (chooseTransport(u, useSettings.getState().transport) === 'api' && parseGitHubUrl(u)) await ghClone(fs, u, token, progress)
+          else await repo.clone(fs, u, remoteAuth())
+        }
+        set({ busy: null, busyDetail: null })
+        await openFs(fs)
+        if ((await repo.getRemoteUrl(fs)) !== u) await get().setRemote(u)
+        toast.ok(`Opened ${label.replace('Browser storage · ', '')}`, 'peepoPog')
+        return true
+      } catch (e) {
+        toast.fail('Could not open the repo', e, { url: u })
+        return false
       } finally {
         set({ busy: null, busyDetail: null })
       }
@@ -1113,6 +1146,10 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
           await pushRemote(ctx, progress, true)
           toast.ok('Remote overwritten with your version.', 'monkaS')
         } else if (mode === 'take-theirs') {
+          // "throw away mine" includes stray uncommitted files (e.g. drafts written to an old workspace location)
+          clearTimeout(flushTimer)
+          set({ dirtyBoards: new Set(), deletedBoards: new Set(), metaDirty: false, assetsTouched: false })
+          await repo.discardWorktree(fs)
           await resetTo(fs, d.remote)
           await reloadBoards(fs)
           toast.ok('Took the remote version. Your commits are gone from this branch.', 'FeelsOkayMan')
