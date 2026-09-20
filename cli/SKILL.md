@@ -17,6 +17,8 @@ node .claude/skills/peeponote-boards/peepo.mjs card <target>         # one card 
 node .claude/skills/peeponote-boards/peepo.mjs search <words…>       # full text over every board → hits with addresses
 node .claude/skills/peeponote-boards/peepo.mjs graph <target>        # story / dialogue flow (entry points, choice → next node); add --mermaid for a diagram
 node .claude/skills/peeponote-boards/peepo.mjs json <target>         # raw JSON when you need a field the views don't show
+node .claude/skills/peeponote-boards/peepo.mjs comments [target]     # review threads: who said what about which card, resolved or not
+node .claude/skills/peeponote-boards/peepo.mjs reviews               # open review requests, reviewers, verdicts
 ```
 
 `<target>` is a `peepo://Home/Path/Board` or `peepo://…/Board/card` address (as printed by every command and as used in
@@ -30,6 +32,8 @@ links inside cards), or just a board/card name, slug or id when unique. Run from
   tree. `(open end)` means the designer hasn't connected that choice yet — say so instead of inventing a continuation.
 - **Quests** have `giver`, `objective`, `steps`, `reward`, `failure`; fields may contain `peepo://` links to other cards —
   follow them with `card`.
+- **Comments** (`comments`) are the team's discussion about a card — open threads often mean the content is still
+  contested; treat resolved ones as settled. `@Name` in any text is a mention.
 - **Text/notes** hold lore and decisions; **to-dos** are the designer's open items (don't treat them as done).
 - Cards show in reading order (top→bottom, left→right). Positions themselves carry no meaning.
 

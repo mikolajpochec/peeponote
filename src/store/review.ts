@@ -30,6 +30,7 @@ import {
 } from '../model/review'
 import { deriveKeys, newSalt, samePerson, sign, userKey, verify, type Account, type Keys } from '../review/identity'
 import { useSettings } from './settings'
+import { deriveNotifications } from '../review/notifications'
 import { useWorkspace } from './workspace'
 import { toast } from './toast'
 
@@ -217,9 +218,19 @@ export const useReview = create<ReviewState>((set, get) => {
         seenAuthors.add(e)
         authors.push({ name: a.name, email: e })
       }
+      const wasLoaded = get().loaded
+      const me = get().me()
+      const before = wasLoaded && me ? deriveNotifications(get(), useWorkspace.getState().boards, me).filter((n) => n.unseen) : []
       set({ accounts, reviews, verdicts, comments, states, pictures, verified, authors })
       await get().refreshIdentity()
       set({ loaded: true }) // only now: the identity prompt must see the settled identity, not the guest default
+      // something new arrived with a pull → say so (one toast, opens the panel)
+      if (wasLoaded && me) {
+        const known = new Set(before.map((n) => n.id))
+        const fresh = deriveNotifications(get(), useWorkspace.getState().boards, me).filter((n) => n.unseen && !known.has(n.id))
+        if (fresh.length === 1) toast.action(`${fresh[0].who.email ? fresh[0].who.name + ' ' : ''}${fresh[0].what}`, 'Open', () => set({ panelOpen: true }), 'peepoHey')
+        else if (fresh.length > 1) toast.action(`${fresh.length} new notifications`, 'Open', () => set({ panelOpen: true }), 'peepoHey')
+      }
     },
 
     refreshIdentity: async () => {

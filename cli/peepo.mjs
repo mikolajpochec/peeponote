@@ -8,6 +8,8 @@
  *   peepo search <words…>            full-text search over every board → hits with addresses
  *   peepo graph <target> [--mermaid] story / dialogue flow of a board (nodes + arrows)
  *   peepo json <target>              raw JSON of a board or card
+ *   peepo comments [target]          review threads (comments) on a board / card, with who and what they point at
+ *   peepo reviews                    open review requests and their verdicts
  *
  * <target> = peepo://Path/To/Board[/card], a board name, a slug, or an id. Run from anywhere inside the
  * repo — the workspace (folder holding peeponote.json) is found automatically; or pass --root <dir>.
@@ -68,7 +70,28 @@ function loadWorkspace(root) {
         console.error(`skipping ${f}: ${e.message}`)
       }
     }
-  return { root, meta, boards }
+  const review = loadReview(root)
+  return { root, meta, boards, review }
+}
+
+/** review/ folder: comments, review requests, verdicts, accounts (all optional) */
+function loadReview(root) {
+  const dir = join(root, 'review')
+  const readAll = (sub) => {
+    const d = join(dir, sub)
+    if (!existsSync(d)) return []
+    return readdirSync(d)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => {
+        try {
+          return JSON.parse(readFileSync(join(d, f), 'utf8'))
+        } catch {
+          return null
+        }
+      })
+      .filter(Boolean)
+  }
+  return { comments: readAll('comments'), reviews: readAll('reviews'), verdicts: readAll('verdicts'), people: readAll('people') }
 }
 
 // ----------------------------------------------------------------------------------- addressing
@@ -143,6 +166,7 @@ function resolveTarget(ws, target) {
 
 const stripMd = (s) =>
   String(s ?? '')
+    .replace(/@\[([^\]]+)\]/g, '@$1')
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 <$2>')
     .replace(/\*\*(.+?)\*\*/g, '$1')
     .replace(/(^|\W)_(.+?)_(?=\W|$)/g, '$1$2')
@@ -375,6 +399,38 @@ function cmdGraph(ws, target, opts) {
 }
 const escapeM = (s) => String(s).replace(/"/g, "'")
 
+function cmdComments(ws, target) {
+  const hit = target ? need(ws, target) : null
+  const all = ws.review.comments
+  const roots = all.filter((c) => !c.parentId && (!hit || (c.boardId === hit.board.id && (!hit.card || (c.anchor && c.anchor.cardId === hit.card.id)))))
+  if (!roots.length) return console.log('no comments' + (target ? ` on ${target}` : ''))
+  roots.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+  for (const r of roots) {
+    const b = ws.boards[r.boardId]
+    const card = b && r.anchor && r.anchor.cardId ? b.cards.find((c) => c.id === r.anchor.cardId) : null
+    const where = card ? `${cardTitle(card)}  <${cardPath(ws, b, card)}>${r.anchor.itemId ? ` › row ${r.anchor.itemId}` : ''}` : b ? `spot (${Math.round(r.anchor.x)}, ${Math.round(r.anchor.y)}) on ${b.name}  <${boardPath(ws, b)}>` : r.boardId
+    console.log(`${r.resolved ? '✓' : '•'} ${r.author.name} (${r.createdAt.slice(0, 10)}) on ${where}${r.resolved ? `  [resolved by ${r.resolved.by.name}]` : ''}`)
+    console.log(indent(oneLine(r.text)))
+    for (const rep of all.filter((c) => c.parentId === r.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt))) console.log(indent(`↳ ${rep.author.name}: ${oneLine(rep.text)}`, '    '))
+  }
+}
+
+function cmdReviews(ws) {
+  const rs = ws.review.reviews
+  if (!rs.length) return console.log('no review requests')
+  for (const r of rs.sort((a, b) => b.createdAt.localeCompare(a.createdAt))) {
+    const b = ws.boards[r.boardId]
+    const vs = ws.review.verdicts.filter((v) => v.reviewId === r.id)
+    console.log(`${r.status === 'open' ? '○' : '●'} ${r.requester.name} → ${r.reviewers.map((p) => p.name).join(', ')}: ${r.targets.length ? `${r.targets.length} cards on ` : ''}${b ? b.name : r.boardId}  <${b ? boardPath(ws, b) : ''}>  (${r.createdAt.slice(0, 10)}, ${r.status})`)
+    if (r.message) console.log(indent(`"${oneLine(r.message)}"`))
+    for (const v of vs) console.log(indent(`${v.verdict === 'approved' ? '✓' : '✎'} ${v.reviewer.name}: ${v.verdict}${v.note ? ` — ${oneLine(v.note)}` : ''}`))
+    if (b) for (const id of r.targets) {
+      const c = b.cards.find((x) => x.id === id)
+      if (c) console.log(indent(`- ${cardTitle(c)}  <${cardPath(ws, b, c)}>`))
+    }
+  }
+}
+
 function cmdJson(ws, target) {
   const hit = need(ws, target)
   console.log(JSON.stringify(hit.card ?? hit.board, null, 2))
@@ -433,7 +489,13 @@ switch (cmd) {
   case 'json':
     cmdJson(ws, rest.join(' '))
     break
+  case 'comments':
+    cmdComments(ws, rest.join(' '))
+    break
+  case 'reviews':
+    cmdReviews(ws)
+    break
   default:
-    console.error(`unknown command: ${cmd}\ncommands: tree, show, card, search, graph, json`)
+    console.error(`unknown command: ${cmd}\ncommands: tree, show, card, search, graph, json, comments, reviews`)
     process.exit(1)
 }
