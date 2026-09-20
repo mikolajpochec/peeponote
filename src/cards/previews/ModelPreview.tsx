@@ -42,11 +42,29 @@ export default function ModelPreview({ card, boardId, readOnly }: { card: AssetC
   const savedView = useRef(card.view)
   const resetRef = useRef<(() => void) | null>(null)
 
+  const [inPreview, setInPreview] = useState(false)
   useEffect(() => {
     const el = host.current
     if (!url || !el) return
+    // scaled previews (dialogs, link pickers) don't get a WebGL context each: browsers allow ~16 and drop the
+    // oldest, which can throw mid-render. A static badge is plenty there.
+    if (el.closest('[data-preview]')) {
+      setInPreview(true)
+      return
+    }
     let alive = true
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' })
+    let renderer: THREE.WebGLRenderer
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' })
+    } catch (e) {
+      setErr(`3D preview unavailable: ${(e as Error).message}`)
+      return
+    }
+    // a lost context (too many 3D cards, GPU reset) shouldn't crash the board — show a note instead
+    renderer.domElement.addEventListener('webglcontextlost', (ev) => {
+      ev.preventDefault()
+      if (alive) setErr('3D preview paused — too many 3D views open at once. Scroll it back into view or reload.')
+    })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.setClearColor(0x000000, 0)
     el.appendChild(renderer.domElement)
@@ -192,6 +210,12 @@ export default function ModelPreview({ card, boardId, readOnly }: { card: AssetC
   return (
     <div className="relative h-full w-full">
       <div ref={host} className="h-full w-full cursor-grab active:cursor-grabbing" />
+      {inPreview && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-frog-200/70">
+          <span className="text-3xl">🧊</span>
+          <span className="text-[11px] font-semibold">3D model</span>
+        </div>
+      )}
       {!url && (
         <div className="absolute inset-0">
           <Loading />

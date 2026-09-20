@@ -4,11 +4,14 @@ import { createRoot } from 'react-dom/client'
 import { watchForUpdates } from './pwa/updates'
 import './index.css'
 import App from './App.tsx'
+import { ErrorBoundary } from './ui/ErrorBoundary'
 
 watchForUpdates()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 )

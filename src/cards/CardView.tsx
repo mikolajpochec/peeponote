@@ -1,3 +1,4 @@
+import { ErrorBoundary, cardFallback } from '../ui/ErrorBoundary'
 import { memo } from 'react'
 import type { Card } from '../model/types'
 import { CardShell } from '../canvas/CardShell'
@@ -23,7 +24,16 @@ interface Props extends CardProps {
   scale: () => number
 }
 
-export const CardView = memo(function CardView({ card, boardId, readOnly, selected, scale }: Props) {
+/** one card; a render error inside it becomes a small red tile instead of a white page */
+export const CardView = memo(function CardView(props: Props) {
+  return (
+    <ErrorBoundary resetKey={props.card.id} fallback={(e, retry) => <CardShell card={props.card} boardId={props.boardId} selected={props.selected} readOnly={props.readOnly} scale={props.scale}>{cardFallback(e, retry)}</CardShell>}>
+      <CardBody {...props} />
+    </ErrorBoundary>
+  )
+})
+
+function CardBody({ card, boardId, readOnly, selected, scale }: Props) {
   const navigate = useWorkspace((s) => s.navigate)
   const common = { card, boardId, readOnly: readOnly || !!card.locked, selected }
   switch (card.type) {
@@ -85,4 +95,4 @@ export const CardView = memo(function CardView({ card, boardId, readOnly, select
         </CardShell>
       )
   }
-})
+}
