@@ -1,74 +1,84 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useEditing } from '../store/editing'
-import { insertLink, toggleLinePrefix, toggleWrap } from './format'
 import { LinkPicker } from './LinkPicker'
+import { Popover } from './Popover'
 
 const btn = 'flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 text-[13px] font-bold text-frog-100 hover:bg-(--hover-strong)'
 
 /**
- * Formats the *selection* of the textarea being edited: **bold**, _italic_, ~~strike~~, `code`, links,
- * and block syntax for full-markdown notes. Also wires ⌘B / ⌘I / ⌘K while a card is being edited.
+ * Formats the *selection* of whatever is being edited: **bold**, _italic_, ~~strike~~, `code`, links,
+ * and block syntax for full-markdown notes. (⌘B / ⌘I / ⌘K are bound inside the editor itself.)
  */
 export function FormatBar() {
-  const el = useEditing((s) => s.el)
+  const handle = useEditing((s) => s.handle)
   const mode = useEditing((s) => s.mode)
-  const [linkOpen, setLinkOpen] = useState(false)
+  const hold = useEditing((s) => s.hold)
   const setHold = useEditing((s) => s.setHold)
-  useEffect(() => setHold(linkOpen), [linkOpen, setHold])
-
-  // keyboard shortcuts on the focused field
+  const [linkOpen, setLinkOpen] = useState(false)
+  const bar = useRef<HTMLDivElement>(null)
+  const linkRequest = useEditing((s) => s.linkRequest)
   useEffect(() => {
-    if (!el) return
-    const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.altKey) return
-      const k = e.key.toLowerCase()
-      if (k === 'b') (e.preventDefault(), toggleWrap(el, '**'))
-      else if (k === 'i') (e.preventDefault(), toggleWrap(el, '_'))
-      else if (k === 'k') (e.preventDefault(), setLinkOpen(true))
+    if (linkRequest && handle) {
+      setHold(true)
+      setLinkOpen(true)
     }
-    const target = el as HTMLElement
-    target.addEventListener('keydown', onKey)
-    return () => target.removeEventListener('keydown', onKey)
-  }, [el])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkRequest])
 
-  if (!el) return null
-  // keep focus in the field: buttons must not steal it
+  if (!handle) return null
+  // buttons must not steal focus from the editor
   const keep = (e: React.PointerEvent) => e.preventDefault()
+
+  const openLink = () => {
+    // hold BEFORE the picker mounts: its input takes focus synchronously and the editor's blur must not commit
+    setHold(true)
+    setLinkOpen(true)
+  }
+  const closeLink = () => {
+    setLinkOpen(false)
+    setHold(false)
+    handle.focus()
+  }
 
   return (
     <div className="relative" data-nodrag onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
-      <div className="flex items-center gap-0.5 rounded-xl border border-(--hair) bg-swamp-900/95 p-1 shadow-2xl shadow-black/50 backdrop-blur">
-        <button className={btn} title="Bold (⌘B)" onPointerDown={keep} onClick={() => toggleWrap(el, '**')}>
+      <div ref={bar} className="flex items-center gap-0.5 rounded-xl border border-(--hair) bg-swamp-900/95 p-1 shadow-2xl shadow-black/50 backdrop-blur">
+        <button className={btn} title="Bold (⌘B)" onPointerDown={keep} onClick={() => handle.wrap('**')}>
           B
         </button>
-        <button className={`${btn} italic`} title="Italic (⌘I)" onPointerDown={keep} onClick={() => toggleWrap(el, '_')}>
+        <button className={`${btn} italic`} title="Italic (⌘I)" onPointerDown={keep} onClick={() => handle.wrap('_')}>
           I
         </button>
-        <button className={`${btn} line-through`} title="Strikethrough" onPointerDown={keep} onClick={() => toggleWrap(el, '~~')}>
+        <button className={`${btn} line-through`} title="Strikethrough" onPointerDown={keep} onClick={() => handle.wrap('~~')}>
           S
         </button>
-        <button className={`${btn} font-mono text-[12px]`} title="Code" onPointerDown={keep} onClick={() => toggleWrap(el, '`')}>
+        <button className={`${btn} font-mono text-[12px]`} title="Code" onPointerDown={keep} onClick={() => handle.wrap('`')}>
           {'</>'}
         </button>
-        <button className={`${btn} ${linkOpen ? 'bg-frog-600 text-white' : ''}`} title="Link (⌘K) — web URL or a place in this project" onPointerDown={keep} onClick={() => setLinkOpen((o) => !o)}>
+        <button
+          className={`${btn} ${linkOpen || hold ? 'bg-frog-600 text-white' : ''}`}
+          title="Link (⌘K) — web URL or a place in this project"
+          onPointerDown={keep}
+          onClick={() => (linkOpen ? closeLink() : openLink())}
+        >
           🔗
         </button>
         {mode === 'block' && (
           <>
             <span className="mx-0.5 h-5 w-px bg-(--hover-strong)" />
-            <button className={btn} title="Heading" onPointerDown={keep} onClick={() => toggleLinePrefix(el, '# ')}>
+            <button className={btn} title="Heading" onPointerDown={keep} onClick={() => handle.linePrefix('# ')}>
               H1
             </button>
-            <button className={`${btn} text-[12px]`} title="Subheading" onPointerDown={keep} onClick={() => toggleLinePrefix(el, '## ')}>
+            <button className={`${btn} text-[12px]`} title="Subheading" onPointerDown={keep} onClick={() => handle.linePrefix('## ')}>
               H2
             </button>
-            <button className={btn} title="Bullet list" onPointerDown={keep} onClick={() => toggleLinePrefix(el, '- ')}>
+            <button className={btn} title="Bullet list" onPointerDown={keep} onClick={() => handle.linePrefix('- ')}>
               •
             </button>
-            <button className={btn} title="Checklist" onPointerDown={keep} onClick={() => toggleLinePrefix(el, '- [ ] ')}>
+            <button className={btn} title="Checklist" onPointerDown={keep} onClick={() => handle.linePrefix('- [ ] ')}>
               ☑
             </button>
-            <button className={btn} title="Quote" onPointerDown={keep} onClick={() => toggleLinePrefix(el, '> ')}>
+            <button className={btn} title="Quote" onPointerDown={keep} onClick={() => handle.linePrefix('> ')}>
               ❝
             </button>
           </>
@@ -76,16 +86,16 @@ export function FormatBar() {
         <span className="ml-1 px-1 text-[10px] uppercase tracking-wider text-frog-200/40">markdown</span>
       </div>
       {linkOpen && (
-        <div className="absolute left-0 top-full z-20 mt-1">
+        <Popover anchor={bar.current} onClose={closeLink}>
           <LinkPicker
-            onClose={() => (setLinkOpen(false), el.focus())}
+            onClose={closeLink}
             onPick={(url, label) => {
               setLinkOpen(false)
-              const hasSel = (el.selectionStart ?? 0) !== (el.selectionEnd ?? 0)
-              insertLink(el, url, hasSel ? undefined : label)
+              setHold(false)
+              handle.link(url, handle.hasSelection() ? undefined : label)
             }}
           />
-        </div>
+        </Popover>
       )}
     </div>
   )

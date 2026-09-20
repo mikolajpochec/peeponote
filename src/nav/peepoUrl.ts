@@ -14,28 +14,31 @@ import type { LinkTarget } from './links'
 
 export const PEEPO_SCHEME = 'peepo://'
 
-/** "Styl Graficzny!" → "Styl-Graficzny" (case kept for readability; matching is case-insensitive) */
+/** "Styl graficzny!" → "Styl-graficzny" — letters (incl. ł, ó…) and digits stay; the rest becomes "-" */
 export function slugify(name: string): string {
   return name
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^\w]+/g, '-')
+    .trim()
+    .replace(/[^\p{L}\p{N}_-]+/gu, '-')
     .replace(/^-+|-+$/g, '')
 }
 
-const norm = (s: string) => slugify(s).toLowerCase()
+/** comparison key: case- and accent-insensitive, so "Fabuła" matches "fabula" too */
+const norm = (s: string) =>
+  slugify(s)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
 
 /** effective slug of a board / card (explicit slug wins, else the id) */
 export const boardSlug = (b: Board) => b.slug || slugify(b.name) || b.id
 export const cardSlug = (c: Card) => c.slug || c.id
 
 function boardMatches(b: Board, seg: string): boolean {
-  const s = seg.toLowerCase()
-  return b.id === seg || (!!b.slug && b.slug.toLowerCase() === s) || norm(b.name) === s
+  const s = norm(seg)
+  return b.id === seg || (!!b.slug && norm(b.slug) === s) || norm(b.name) === s
 }
 function cardMatches(c: Card, seg: string): boolean {
-  const s = seg.toLowerCase()
-  return c.id === seg || (!!c.slug && c.slug.toLowerCase() === s)
+  return c.id === seg || (!!c.slug && norm(c.slug) === norm(seg))
 }
 
 /** Boards from the root down to `b` */
@@ -107,8 +110,7 @@ export function resolvePeepoUrl(url: string, boards: Record<string, Board>, root
 
 /** Slugs must be url-safe words, unique among siblings. Returns an error message or null. */
 export function validateSlug(slug: string, taken: Iterable<string>, ownCurrent?: string): string | null {
-  if (!/^[\w][\w-]*$/.test(slug)) return 'Use letters, digits, - and _ only'
-  if (slug.startsWith('@')) return "Can't start with @"
-  for (const t of taken) if (t !== ownCurrent && t.toLowerCase() === slug.toLowerCase()) return `"${slug}" is already used here`
+  if (!/^[\p{L}\p{N}][\p{L}\p{N}_-]*$/u.test(slug)) return 'Use letters, digits, - and _ only (no spaces or slashes)'
+  for (const t of taken) if (t !== ownCurrent && norm(t) === norm(slug)) return `"${slug}" is already used here`
   return null
 }

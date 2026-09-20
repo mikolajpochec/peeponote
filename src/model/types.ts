@@ -104,7 +104,8 @@ export interface AssetCard extends CardBase {
   view?: { pos: [number, number, number]; target: [number, number, number] }
 }
 
-export type ShapeKind = 'rect' | 'ellipse' | 'diamond' | 'triangle' | 'hexagon' | 'star' | 'arrow' | 'parallelogram' | 'cloud'
+/** 'cloud' is legacy (old files) and renders as a callout */
+export type ShapeKind = 'rect' | 'ellipse' | 'diamond' | 'triangle' | 'hexagon' | 'star' | 'arrow' | 'parallelogram' | 'callout' | 'cloud'
 
 export interface ShapeCard extends CardBase {
   type: 'shape'
@@ -113,7 +114,8 @@ export interface ShapeCard extends CardBase {
   label: string
 }
 
-export type StoryKind = 'character' | 'location' | 'event' | 'dialogue' | 'scene' | 'beat'
+/** character / location / beat are legacy (old files) and render like an event */
+export type StoryKind = 'dialogue' | 'event' | 'quest' | 'scene' | 'character' | 'location' | 'beat'
 
 export interface DialogueLine {
   id: string

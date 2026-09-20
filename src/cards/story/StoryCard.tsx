@@ -3,13 +3,14 @@ import type { DialogueLine, StoryCard as StoryCardT } from '../../model/types'
 import { newId } from '../../model/types'
 import { useWorkspace } from '../../store/workspace'
 import { useEditing } from '../../store/editing'
+import { fieldHandle } from '../../ui/format'
 import { useEditRequest } from '../../canvas/editRequest'
 import { contrast } from '../../canvas/styles'
 import type { CardProps } from '../CardView'
 import { InlineMd } from '../Inline'
 import { LinkPicker } from '../../ui/LinkPicker'
-import { useAssetUrl } from '../useAssetUrl'
-import { BEAT_STAGES, storyKind, type StoryField } from './kinds'
+import { Popover } from '../../ui/Popover'
+import { storyKind, type StoryField } from './kinds'
 
 /**
  * Story-planning card. Header strip in the kind's color, then labeled fields. Fields render inline
@@ -31,7 +32,6 @@ export function StoryCard({ card, boardId, readOnly }: CardProps<StoryCardT>) {
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
       <div className="flex shrink-0 items-center gap-2 px-3 py-2" style={{ background: strip, color: strip ? stripInk : undefined }}>
-        {(card.kind === 'character' || card.kind === 'location') && <Portrait card={card} boardId={boardId} readOnly={readOnly} />}
         <span className="text-[15px]" title={def.label}>
           {def.icon}
         </span>
@@ -47,20 +47,6 @@ export function StoryCard({ card, boardId, readOnly }: CardProps<StoryCardT>) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto px-3 py-2 text-[0.93em] scrollbar-thin">
-        {card.kind === 'beat' && (
-          <div className="mb-2 flex flex-wrap gap-1" data-nodrag>
-            {BEAT_STAGES.map((s) => (
-              <button
-                key={s}
-                disabled={readOnly}
-                onClick={() => updateCard(boardId, card.id, { stage: card.stage === s ? undefined : s })}
-                className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-current/20 ${card.stage === s ? 'bg-current/15' : 'opacity-60 hover:opacity-100'}`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
         {def.fields.map((f) => (
           <Field
             key={f.key}
@@ -104,9 +90,10 @@ function Field({
 }) {
   const ta = useRef<HTMLTextAreaElement>(null)
   const [picker, setPicker] = useState(false)
+  const linkBtn = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     if (editing && ta.current) {
-      useEditing.getState().begin(boardId, cardId, ta.current, 'inline')
+      useEditing.getState().begin(boardId, cardId, fieldHandle(ta.current), 'inline')
       ta.current.focus()
       ta.current.setSelectionRange(ta.current.value.length, ta.current.value.length)
     }
@@ -125,11 +112,11 @@ function Field({
         <span>{field.label}</span>
         {field.refs && !readOnly && (
           <span className="relative ml-auto" data-nodrag>
-            <button onClick={() => setPicker((p) => !p)} className="rounded px-1 text-[10px] normal-case tracking-normal opacity-80 hover:bg-black/10 hover:opacity-100" title="Insert a link to a character, place, …">
+            <button ref={linkBtn} onClick={() => setPicker((p) => !p)} className="rounded px-1 text-[10px] normal-case tracking-normal opacity-80 hover:bg-black/10 hover:opacity-100" title="Insert a link to a character, scene, …">
               + link
             </button>
             {picker && (
-              <div className="absolute right-0 top-full z-30 mt-1">
+              <Popover anchor={linkBtn.current} onClose={() => setPicker(false)} align="right">
                 <LinkPicker
                   onClose={() => setPicker(false)}
                   onPick={(url, label) => {
@@ -138,7 +125,7 @@ function Field({
                     onChange(`${value}${sep}[${label}](${url})`)
                   }}
                 />
-              </div>
+              </Popover>
             )}
           </span>
         )}
@@ -182,13 +169,20 @@ function Dialogue({ card, boardId, readOnly }: { card: StoryCardT; boardId: stri
   const setLines = (l: DialogueLine[]) => updateCard(boardId, card.id, { lines: l })
   const [editing, setEditing] = useState<string | null>(null) // `${id}:${col}`
   const [pickerFor, setPickerFor] = useState<string | null>(null)
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const patch = (id: string, p: Partial<DialogueLine>) => setLines(lines.map((l) => (l.id === id ? { ...l, ...p } : l)))
 
   return (
     <div className="mt-1 space-y-1.5" data-nodrag>
       {lines.map((l) => (
-        <div key={l.id} className="group/line grid grid-cols-[minmax(70px,30%)_1fr_auto] gap-x-2 rounded px-1 py-0.5 hover:bg-black/5">
+        <div
+          key={l.id}
+          ref={(el) => {
+            rowRefs.current[l.id] = el
+          }}
+          className="group/line grid grid-cols-[minmax(70px,30%)_1fr_auto] gap-x-2 rounded px-1 py-0.5 hover:bg-black/5"
+        >
           <Cell
             value={l.speaker}
             placeholder="Speaker"
@@ -233,17 +227,15 @@ function Dialogue({ card, boardId, readOnly }: { card: StoryCardT; boardId: stri
             </button>
           )}
           {pickerFor === l.id && (
-            <div className="relative col-span-3">
-              <div className="absolute left-0 top-0 z-30">
-                <LinkPicker
-                  onClose={() => setPickerFor(null)}
-                  onPick={(url, label) => {
-                    setPickerFor(null)
-                    patch(l.id, { speaker: `[${label}](${url})` })
-                  }}
-                />
-              </div>
-            </div>
+            <Popover anchor={rowRefs.current[l.id] ?? null} onClose={() => setPickerFor(null)}>
+              <LinkPicker
+                onClose={() => setPickerFor(null)}
+                onPick={(url, label) => {
+                  setPickerFor(null)
+                  patch(l.id, { speaker: `[${label}](${url})` })
+                }}
+              />
+            </Popover>
           )}
         </div>
       ))}
@@ -293,7 +285,7 @@ function Cell({
   const ta = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
     if (editing && ta.current) {
-      useEditing.getState().begin(boardId, cardId, ta.current, 'inline')
+      useEditing.getState().begin(boardId, cardId, fieldHandle(ta.current), 'inline')
       ta.current.focus()
     }
   }, [editing, boardId, cardId])
@@ -342,45 +334,3 @@ function Cell({
   )
 }
 
-/** Small round portrait picked from the workspace's image assets. */
-function Portrait({ card, boardId, readOnly }: { card: StoryCardT; boardId: string; readOnly: boolean }) {
-  const updateCard = useWorkspace((s) => s.updateCard)
-  const boards = useWorkspace((s) => s.boards)
-  const [open, setOpen] = useState(false)
-  const images = Object.values(boards).flatMap((b) => b.cards.filter((c) => c.type === 'asset' && (c.kind === 'image' || c.kind === 'texture')))
-  return (
-    <span className="relative" data-nodrag>
-      <button
-        disabled={readOnly}
-        onClick={() => setOpen((o) => !o)}
-        title={readOnly ? undefined : 'Portrait'}
-        className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-black/15 text-[13px] ring-1 ring-black/10"
-      >
-        {card.portrait ? <Thumb path={card.portrait} /> : '＋'}
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 w-56 rounded-lg border border-(--hair) bg-swamp-900 p-2 text-frog-50 shadow-2xl" onPointerDown={(e) => e.stopPropagation()}>
-          <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-frog-200/50">Pictures in this workspace</div>
-          {images.length === 0 && <div className="text-[11px] text-frog-200/50">Drop an image onto any board first.</div>}
-          <div className="grid grid-cols-4 gap-1">
-            {images.map((c) => (
-              <button key={c.id} title={c.type === 'asset' ? c.name : ''} onClick={() => (updateCard(boardId, card.id, { portrait: c.type === 'asset' ? c.path : undefined }), setOpen(false))} className="h-11 overflow-hidden rounded-md ring-1 ring-white/10 hover:ring-frog-300">
-                {c.type === 'asset' && <Thumb path={c.path} />}
-              </button>
-            ))}
-          </div>
-          {card.portrait && (
-            <button onClick={() => (updateCard(boardId, card.id, { portrait: undefined }), setOpen(false))} className="mt-2 rounded-md bg-(--hover) px-2 py-1 text-[11px] hover:bg-(--hover-strong)">
-              remove
-            </button>
-          )}
-        </div>
-      )}
-    </span>
-  )
-}
-
-function Thumb({ path }: { path: string }) {
-  const { url } = useAssetUrl(path, '')
-  return url ? <img src={url} alt="" className="h-full w-full object-cover" draggable={false} /> : null
-}

@@ -20,6 +20,19 @@ export function Toasts() {
         >
           <Peepo name={t.peepo} size={26} />
           <span className="text-left">{t.text}</span>
+          {t.action && (
+            <span
+              role="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                t.action!.onClick()
+                dismiss(t.id)
+              }}
+              className="ml-1 rounded-md bg-frog-500 px-2 py-0.5 text-[12px] font-bold text-white hover:bg-frog-400"
+            >
+              {t.action.label}
+            </span>
+          )}
         </button>
       ))}
     </div>

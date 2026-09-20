@@ -10,6 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/state": "^6.7.5",
+    "@codemirror/view": "^6.43.12",
     "@isomorphic-git/lightning-fs": "^4.8.0",
     "@tailwindcss/vite": "^4.3.3",
     "buffer": "^6.0.3",

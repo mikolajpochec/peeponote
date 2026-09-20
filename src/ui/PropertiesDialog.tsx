@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { create } from 'zustand'
 import { selectBoards, useWorkspace } from '../store/workspace'
-import { cardSummary, hashLinkTo, linkTo, type LinkTarget } from '../nav/links'
+import { cardSummary, hashLinkTo, type LinkTarget } from '../nav/links'
 import { boardChain, boardSlug, cardSlug, slugify } from '../nav/peepoUrl'
 import { toast } from '../store/toast'
 import { Peepo } from './Peepo'
@@ -23,7 +23,7 @@ const btn = 'rounded-md bg-swamp-700 px-2 py-1 text-[12px] font-semibold hover:b
 async function copy(text: string, what: string) {
   try {
     await navigator.clipboard.writeText(text)
-    toast.ok(`${what} copied. peepoHey`, 'peepoHey')
+    toast.ok(`${what} copied.`, 'peepoHey')
   } catch {
     toast.err('Clipboard blocked — select and copy the text instead.')
   }
@@ -72,45 +72,34 @@ function Header({ title, sub }: { title: string; sub: string }) {
   )
 }
 
-function LinkRows({ target }: { target: LinkTarget }) {
-  const peepo = linkTo(target)
-  const hash = hashLinkTo(target)
+/** Address = where the object lives (automatic) + its ID (editable). */
+function AddressRows({ pathPrefix, id, auto, onSaveId, target, idHint }: { pathPrefix: string; id: string; auto: string; onSaveId: (v: string) => boolean; target: LinkTarget; idHint: string }) {
+  const [draft, setDraft] = useState(id)
+  useEffect(() => setDraft(id), [id])
+  const save = () => {
+    if (draft === id) return
+    if (!onSaveId(draft)) setDraft(id)
+  }
+  const effective = draft || auto
+  const address = `${pathPrefix}/${effective}`
+  const web = hashLinkTo(target)
   return (
     <>
       <div className={row}>
-        <span className={label}>Link</span>
-        <div className="flex gap-1.5">
-          <input readOnly value={peepo} className={field} onFocus={(e) => e.currentTarget.select()} />
-          <button className={btn} onClick={() => copy(peepo, 'Link')}>
+        <span className={label}>Address</span>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <div className={`${field} flex min-w-0 items-baseline overflow-hidden whitespace-nowrap`} title={address}>
+            <span className="truncate text-frog-200/60">{pathPrefix}/</span>
+            <span className="shrink-0 font-bold text-frog-50">{effective}</span>
+          </div>
+          <button className={btn} onClick={() => copy(address, 'Address')}>
             Copy
           </button>
         </div>
       </div>
       <div className={row}>
-        <span className={label}>Web link</span>
-        <div className="flex gap-1.5">
-          <input readOnly value={hash} className={field} onFocus={(e) => e.currentTarget.select()} />
-          <button className={btn} onClick={() => copy(hash, 'Web link')}>
-            Copy
-          </button>
-        </div>
-      </div>
-    </>
-  )
-}
-
-function SlugRow({ value, auto, onSave, hint }: { value: string; auto: string; onSave: (v: string) => boolean; hint: string }) {
-  const [draft, setDraft] = useState(value)
-  useEffect(() => setDraft(value), [value])
-  const save = () => {
-    if (draft === value) return
-    if (!onSave(draft)) setDraft(value)
-  }
-  return (
-    <div className={row}>
-      <span className={label}>Slug</span>
-      <div>
-        <div className="flex gap-1.5">
+        <span className={label}>ID</span>
+        <div>
           <input
             value={draft}
             placeholder={auto}
@@ -121,14 +110,21 @@ function SlugRow({ value, auto, onSave, hint }: { value: string; auto: string; o
               e.stopPropagation()
             }}
             className={field}
+            spellCheck={false}
           />
-          <button className={btn} title="Derive from the name" onClick={() => setDraft(auto)}>
-            auto
+          <div className="mt-0.5 text-[11px] text-frog-200/50">{idHint}</div>
+        </div>
+      </div>
+      <div className={row}>
+        <span className={label}>Share link</span>
+        <div className="flex gap-1.5">
+          <input readOnly value={web} className={field} onFocus={(e) => e.currentTarget.select()} title="Opens the app at this place — works from anywhere" />
+          <button className={btn} onClick={() => copy(web, 'Share link')}>
+            Copy
           </button>
         </div>
-        <div className="mt-0.5 text-[11px] text-frog-200/50">{hint}</div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -139,34 +135,21 @@ function CardProps({ boardId, cardId }: { boardId: string; cardId: string }) {
   const board = boards[boardId]
   const card = board?.cards.find((c) => c.id === cardId)
   if (!board || !card) return <div>Gone.</div>
-  const path = boardChain(board, boards).map(boardSlug).join('/')
+  const path = `peepo://${boardChain(board, boards).map(boardSlug).join('/')}`
   const num = (k: 'x' | 'y' | 'w' | 'h') => (
-    <input
-      type="number"
-      value={Math.round(card[k])}
-      onChange={(e) => updateCard(boardId, cardId, { [k]: Number(e.target.value) })}
-      className={`${field} w-20`}
-    />
+    <input type="number" value={Math.round(card[k])} onChange={(e) => updateCard(boardId, cardId, { [k]: Number(e.target.value) })} className={`${field} w-20`} />
   )
   return (
     <div className="space-y-2.5">
       <Header title={cardSummary(card)} sub={`${card.type} card on ${board.name || 'Untitled'}`} />
-      <div className={row}>
-        <span className={label}>Id</span>
-        <div className="flex gap-1.5">
-          <input readOnly value={card.id} className={field} onFocus={(e) => e.currentTarget.select()} />
-          <button className={btn} onClick={() => copy(card.id, 'Id')}>
-            Copy
-          </button>
-        </div>
-      </div>
-      <SlugRow
-        value={card.slug ?? ''}
-        auto={slugify(cardSummary(card)) || card.id}
-        onSave={(v) => setCardSlug(boardId, cardId, v)}
-        hint={`Used in links: peepo://${path}/${card.slug || card.id}. Letters, digits, - and _; unique on this board. Empty = the id.`}
+      <AddressRows
+        pathPrefix={path}
+        id={card.slug ?? ''}
+        auto={card.id}
+        onSaveId={(v) => setCardSlug(boardId, cardId, v)}
+        target={{ kind: 'card', boardId, cardId }}
+        idHint="The last part of the address. Generated automatically; give it a name (e.g. image1) to make links readable. Unique on this board."
       />
-      <LinkRows target={{ kind: 'card', boardId, cardId }} />
       <div className={row}>
         <span className={label}>Position</span>
         <div className="flex items-center gap-1.5">
@@ -196,25 +179,18 @@ function BoardProps({ boardId }: { boardId: string }) {
   const board = boards[boardId]
   if (!board) return <div>Gone.</div>
   const chain = boardChain(board, boards)
+  const parentPath = `peepo://${chain.slice(0, -1).map(boardSlug).join('/')}`.replace(/\/$/, '')
   return (
     <div className="space-y-2.5">
       <Header title={board.name || 'Untitled'} sub={`board · ${board.cards.length} items · created ${new Date(board.createdAt).toLocaleDateString()}`} />
-      <div className={row}>
-        <span className={label}>Id</span>
-        <div className="flex gap-1.5">
-          <input readOnly value={board.id} className={field} onFocus={(e) => e.currentTarget.select()} />
-          <button className={btn} onClick={() => copy(board.id, 'Id')}>
-            Copy
-          </button>
-        </div>
-      </div>
-      <SlugRow
-        value={board.slug ?? ''}
+      <AddressRows
+        pathPrefix={chain.length > 1 ? parentPath : 'peepo:/'}
+        id={board.slug ?? ''}
         auto={slugify(board.name) || board.id}
-        onSave={(v) => setBoardSlug(boardId, v)}
-        hint={`Path segment in links: peepo://${chain.map(boardSlug).join('/')}. Empty = derived from the name (renaming then changes the path; links still resolve by id).`}
+        onSaveId={(v) => setBoardSlug(boardId, v)}
+        target={{ kind: 'board', boardId }}
+        idHint="Path segment for everything on this board. By default it follows the board's name; set it to keep links stable when you rename."
       />
-      <LinkRows target={{ kind: 'board', boardId }} />
       <div className={row}>
         <span className={label}>File</span>
         <span className="font-mono text-[12px] text-frog-200/70">boards/{board.id}.json</span>

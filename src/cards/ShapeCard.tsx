@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import type { ShapeCard as ShapeCardT, ShapeKind } from '../model/types'
 import { useWorkspace } from '../store/workspace'
 import { useEditRequest } from '../canvas/editRequest'
 import { contrast } from '../canvas/styles'
 import type { CardProps } from './CardView'
 import { InlineMd } from './Inline'
-import { useEditing } from '../store/editing'
+import { MdEditor } from '../editor'
 
 export const SHAPES: { kind: ShapeKind; label: string; icon: string }[] = [
   { kind: 'rect', label: 'Rectangle', icon: '▭' },
@@ -16,7 +16,7 @@ export const SHAPES: { kind: ShapeKind; label: string; icon: string }[] = [
   { kind: 'star', label: 'Star', icon: '☆' },
   { kind: 'arrow', label: 'Arrow', icon: '⇨' },
   { kind: 'parallelogram', label: 'Parallelogram', icon: '▱' },
-  { kind: 'cloud', label: 'Cloud', icon: '☁' },
+  { kind: 'callout', label: 'Speech bubble', icon: '💬' },
 ]
 
 /** shapes start as an outline in the board's ink; fill is opt-in via the style bar */
@@ -68,12 +68,14 @@ export function shapePath(kind: ShapeKind, w: number, h: number, inset: number, 
       const d = Math.min(W * 0.22, H)
       return P([[x0 + d, y0], [x1, y0], [x1 - d, y1], [x0, y1]])
     }
+    case 'callout':
     case 'cloud': {
-      // a few overlapping arcs; scaled to the box
-      const rx = W / 2
-      const ry = H / 2
-      const c = (px: number, py: number, r: number) => `M${cx + px * rx},${cy + py * ry - r * ry}a${r * rx},${r * ry} 0 1 1 0,${2 * r * ry}a${r * rx},${r * ry} 0 1 1 0,${-2 * r * ry}Z`
-      return [c(-0.42, 0.18, 0.4), c(-0.05, -0.18, 0.5), c(0.42, 0.14, 0.42), c(0.05, 0.3, 0.42)].join('')
+      // rounded box with a tail at the bottom-left
+      const tail = Math.min(H * 0.22, 26)
+      const by = y1 - tail // bottom edge of the box
+      const r = Math.min(radius, W / 2, (by - y0) / 2)
+      const tx = x0 + Math.min(W * 0.18, 40)
+      return `M${x0 + r},${y0}H${x1 - r}A${r},${r} 0 0 1 ${x1},${y0 + r}V${by - r}A${r},${r} 0 0 1 ${x1 - r},${by}H${tx + tail * 0.9}L${tx},${y1}L${tx + tail * 0.25},${by}H${x0 + r}A${r},${r} 0 0 1 ${x0},${by - r}V${y0 + r}A${r},${r} 0 0 1 ${x0 + r},${y0}Z`
     }
   }
 }
@@ -82,7 +84,6 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
   const updateCard = useWorkspace((s) => s.updateCard)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(card.label)
-  const ta = useRef<HTMLTextAreaElement>(null)
   const s = card.style ?? {}
   const filled = !NO_FILL(s.bg)
   const fill = filled ? s.bg! : 'none'
@@ -91,15 +92,6 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
   const inset = Math.max(sw / 2, 1)
   const d = shapePath(card.shape, card.w, card.h, inset, s.radius ?? 12)
   const ink = s.fg ?? (filled ? contrast(fill) : 'var(--board-fg)')
-
-  useEffect(() => {
-    if (editing) {
-      // register before focusing: a background window doesn't fire focus events, the bar must still appear
-      if (ta.current) useEditing.getState().begin(boardId, card.id, ta.current, 'inline')
-      ta.current?.focus()
-      ta.current?.select()
-    }
-  }, [editing])
 
   useEditRequest(() => {
     if (readOnly) return
@@ -127,24 +119,15 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
       </svg>
       <div className="absolute inset-0 flex items-center justify-center p-3" style={{ color: ink, textAlign: s.align ?? 'center' }}>
         {editing ? (
-          <textarea
-            ref={ta}
-            data-nodrag
+          <MdEditor
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onFocus={(e) => useEditing.getState().begin(boardId, card.id, e.currentTarget, 'inline')}
-            onBlur={(e) => {
-              if (useEditing.getState().hold) return // the link picker took focus; we're still editing
-              useEditing.getState().end(e.currentTarget)
-              commit()
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape' || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) commit()
-              e.stopPropagation()
-            }}
+            onChange={setDraft}
+            onDone={commit}
+            boardId={boardId}
+            cardId={card.id}
+            mode="inline"
             placeholder="Label"
-            className="h-full w-full resize-none bg-transparent text-center outline-none placeholder:opacity-40"
-            style={{ fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', letterSpacing: 'inherit', color: 'inherit', textAlign: 'inherit' }}
+            className="h-full w-full text-center"
           />
         ) : (
           <div className="whitespace-pre-wrap break-words">

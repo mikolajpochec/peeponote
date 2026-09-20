@@ -68,9 +68,18 @@ export function describeLink(t: LinkTarget): { title: string; sub: string; icon?
   return { title: board.name || 'Untitled', sub: `${board.cards.length} item${board.cards.length === 1 ? '' : 's'}`, icon: board.icon, missing: false }
 }
 
+/** markdown → plain words for labels: **x** → x, [t](url) → t, `c` → c */
+export function stripMd(t: string): string {
+  return t
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/(\*\*|__|~~|`)(.*?)\1/g, '$2')
+    .replace(/(^|[^\w])[_*](.+?)[_*](?=[^\w]|$)/g, '$1$2')
+    .replace(/^#{1,6}\s+/, '')
+}
+
 export function cardSummary(card: Card): string {
   const one = (t: string, n = 40) => {
-    const l = t.trim().split('\n')[0]
+    const l = stripMd(t.trim().split('\n')[0])
     return l.length > n ? `${l.slice(0, n - 1)}…` : l
   }
   switch (card.type) {

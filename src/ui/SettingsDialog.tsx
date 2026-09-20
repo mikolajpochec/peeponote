@@ -102,7 +102,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
                   className={`${btn} text-red-200`}
                   disabled={!!busy}
                   onClick={async () => {
-                    if (!confirm('Wipe the browser repo? Anything not pushed is gone forever. monkaS')) return
+                    if (!confirm('Wipe the browser repo? Anything not pushed is gone forever.')) return
                     await wipeBrowserFS()
                     clearAssetCache()
                     await switchToBrowser()
@@ -125,7 +125,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
                   try {
                     await flush()
                     await exportRepoZip(fs, meta?.name)
-                    toast.ok('Zipped the whole repo. peepoPog', 'peepoPog')
+                    toast.ok('Zipped the whole repo.', 'peepoPog')
                   } catch (e) {
                     toast.err(`Export failed: ${(e as Error).message}`)
                   } finally {

@@ -42,13 +42,13 @@ const cardSchema = z.discriminatedUnion('type', [
   z.object({
     ...base,
     type: z.literal('shape'),
-    shape: z.enum(['rect', 'ellipse', 'diamond', 'triangle', 'hexagon', 'star', 'arrow', 'parallelogram', 'cloud']),
+    shape: z.enum(['rect', 'ellipse', 'diamond', 'triangle', 'hexagon', 'star', 'arrow', 'parallelogram', 'callout', 'cloud']),
     label: z.string().default(''),
   }),
   z.object({
     ...base,
     type: z.literal('story'),
-    kind: z.enum(['character', 'location', 'event', 'dialogue', 'scene', 'beat']),
+    kind: z.enum(['dialogue', 'event', 'quest', 'scene', 'character', 'location', 'beat']),
     title: z.string().default(''),
     fields: z.record(z.string(), z.string()).default({}),
     lines: z.array(z.object({ id: z.string(), speaker: z.string().default(''), text: z.string().default(''), note: z.string().optional() })).optional(),

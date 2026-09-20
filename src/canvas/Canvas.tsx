@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Anchor, Board, Connector } from '../model/types'
+import type { Anchor, Board, Card, Connector } from '../model/types'
 import { newId } from '../model/types'
 import { ConnectorLayer, type DraftConnector } from './ConnectorLayer'
 import { anchorForDrop, anchorPoint } from './connectors'
@@ -44,6 +44,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
   const clearSelection = useWorkspace((s) => s.clearSelection)
   const addCard = useWorkspace((s) => s.addCard)
   const removeCards = useWorkspace((s) => s.removeCards)
+  const updateCard = useWorkspace((s) => s.updateCard)
   const addAssets = useWorkspace((s) => s.addAssets)
   const addConnector = useWorkspace((s) => s.addConnector)
   const updateConnector = useWorkspace((s) => s.updateConnector)
@@ -170,6 +171,9 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         const live = useWorkspace.getState().boards[board.id]
         const sel = useWorkspace.getState().selection
         if (live && sel.size) duplicateSelection(live, sel)
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey && !readOnly) {
+        if (useWorkspace.getState().undoRemoval()) e.preventDefault()
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'g' && !readOnly) {
         e.preventDefault()
@@ -374,7 +378,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
                 icon: '🔗',
                 onClick: async () => {
                   await copyLink({ kind: 'card', boardId: board.id, cardId: one.id })
-                  toast.ok('Link copied — paste it on any board to make a link card. peepoHey', 'peepoHey')
+                  toast.ok('Link copied — paste it on any board to make a link card.', 'peepoHey')
                 },
               } as MenuItem,
             ]
@@ -402,6 +406,9 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
           ? [{ kind: 'item', label: `Group ${n} items`, icon: '⧉', shortcut: '⌘G', disabled: readOnly, onClick: () => groupCards(board.id, ids) } as MenuItem]
           : []),
         ...(n > 1 || selCards.some((c) => c.groupId) ? [sep] : []),
+        ...(selCards.some((c) => c.type === 'text' && c.autoSize === false)
+          ? [{ kind: 'item', label: 'Auto size text', icon: '⤢', disabled: readOnly, onClick: () => selCards.forEach((c) => c.type === 'text' && updateCard(board.id, c.id, { autoSize: true } as Partial<Card>)) } as MenuItem]
+          : []),
         ...(one ? [{ kind: 'item', label: 'Properties…', icon: 'ⓘ', onClick: () => useProperties.getState().open({ kind: 'card', boardId: board.id, cardId: one.id }) } as MenuItem, sep] : []),
         { kind: 'item', label: n > 1 ? `Delete ${n} items` : 'Delete', icon: '✕', shortcut: '⌫', danger: true, disabled: readOnly, onClick: () => void removeCardsChecked(board.id, ids) },
       )
@@ -416,7 +423,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         icon: '🔗',
         onClick: async () => {
           await copyLink({ kind: 'place', boardId: board.id, x: menu.at.x, y: menu.at.y, scale: useViewport.getState().get(board.id).scale })
-          toast.ok('Link copied — paste it anywhere to make a link card. peepoHey', 'peepoHey')
+          toast.ok('Link copied — paste it anywhere to make a link card.', 'peepoHey')
         },
       },
       sep,
@@ -716,7 +723,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       {board.cards.length === 0 && (
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3" style={{ color: 'var(--board-fg-muted)' }}>
           <Peepo name="peepoSit" size={96} className="peepo-bounce opacity-80" />
-          <div className="text-lg font-bold">Empty board. peepoSit</div>
+          <div className="text-lg font-bold">Empty board</div>
           <div className="px-6 text-center text-sm">{mobile ? 'Double-tap to write a note · long-press for the menu · use the toolbar below' : 'Double-click to write a note · drop files anywhere · use the toolbar'}</div>
         </div>
       )}

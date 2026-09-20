@@ -132,7 +132,7 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
       }}
     >
       <EditRequestContext.Provider value={editTick}>
-        <div className="h-full w-full overflow-hidden rounded-xl" style={styles.inner}>
+        <div className={`h-full w-full rounded-xl ${bare ? 'overflow-visible' : 'overflow-hidden'}`} style={styles.inner}>
           {children}
         </div>
       </EditRequestContext.Provider>

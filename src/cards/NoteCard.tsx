@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import Markdown from 'react-markdown'
 import type { NoteCard as NoteCardT } from '../model/types'
 import { useWorkspace } from '../store/workspace'
@@ -6,7 +6,7 @@ import type { CardProps } from './CardView'
 import { autoEdit } from './autoEdit'
 import { useEditRequest } from '../canvas/editRequest'
 import { mdLink } from './Inline'
-import { useEditing } from '../store/editing'
+import { MdEditor } from '../editor'
 
 export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
   const updateCard = useWorkspace((s) => s.updateCard)
@@ -18,16 +18,6 @@ export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
     return false
   })
   const [draft, setDraft] = useState(card.md)
-  const ta = useRef<HTMLTextAreaElement>(null)
-
-  useEffect(() => {
-    if (editing) {
-      // register before focusing: a background window doesn't fire focus events, the bar must still appear
-      if (ta.current) useEditing.getState().begin(boardId, card.id, ta.current, 'block')
-      ta.current?.focus()
-      ta.current?.setSelectionRange(ta.current.value.length, ta.current.value.length)
-    }
-  }, [editing])
 
   useEditRequest(() => {
     if (readOnly) return
@@ -42,25 +32,15 @@ export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
 
   if (editing) {
     return (
-      <textarea
-        ref={ta}
-        data-nodrag
+      <MdEditor
         value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onFocus={(e) => useEditing.getState().begin(boardId, card.id, e.currentTarget, 'block')}
-        onBlur={(e) => {
-          if (useEditing.getState().hold) return // the link picker took focus; we're still editing
-          useEditing.getState().end(e.currentTarget)
-          commit()
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') commit()
-          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') commit()
-          e.stopPropagation()
-        }}
+        onChange={setDraft}
+        onDone={commit}
+        boardId={boardId}
+        cardId={card.id}
+        mode="block"
         placeholder="Write markdown… (Esc or ⌘⏎ to finish)"
-        className="h-full w-full resize-none bg-transparent p-3 leading-snug outline-none placeholder:opacity-40"
-        style={{ fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', letterSpacing: 'inherit', color: 'inherit', textAlign: 'inherit' }}
+        className="h-full w-full overflow-auto p-3 leading-snug scrollbar-thin"
       />
     )
   }

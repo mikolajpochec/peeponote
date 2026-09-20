@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { TextCard as TextCardT } from '../model/types'
 import { useWorkspace } from '../store/workspace'
 import type { CardProps } from './CardView'
@@ -6,7 +6,7 @@ import { autoEdit } from './autoEdit'
 import { useEditRequest } from '../canvas/editRequest'
 import { useViewport } from '../canvas/viewport'
 import { InlineMd } from './Inline'
-import { useEditing } from '../store/editing'
+import { MdEditor } from '../editor'
 
 /** Free-floating text on the board: a big title or a plain paragraph, no card background. */
 export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
@@ -19,8 +19,10 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
     return false
   })
   const [draft, setDraft] = useState(card.text)
-  const ta = useRef<HTMLTextAreaElement>(null)
   const view = useRef<HTMLDivElement>(null)
+  const editorHost = useRef<HTMLDivElement>(null)
+  // the editor is lazy-loaded; bump when it mounts so the measuring effect can find .cm-content
+  const [editorReady, setEditorReady] = useState(0)
   const measure = useRef<HTMLDivElement>(null)
   const isTitle = card.variant === 'title'
   const auto = card.autoSize !== false
@@ -29,15 +31,6 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
   const placeholder = isTitle ? 'Title' : 'Text'
   const cls = isTitle ? 'leading-tight tracking-tight' : 'leading-snug'
 
-  useEffect(() => {
-    if (editing) {
-      // register before focusing: a background window doesn't fire focus events, the bar must still appear
-      if (ta.current) useEditing.getState().begin(boardId, card.id, ta.current, 'inline')
-      ta.current?.focus()
-      ta.current?.select()
-    }
-  }, [editing])
-
   // auto: card hugs its content (wrapping at maxW). manual: keep user width, only grow height to fit.
   // Runs as a layout effect so the card is resized in the same frame the text changes — otherwise the
   // textarea wraps at the old width for one paint and the caret visibly jumps while typing. The
@@ -45,21 +38,22 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
   // style bar changes (font size / family / bold), late font loads.
   useLayoutEffect(() => {
     if (readOnly) return
-    const m = measure.current
-    if (!m) return
+    // while editing, the editor's own content box is the truth (it lays text out exactly as shown);
+    // otherwise the hidden measurer
+    const m = editing ? (editorHost.current?.querySelector('.cm-content') as HTMLElement | null) : measure.current
+    if (!m || m.closest('[data-preview]')) return // a scaled preview must not resize the real card
     const apply = () => {
       const c = useWorkspace.getState().boards[boardId]?.cards.find((x) => x.id === card.id)
       if (!c || c.type !== 'text') return
+      const k = useViewport.getState().get(boardId).scale || 1
+      const r = m.getBoundingClientRect()
       if (c.autoSize !== false) {
-        // offsetWidth is rounded to whole px — a 213.6px line reported as 213 makes the last word wrap.
-        // Measure fractionally (undoing the canvas zoom) and round up with a little slack.
-        const k = useViewport.getState().get(boardId).scale || 1
-        const r = m.getBoundingClientRect()
-        const w = Math.max(60, Math.ceil(r.width / k) + 2)
+        // fractional measurement (offsetWidth rounds down → last word wraps), plus a little slack
+        const w = Math.max(60, Math.ceil(r.width / k) + (editing ? 6 : 2))
         const h = Math.max(32, Math.ceil(r.height / k) + 1)
         if (w !== c.w || h !== c.h) updateCard(boardId, card.id, { w, h })
       } else {
-        const needed = Math.ceil(editing ? (ta.current?.scrollHeight ?? 0) : (view.current?.scrollHeight ?? 0))
+        const needed = Math.ceil(editing ? r.height / k : (view.current?.scrollHeight ?? 0))
         if (needed > c.h + 1) updateCard(boardId, card.id, { h: needed })
       }
     }
@@ -67,7 +61,7 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
     const ro = new ResizeObserver(apply)
     ro.observe(m)
     return () => ro.disconnect()
-  }, [shown, auto, editing, readOnly, boardId, card.id, card.style, card.w, updateCard])
+  }, [shown, auto, editing, readOnly, boardId, card.id, card.style, card.w, updateCard, editorReady])
 
   const measurer = (
     <div
@@ -92,29 +86,26 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
   }
 
   if (editing) {
+    // while editing the editor itself is the measurer: it lays text out exactly as shown (markers hidden)
     return (
-      <>
-        {measurer}
-        <textarea
-        ref={ta}
-        data-nodrag
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onFocus={(e) => useEditing.getState().begin(boardId, card.id, e.currentTarget, 'inline')}
-        onBlur={(e) => {
-          if (useEditing.getState().hold) return // the link picker took focus; we're still editing
-          useEditing.getState().end(e.currentTarget)
-          commit()
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape' || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) commit()
-          e.stopPropagation()
-        }}
+      <div
+        ref={editorHost}
+        className={`bg-frog-300/10 ${auto ? '' : 'h-full w-full'}`}
+        // auto-size: the editor is as wide as its longest line (up to maxW); the card follows via the observer
+        style={auto ? { width: 'max-content', maxWidth: maxW, minWidth: 60 } : undefined}
+      >
+        <MdEditor
+          value={draft}
+          onChange={setDraft}
+          onDone={commit}
+          boardId={boardId}
+          cardId={card.id}
+          mode="inline"
           placeholder={placeholder}
-          className={`h-full w-full resize-none overflow-hidden whitespace-pre-wrap break-words bg-frog-300/10 p-2 text-inherit outline-none placeholder:text-frog-200/30 ${cls}`}
-          style={{ fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', letterSpacing: 'inherit', color: 'inherit', textAlign: 'inherit' }}
+          onReady={() => setEditorReady((n) => n + 1)}
+          className={`p-2 ${cls} ${auto ? 'md-editor-auto' : 'h-full w-full'}`}
         />
-      </>
+      </div>
     )
   }
 

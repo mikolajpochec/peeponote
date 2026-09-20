@@ -179,3 +179,25 @@ input:read-only, textarea:read-only { cursor: default; }
 @media (max-width: 767px) {
   .fixed.inset-0 > .rounded-2xl { max-height: 100%; overflow: auto; }
 }
+
+/* ---- markdown editor (CodeMirror) — looks like the rendered text, markers show only near the caret */
+.md-editor .cm-editor { height: 100%; background: transparent; color: inherit; font: inherit; line-height: inherit; text-align: inherit; }
+.md-editor .cm-editor.cm-focused { outline: none; }
+.md-editor .cm-scroller { font: inherit; line-height: inherit; overflow: visible; }
+.md-editor .cm-content { padding: 0; font: inherit; line-height: inherit; caret-color: currentColor; white-space: pre-wrap; word-break: break-word; }
+.md-editor .cm-line { padding: 0; }
+.md-editor .cm-cursor { border-left-color: currentColor; }
+.md-editor .cm-selectionBackground, .md-editor.cm-focused .cm-selectionBackground { background: color-mix(in srgb, currentColor 22%, transparent) !important; }
+.md-editor .cm-placeholder { color: inherit; opacity: 0.35; }
+/* auto-sized text: the editor is as wide as its longest line */
+.md-editor-auto .cm-editor, .md-editor-auto .cm-scroller, .md-editor-auto .cm-content { width: max-content; max-width: 100%; }
+.md-editor-auto .cm-content { min-width: 1ch; }
+.cm-md-strong { font-weight: 800; }
+.cm-md-em { font-style: italic; }
+.cm-md-strike { text-decoration: line-through; opacity: 0.75; }
+.cm-md-code { font-family: var(--font-mono); font-size: 0.9em; background: rgba(0,0,0,0.08); border-radius: 4px; padding: 0 0.2em; }
+.cm-md-link { text-decoration: underline; text-underline-offset: 2px; color: var(--color-frog-600); }
+.cm-md-h1 { font-size: 1.35em; font-weight: 800; }
+.cm-md-h2 { font-size: 1.2em; font-weight: 800; }
+.cm-md-h3 { font-size: 1.05em; font-weight: 800; }
+.cm-md-quote { border-left: 3px solid var(--color-frog-300); padding-left: 0.6em; opacity: 0.85; }

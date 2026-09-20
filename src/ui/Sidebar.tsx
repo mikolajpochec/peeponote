@@ -88,7 +88,7 @@ export function Sidebar({ onOpenSettings, onNavigate, onClose }: { onOpenSetting
         icon: '🔗',
         onClick: async () => {
           await copyLink({ kind: 'board', boardId: b.id })
-          toast.ok('Link copied — paste it on a board to make a link card. peepoHey', 'peepoHey')
+          toast.ok('Link copied — paste it on a board to make a link card.', 'peepoHey')
         },
       },
       { kind: 'item', label: 'Rename', icon: '✎', shortcut: 'dbl-click', disabled: readOnly, onClick: () => setRenaming(b.id) },

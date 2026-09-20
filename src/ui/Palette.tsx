@@ -70,7 +70,7 @@ export const TOOLS: Tool[] = [
     id: 'story',
     label: 'Story',
     icon: '📖',
-    hint: 'Story planning: characters, places, events, dialogue, scenes, beats',
+    hint: 'Story planning: dialogue, events, quests, scenes',
     w: 280,
     h: 240,
     children: storyTools,

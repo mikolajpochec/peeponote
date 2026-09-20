@@ -162,6 +162,18 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
         </>
       )}
 
+      {cards.some((c) => c.type === 'text' && c.autoSize === false) && (
+        <>
+          <Sep />
+          <button
+            className={btn}
+            title="Back to automatic size (fit the text)"
+            onClick={() => cards.forEach((c) => c.type === 'text' && c.autoSize === false && updateCard(boardId, c.id, { autoSize: true } as Partial<Card>))}
+          >
+            ⤢<span className="ml-0.5 text-[10px] font-semibold">auto</span>
+          </button>
+        </>
+      )}
       {(many || oneGroup) && (
         <>
           <Sep />

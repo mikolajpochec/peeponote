@@ -19,6 +19,7 @@ import { toast } from './toast'
 import { diffWorkspaces, formatAuthors, useArrivals } from '../canvas/arrivals'
 import { rememberedStyle, styleKeyOf, useLastStyle } from './lastStyle'
 import { boardSlug, cardSlug, validateSlug } from '../nav/peepoUrl'
+import { cardSummary } from '../nav/links'
 
 export type Busy = 'saving' | 'pushing' | 'pulling' | 'syncing' | 'cloning' | 'loading' | null
 export type Resolution = 'merge-ours' | 'merge-theirs' | 'force-push' | 'take-theirs'
@@ -75,6 +76,8 @@ interface WorkspaceState {
   moveCards: (boardId: string, deltas: Record<string, { x: number; y: number }>) => void
   removeCards: (boardId: string, ids: string[]) => void
   groupCards: (boardId: string, ids: string[]) => void
+  /** restore the state from before the last removal (cards, connectors, nested boards) */
+  undoRemoval: () => boolean
   ungroupCards: (boardId: string, ids: string[]) => void
   bringToFront: (boardId: string, cardId: string) => void
   sendToBack: (boardId: string, ids: string[]) => void
@@ -220,6 +223,8 @@ async function pictureSize(file: File): Promise<{ w: number; h: number } | null>
 
 let lastNotifiedRemote: string | null = null
 
+const undoStack: { boards: Record<string, Board>; dirtyBoards: Set<string>; deletedBoards: Set<string>; currentBoardId: string | null }[] = []
+
 function withRemembered(card: Card): Card {
   if (card.style) return card
   const style = rememberedStyle(styleKeyOf(card))
@@ -284,7 +289,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       if (!(await exists(fs, abs(fs, WORKSPACE_FILE)))) {
         await seedWorkspace(fs)
         await repo.stageAll(fs)
-        await repo.commit(fs, 'peepoHey welcome board', identity())
+        await repo.commit(fs, 'Welcome board', identity())
       }
       const { meta, boards } = await loadBoards(fs)
       const nav = loadNav(meta.rootBoardId, boards)
@@ -419,7 +424,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         if (await repo.isRepo(fs)) throw new Error('This storage already has a repo. Pick an empty folder or wipe browser storage first.')
         if (chooseTransport(url, useSettings.getState().transport) === 'api' && parseGitHubUrl(url)) await ghClone(fs, url, useSettings.getState().token, progress)
         else await repo.clone(fs, url, remoteAuth())
-        toast.ok('Cloned! peepoPog', 'peepoPog')
+        toast.ok('Cloned!', 'peepoPog')
         await openFs(fs)
       } catch (e) {
         toast.err(`Clone failed: ${(e as Error).message}`)
@@ -500,6 +505,11 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       const b = get().boards[boardId]
       if (!b) return
       const removed = b.cards.filter((c) => ids.includes(c.id))
+      if (!removed.length) return
+      // snapshot for Undo: in-memory boards + dirty bookkeeping (cheap: shared references)
+      undoStack.push({ boards: get().boards, dirtyBoards: new Set(get().dirtyBoards), deletedBoards: new Set(get().deletedBoards), currentBoardId: get().currentBoardId })
+      if (undoStack.length > 30) undoStack.shift()
+      const nestedBoards = removed.filter((c) => c.type === 'board').length
       // recursively delete nested boards
       const deleted = new Set(get().deletedBoards)
       const boards = { ...get().boards }
@@ -524,6 +534,22 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       dirtyBoards.add(boardId)
       set({ boards, deletedBoards: deleted, dirtyBoards, assetsTouched, selection: new Set() })
       scheduleFlush()
+      const what = nestedBoards ? `${nestedBoards === 1 ? 'Board' : `${nestedBoards} boards`} and ${removed.length - nestedBoards ? `${removed.length - nestedBoards} more ` : ''}` : removed.length === 1 ? cardSummary(removed[0]) : `${removed.length} items`
+      toast.action(`${what} deleted (⌘Z to undo)`, 'Undo', () => get().undoRemoval(), nestedBoards ? 'PepeHands' : 'peepoShy')
+    },
+
+    undoRemoval: () => {
+      const snap = undoStack.pop()
+      if (!snap) return false
+      // everything that was live before comes back; boards deleted since are files again
+      const dirty = new Set(snap.dirtyBoards)
+      for (const id of Object.keys(snap.boards)) if (!get().boards[id]) dirty.add(id)
+      for (const id of Object.keys(snap.boards)) if (JSON.stringify(snap.boards[id]) !== JSON.stringify(get().boards[id])) dirty.add(id)
+      const deleted = new Set([...get().deletedBoards].filter((id) => !snap.boards[id]))
+      set({ boards: snap.boards, dirtyBoards: dirty, deletedBoards: deleted, selection: new Set(), currentBoardId: get().boards[get().currentBoardId ?? ''] ? get().currentBoardId : snap.currentBoardId })
+      scheduleFlush()
+      toast.ok('Restored.', 'peepoClap')
+      return true
     },
 
     bringToFront: (boardId, cardId) =>
@@ -714,7 +740,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       const fs = get().fs
       if (!fs || get().viewingRef) return false
       if (!isDirty(get())) {
-        toast.info('Nothing to save. peepoSit', 'peepoSit')
+        toast.info('Nothing to save.', 'peepoSit')
         return false
       }
       set({ busy: 'saving' })
@@ -734,7 +760,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         const n = changes.added.length + changes.modified.length + changes.deleted.length
         if (n === 0) {
           set({ dirtyBoards: new Set(), deletedBoards: new Set(), assetsTouched: false, metaDirty: false, treeDirty: false })
-          toast.info('No changes in the tree. peepoSit', 'peepoSit')
+          toast.info('No changes in the tree.', 'peepoSit')
           return false
         }
         const msg = message?.trim() || defaultMessage(changes)
@@ -760,7 +786,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     sync: async ({ silent } = {}) => {
       const ctx = syncCtx()
       if (!ctx) {
-        toast.err('No remote configured. Open settings. monkaS', 'monkaS')
+        toast.err('No remote configured. Open settings.', 'monkaS')
         return
       }
       const { fs } = ctx
@@ -773,28 +799,28 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         const dirty = isDirty(get())
         switch (st.relation) {
           case 'same':
-            if (!silent) toast.info('Already in sync. peepoSit', 'peepoSit')
+            if (!silent) toast.info('Already in sync.', 'peepoSit')
             break
           case 'remote-empty':
           case 'ahead':
             if (!ctx.auth.token) throw new Error('A token is needed to push. Add one in Settings.')
             await pushRemote(ctx, progress)
-            toast.ok(`Pushed ${st.ahead || ''} ${st.ahead === 1 ? 'commit' : 'commits'}. peepoRun`.replace('  ', ' '), 'peepoRun')
+            toast.ok(`Pushed ${st.ahead || ''} ${st.ahead === 1 ? 'commit' : 'commits'}.`.replace('  ', ' '), 'peepoRun')
             break
           case 'local-empty':
           case 'behind':
             if (dirty) {
-              toast.err('Remote has new changes — Save yours first, then pull. peepoShy', 'peepoShy')
+              toast.err('Remote has new changes — Save yours first, then pull.', 'peepoShy')
               break
             }
             progress('updating working tree…')
             await resetTo(fs, remote!)
             await reloadBoards(fs)
-            toast.ok(`Pulled ${st.behind} ${st.behind === 1 ? 'commit' : 'commits'}. peepoGlad`, 'peepoGlad')
+            toast.ok(`Pulled ${st.behind} ${st.behind === 1 ? 'commit' : 'commits'}.`, 'peepoGlad')
             break
           case 'diverged':
             if (dirty) {
-              toast.err('Remote has new changes — Save yours first, then sync. peepoShy', 'peepoShy')
+              toast.err('Remote has new changes — Save yours first, then sync.', 'peepoShy')
               break
             }
             set({ divergence: st })
@@ -822,14 +848,14 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
           // diverged: something to decide — say so once per remote head, don't nag
           if (st.relation === 'diverged' && lastNotifiedRemote !== remote) {
             lastNotifiedRemote = remote
-            toast.info('Others pushed changes that conflict with yours — press ⇅ to merge. monkaS', 'monkaS')
+            toast.info('Others pushed changes that conflict with yours — press ⇅ to merge.', 'monkaS')
           }
           return
         }
         if (isDirty(get())) {
           if (lastNotifiedRemote !== remote) {
             lastNotifiedRemote = remote
-            toast.info(`${await authorsBetween(fs, remote, local)} pushed changes — Save yours to pull them in. peepoShy`, 'peepoShy')
+            toast.info(`${await authorsBetween(fs, remote, local)} pushed changes — Save yours to pull them in.`, 'peepoShy')
           }
           return
         }
@@ -839,7 +865,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         await resetTo(fs, remote)
         await reloadBoards(fs)
         lastNotifiedRemote = remote
-        toast.ok(`${who} added changes (${st.behind} ${st.behind === 1 ? 'commit' : 'commits'}). peepoHey`, 'peepoHey')
+        toast.ok(`${who} added changes (${st.behind} ${st.behind === 1 ? 'commit' : 'commits'}).`, 'peepoHey')
       } catch (e) {
         // background job: log, don't toast on every flaky network tick
         console.warn('auto-sync', e)
@@ -857,17 +883,17 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         const { fs } = ctx
         if (mode === 'force-push') {
           await pushRemote(ctx, progress, true)
-          toast.ok('Remote overwritten with your version. monkaS', 'monkaS')
+          toast.ok('Remote overwritten with your version.', 'monkaS')
         } else if (mode === 'take-theirs') {
           await resetTo(fs, d.remote)
           await reloadBoards(fs)
-          toast.ok('Took the remote version. Your commits are gone from this branch. FeelsOkayMan', 'FeelsOkayMan')
+          toast.ok('Took the remote version. Your commits are gone from this branch.', 'FeelsOkayMan')
         } else {
           const r = await mergeRemote(fs, d.local, d.remote, mode === 'merge-ours' ? 'ours' : 'theirs', identity(), progress)
           await reloadBoards(fs)
           await pushRemote(ctx, progress)
           toast.ok(
-            `Merged${r.files ? ` ${r.files} file${r.files === 1 ? '' : 's'}` : ''}${r.conflicts ? `, ${r.conflicts} conflict${r.conflicts === 1 ? '' : 's'} resolved` : ''} and pushed. peepoClap`,
+            `Merged${r.files ? ` ${r.files} file${r.files === 1 ? '' : 's'}` : ''}${r.conflicts ? `, ${r.conflicts} conflict${r.conflicts === 1 ? '' : 's'} resolved` : ''} and pushed.`,
             'peepoClap',
           )
         }
@@ -958,7 +984,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
           currentBoardId: meta.rootBoardId,
         })
         await get().refreshGit()
-        toast.ok('Restored. Time travel complete. peepoPog', 'peepoPog')
+        toast.ok('Restored. Time travel complete.', 'peepoPog')
       } catch (e) {
         toast.err(`Restore failed: ${(e as Error).message}`)
       } finally {

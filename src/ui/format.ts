@@ -1,4 +1,4 @@
-import type { TextField } from '../store/editing'
+import type { EditorHandle, TextField } from '../store/editing'
 
 /**
  * Markdown formatting on a textarea selection. Writes through `setRangeText` and fires an `input`
@@ -56,4 +56,16 @@ export function toggleLinePrefix(ta: TextField, prefix: string) {
   const all = lines.every((l) => l.startsWith(prefix))
   const out = lines.map((l) => (all ? l.slice(prefix.length) : l.startsWith(prefix) ? l : prefix + l)).join('\n')
   commit(ta, out, lineStart, lineEnd, lineStart, lineStart + out.length)
+}
+
+/** EditorHandle over a plain <textarea> / <input> */
+export function fieldHandle(el: TextField): EditorHandle {
+  return {
+    key: el,
+    wrap: (b, a, ph) => toggleWrap(el, b, a, ph),
+    link: (url, text) => insertLink(el, url, text),
+    linePrefix: (p) => toggleLinePrefix(el, p),
+    hasSelection: () => (el.selectionStart ?? 0) !== (el.selectionEnd ?? 0),
+    focus: () => el.focus(),
+  }
 }

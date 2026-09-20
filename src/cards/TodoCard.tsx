@@ -3,6 +3,7 @@ import { useItemRects } from '../canvas/itemRects'
 import { useViewport } from '../canvas/viewport'
 import { InlineMd } from './Inline'
 import { useEditing } from '../store/editing'
+import { fieldHandle } from '../ui/format'
 import type { TodoCard as TodoCardT } from '../model/types'
 import { newId } from '../model/types'
 import { useWorkspace } from '../store/workspace'
@@ -21,7 +22,7 @@ export function TodoCard({ card, boardId, readOnly }: CardProps<TodoCardT>) {
   useEffect(() => {
     const ul = list.current
     const shell = ul?.closest('[data-card]') as HTMLElement | null
-    if (!ul || !shell) return
+    if (!ul || !shell || ul.closest('[data-preview]')) return // previews must not report geometry for the real card
     const report = () => {
       const k = useViewport.getState().get(boardId).scale || 1
       const top = shell.getBoundingClientRect().top
@@ -75,7 +76,7 @@ export function TodoCard({ card, boardId, readOnly }: CardProps<TodoCardT>) {
                 autoFocus
                 value={it.text}
                 onChange={(e) => setItems(card.items.map((x) => (x.id === it.id ? { ...x, text: e.target.value } : x)))}
-                onFocus={(e) => useEditing.getState().begin(boardId, card.id, e.currentTarget, 'inline')}
+                onFocus={(e) => useEditing.getState().begin(boardId, card.id, fieldHandle(e.currentTarget), 'inline')}
                 onBlur={(e) => {
                   if (useEditing.getState().hold) return
                   useEditing.getState().end(e.currentTarget)
