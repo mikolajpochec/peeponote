@@ -4,6 +4,7 @@ import { selectBoards, useWorkspace } from '../store/workspace'
 import { Peepo } from './Peepo'
 import { BoardIconView } from './BoardIcon'
 import { useArrivals } from '../canvas/arrivals'
+import { revealFolder } from '../fs'
 import { copyLink } from '../nav/links'
 import { countItems } from '../store/removeCards'
 import { useProperties } from './PropertiesDialog'
@@ -138,7 +139,13 @@ export function Sidebar({ onOpenSettings, onNavigate, onClose }: { onOpenSetting
           <div className="truncate text-lg font-black tracking-tight" title="peeponote">
             {meta?.name || 'peeponote'}
           </div>
-          <div className="truncate text-[11px] text-frog-200/60">{fs?.label}</div>
+          {fs?.kind === 'folder' ? (
+            <button onClick={() => revealFolder(fs)} title="Show where this folder is (opens the system folder dialog there)" className="block max-w-full truncate text-left text-[11px] text-frog-200/60 hover:text-frog-100 hover:underline">
+              {fs.label}
+            </button>
+          ) : (
+            <div className="truncate text-[11px] text-frog-200/60">{fs?.label}</div>
+          )}
         </div>
         <button onClick={() => (onClose ? onClose() : setCollapsed(true))} className="px-2 py-1 text-frog-200/50 hover:text-frog-100" title={onClose ? 'Close' : 'Collapse'}>
           {onClose ? '✕' : '«'}

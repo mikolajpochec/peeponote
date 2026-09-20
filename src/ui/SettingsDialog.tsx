@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { supportsFolderAccess } from '../fs'
+import { revealFolder, supportsFolderAccess } from '../fs'
 import { wipeBrowserFS } from '../fs/lightning'
 import { DEFAULT_CORS_PROXY } from '../git/repo'
 import { TokenHelp } from './TokenHelp'
@@ -290,6 +290,16 @@ function StorageTab() {
           </button>
         </div>
       </Row>
+      {fs?.kind === 'folder' && (
+        <Row
+          title="Where is the folder?"
+          sub="A web app can't open Finder / Explorer directly, so this opens the system folder dialog at your folder — the path is shown there, and you can drag the folder out of it. Cancel the dialog when done."
+        >
+          <button className={btn} onClick={() => revealFolder(fs).then((ok) => !ok && toast.err('The folder handle is gone — pick the folder again.'))}>
+            🔍 Show folder location…
+          </button>
+        </Row>
+      )}
       <Row title="Open a shared repo here" sub="Only into empty storage — wipe the browser repo or pick an empty folder first.">
         <div className="flex gap-2">
           <input className={field} placeholder="https://github.com/you/my-boards.git" value={cloneUrl} onChange={(e) => setCloneUrl(e.target.value)} />

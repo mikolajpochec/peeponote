@@ -63,3 +63,20 @@ export async function useBrowserStorage(slot?: { name: string; label: string }):
   const s = slot ?? activeSlot()
   return createBrowserFS(s.name, s.label)
 }
+
+/**
+ * Show where the current folder is. A web page can't open Finder/Explorer for a folder it holds a handle to
+ * (there's no path and no "reveal" API), so we open the system folder picker *at* that folder — the closest
+ * thing available. Returns true when a picker was shown.
+ */
+export async function revealFolder(fs: PeepoFS): Promise<boolean> {
+  if (!supportsFolderAccess || fs.kind !== 'folder') return false
+  const handle = await kvGet<FileSystemDirectoryHandle>(FOLDER_HANDLE_KEY).catch(() => undefined)
+  if (!handle) return false
+  try {
+    await window.showDirectoryPicker({ mode: 'read', startIn: handle })
+  } catch (e) {
+    if ((e as DOMException)?.name !== 'AbortError') throw e
+  }
+  return true
+}
