@@ -59,6 +59,8 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
   const reviewOn = useReview((s) => s.mode.on)
   const reviewId = useReview((s) => s.mode.reviewId)
   const clickStart = useRef<{ x: number; y: number } | null>(null)
+  const [barH, setBarH] = useState(0)
+  const onBarHeight = useCallback((h: number) => setBarH(h), [])
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   const [draft, setDraft] = useState<DraftConnector | null>(null)
   const [menu, setMenu] = useState<{ x: number; y: number; at: { x: number; y: number }; cardId: string | null; connectorId: string | null } | null>(null)
@@ -779,12 +781,13 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         </div>
       )}
       {!readOnly && <Palette board={board} />}
-      {reviewOn && <ReviewBar board={board} />}
+      {reviewOn && <ReviewBar board={board} onHeight={onBarHeight} />}
       {backTo && (
         <button
           onClick={goBack}
           title={`Back to ${backTo.name || 'Untitled'}`}
-          className={`absolute left-3 z-20 flex max-w-[60%] items-center gap-1.5 rounded-full border border-(--hair) bg-swamp-900/85 px-3 py-1.5 text-[12px] font-semibold text-frog-50 shadow-lg backdrop-blur hover:bg-swamp-800 ${reviewOn ? 'top-12' : 'top-3'}`}
+          className="absolute left-3 z-20 flex max-w-[60%] items-center gap-1.5 rounded-full border border-(--hair) bg-swamp-900/85 px-3 py-1.5 text-[12px] font-semibold text-frog-50 shadow-lg backdrop-blur hover:bg-swamp-800"
+          style={{ top: 12 + (reviewOn ? barH : 0) }}
         >
           <span aria-hidden>←</span>
           <span className="truncate">{backTo.name || 'Untitled'}</span>

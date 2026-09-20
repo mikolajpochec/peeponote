@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Board } from '../model/types'
 import { useMe, useReview } from '../store/review'
 import { useWorkspace } from '../store/workspace'
@@ -12,7 +12,20 @@ import { StatusPill } from './NotificationsPanel'
  * The strip at the top of the canvas while reviewing: what's being reviewed, who asked, verdict buttons for
  * reviewers, close for the requester, exit. Also the "click a card to comment" hint.
  */
-export function ReviewBar({ board }: { board: Board }) {
+export function ReviewBar({ board, onHeight }: { board: Board; onHeight?: (h: number) => void }) {
+  const root = useRef<HTMLDivElement>(null)
+  // the bar wraps and grows (note line, verdict chips): overlays below it need its real height
+  useEffect(() => {
+    const el = root.current
+    if (!el || !onHeight) return
+    const ro = new ResizeObserver(() => onHeight(el.offsetHeight))
+    ro.observe(el)
+    onHeight(el.offsetHeight)
+    return () => {
+      ro.disconnect()
+      onHeight(0)
+    }
+  }, [onHeight])
   const mode = useReview((s) => s.mode)
   const setMode = useReview((s) => s.setMode)
   const reviews = useReview((s) => s.reviews)
@@ -48,7 +61,7 @@ export function ReviewBar({ board }: { board: Board }) {
   }
 
   return (
-    <div className="pointer-events-auto absolute inset-x-0 top-0 z-20 flex flex-wrap items-center gap-2 border-b border-amber-400/40 bg-amber-500/15 px-3 py-1.5 text-[13px] backdrop-blur" data-nodrag>
+    <div ref={root} className="pointer-events-auto absolute inset-x-0 top-0 z-20 flex flex-wrap items-center gap-2 border-b border-amber-400/40 bg-amber-500/15 px-3 py-1.5 text-[13px] backdrop-blur" data-nodrag>
       <span className="font-black text-amber-200">🔍 Review mode</span>
       {review ? (
         <>
