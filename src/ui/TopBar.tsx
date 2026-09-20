@@ -7,6 +7,7 @@ import { ColorPicker } from './ColorPicker'
 import { resolveTheme } from '../theme/themes'
 import { useReview } from '../store/review'
 import { useUnseenCount } from '../review/notifications'
+import { Avatar } from '../review/Avatar'
 
 export function TopBar({
   onToggleHistory,
@@ -88,6 +89,7 @@ export function TopBar({
       {reviewOn ? <ReviewToggle compact={!!onToggleSidebar} /> : <SaveBar compact={!!onToggleSidebar} />}
       {!reviewOn && <ReviewToggle compact={!!onToggleSidebar} />}
       <Bell compact={!!onToggleSidebar} />
+      <Identity compact={!!onToggleSidebar} />
       <button
         onClick={onToggleHistory}
         title="History"
@@ -130,6 +132,29 @@ function Bell({ compact }: { compact: boolean }) {
       🔔
       {n > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-center text-[10px] font-black leading-4 text-black">{n > 99 ? '99+' : n}</span>}
       {!compact && <span className="max-md:hidden"> </span>}
+    </button>
+  )
+}
+
+/** who you are here: avatar + name when verified, "Guest" otherwise; click opens the identity dialog */
+function Identity({ compact }: { compact: boolean }) {
+  const identity = useReview((s) => s.identity)
+  const open = () => window.dispatchEvent(new CustomEvent('peeponote:identify'))
+  if (identity.kind === 'verified')
+    return (
+      <button onClick={open} title={`${identity.account.name} <${identity.account.email}> — verified on this device. Click for picture / log out.`} className="flex h-8 items-center gap-1.5 rounded-md px-1.5 hover:bg-(--hover-strong)">
+        <Avatar person={identity.account} size={24} />
+        {!compact && <span className="max-w-28 truncate text-[13px] font-semibold">{identity.account.name}</span>}
+      </button>
+    )
+  return (
+    <button
+      onClick={open}
+      title={identity.kind === 'mismatch' ? 'Your saved password does not fit your account — fix it' : 'You are a guest: editing works, comments and reviews need a password'}
+      className={`flex h-8 items-center gap-1.5 rounded-md px-2 text-[13px] font-semibold ${identity.kind === 'mismatch' ? 'bg-red-900/50 text-red-100 hover:bg-red-900/70' : 'bg-swamp-700 text-frog-200 hover:bg-swamp-600'}`}
+    >
+      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-swamp-500 text-[11px]">?</span>
+      {!compact && <span>{identity.kind === 'mismatch' ? 'Wrong password' : 'Guest'}</span>}
     </button>
   )
 }

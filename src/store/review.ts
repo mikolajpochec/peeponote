@@ -217,8 +217,9 @@ export const useReview = create<ReviewState>((set, get) => {
         seenAuthors.add(e)
         authors.push({ name: a.name, email: e })
       }
-      set({ loaded: true, accounts, reviews, verdicts, comments, states, pictures, verified, authors })
+      set({ accounts, reviews, verdicts, comments, states, pictures, verified, authors })
       await get().refreshIdentity()
+      set({ loaded: true }) // only now: the identity prompt must see the settled identity, not the guest default
     },
 
     refreshIdentity: async () => {
