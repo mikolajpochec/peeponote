@@ -3,6 +3,7 @@ import type { Board } from '../model/types'
 import { isCardAnchor, type Comment } from '../model/review'
 import { anchorKey, useMe, useReview } from '../store/review'
 import { useItemRects } from '../canvas/itemRects'
+import { useWorkspace } from '../store/workspace'
 import { InlineMd } from '../cards/Inline'
 import { Popover } from '../ui/Popover'
 import { Avatar } from './Avatar'
@@ -62,7 +63,10 @@ export function CommentLayer({ board, scale }: { board: Board; scale: number }) 
   const draft = useReview((s) => s.draft)
   const verified = useReview((s) => s.verified)
   const setOpenThread = useReview((s) => s.setOpenThread)
+  const resolveThread = useReview((s) => s.resolveThread)
+  const authorOnly = useWorkspace((s) => !!s.meta?.settings?.review?.authorOnlyClose)
   const me = useMe()
+  const canResolve = (root: Comment) => !!me && (!authorOnly || root.author.email.toLowerCase() === me.email.toLowerCase())
   const states = useReview((s) => s.states)
   const seen = me ? states[userKey(me.email)]?.seen ?? {} : {}
   const [sizes, setSizes] = useState<Record<string, number>>({})
@@ -224,6 +228,7 @@ export function CommentLayer({ board, scale }: { board: Board; scale: number }) 
               verified={verified[t.root.id] !== false && verified[t.root.id] !== undefined}
               onSize={(h) => report(t.key, h)}
               onOpen={() => setOpenThread({ boardId: board.id, anchorKey: t.anchor })}
+              onResolve={canResolve(t.root) ? () => resolveThread(t.root.id, true) : undefined}
             />
           )
         })}
@@ -256,6 +261,19 @@ export function CommentLayer({ board, scale }: { board: Board; scale: number }) 
                 <div className="line-clamp-2 text-[12px] text-frog-100">{t.root.text}</div>
                 {t.replies.length > 0 && <div className="text-[11px] text-frog-200/50">{t.replies.length} repl{t.replies.length === 1 ? 'y' : 'ies'}</div>}
               </div>
+              {canResolve(t.root) && !t.root.resolved && (
+                <span
+                  role="button"
+                  title="Resolve"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    resolveThread(t.root.id, true)
+                  }}
+                  className="rounded px-1.5 py-0.5 text-[11px] font-bold text-frog-300 hover:bg-frog-700/60 hover:text-white"
+                >
+                  ✓
+                </span>
+              )}
             </button>
           ))}
           </div>
@@ -364,7 +382,7 @@ function useAnimatedPlacement(target: Map<string, Placement | null>): Map<string
   return cur
 }
 
-const Bubble = memo(function Bubble({ thread, place, verified, leaving = false, onSize, onOpen }: { thread: Thread; place: Placement; verified: boolean; leaving?: boolean; onSize: (h: number) => void; onOpen: () => void }) {
+const Bubble = memo(function Bubble({ thread, place, verified, leaving = false, onSize, onOpen, onResolve }: { thread: Thread; place: Placement; verified: boolean; leaving?: boolean; onSize: (h: number) => void; onOpen: () => void; onResolve?: () => void }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = ref.current
@@ -387,7 +405,7 @@ const Bubble = memo(function Bubble({ thread, place, verified, leaving = false, 
         onOpen()
       }}
       data-leaving={leaving || undefined}
-      className={`bubble pointer-events-auto absolute cursor-pointer select-none rounded-lg bg-swamp-800 p-2 text-frog-50 shadow-xl ring-1 ring-(--board-line-sel) hover:ring-2 ${t.root.resolved ? 'opacity-50' : ''}`}
+      className={`bubble group/bubble pointer-events-auto absolute cursor-pointer select-none rounded-lg bg-swamp-800 p-2 text-frog-50 shadow-xl ring-1 ring-(--board-line-sel) hover:ring-2 ${t.root.resolved ? 'opacity-50' : ''}`}
       style={{ left: place.x, top: place.y, width: place.w }}
     >
       <div className="flex items-center gap-1.5">
@@ -395,6 +413,18 @@ const Bubble = memo(function Bubble({ thread, place, verified, leaving = false, 
         <span className="min-w-0 flex-1 truncate text-[12px] font-bold">{t.root.author.name}</span>
         <span className="text-[10px] text-frog-200/50">{timeAgo(t.root.createdAt)}</span>
         {!verified && <span className="rounded bg-swamp-600 px-1 text-[8px] font-bold uppercase text-frog-200/60">unverified</span>}
+        {onResolve && !t.root.resolved && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onResolve()
+            }}
+            title="Resolve this thread"
+            className="ml-0.5 rounded px-1 text-[11px] font-bold text-frog-300 opacity-0 transition-opacity hover:bg-frog-700/60 hover:text-white group-hover/bubble:opacity-100"
+          >
+            ✓
+          </button>
+        )}
       </div>
       <div className="mt-1 max-h-[8.5rem] overflow-hidden text-[12px] leading-snug [&_p]:m-0">
         <InlineMd text={t.root.text} />

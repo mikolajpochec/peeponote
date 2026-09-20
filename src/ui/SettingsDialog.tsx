@@ -281,14 +281,14 @@ function WorkspaceTab() {
       <label className="mb-4 flex items-start gap-2 text-[13px]">
         <input
           type="checkbox"
-          checked={!!meta?.settings?.review?.anyoneCanClose}
+          checked={!!meta?.settings?.review?.authorOnlyClose}
           disabled={locked}
-          onChange={(e) => updateMeta({ settings: { ...meta?.settings, review: { anyoneCanClose: e.target.checked } } })}
+          onChange={(e) => updateMeta({ settings: { ...meta?.settings, review: { authorOnlyClose: e.target.checked } } })}
           className="mt-0.5 accent-frog-500"
         />
         <span>
-          Anyone may resolve threads and close reviews
-          <div className={hint}>Off: only the comment's author resolves it and only the person who asked closes the review.</div>
+          Only authors may resolve threads and close reviews
+          <div className={hint}>Off (default): anyone can resolve a thread or close a review. On: only the comment's author resolves it and only the person who asked closes the review.</div>
         </span>
       </label>
       <Row

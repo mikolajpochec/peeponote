@@ -186,7 +186,7 @@ export interface Board {
 export interface WorkspaceSettings {
   snapToGrid?: boolean
   /** review: who may resolve threads / close reviews (default: the author / requester only) */
-  review?: { anyoneCanClose?: boolean }
+  review?: { authorOnlyClose?: boolean }
 }
 
 export interface WorkspaceMeta {

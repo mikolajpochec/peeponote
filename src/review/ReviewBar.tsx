@@ -22,7 +22,7 @@ export function ReviewBar({ board }: { board: Board }) {
   const closeReview = useReview((s) => s.closeReview)
   const identity = useReview((s) => s.identity)
   const me = useMe()
-  const anyoneCanClose = useWorkspace((s) => !!s.meta?.settings?.review?.anyoneCanClose)
+  const anyoneCanClose = useWorkspace((s) => !s.meta?.settings?.review?.authorOnlyClose)
   const select = useWorkspace((s) => s.select)
   const [note, setNote] = useState('')
   const [asking, setAsking] = useState<null | 'approved' | 'changes-requested'>(null)

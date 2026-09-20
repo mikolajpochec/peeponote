@@ -4,6 +4,7 @@ import { EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/vi
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
 import { livePreview } from './livePreview'
+import { mentions } from './mentions'
 import { useEditing, type EditorHandle } from '../store/editing'
 
 export interface MdEditorProps {
@@ -73,6 +74,7 @@ export function MdEditor({ value, onChange, onDone, boardId, cardId, mode, place
       history(),
       markdown(),
       livePreview,
+      ...mentions,
       EditorView.lineWrapping,
       cmPlaceholder(placeholder ?? ''),
       keymap.of([

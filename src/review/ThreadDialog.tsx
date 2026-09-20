@@ -35,7 +35,7 @@ export function ThreadDialog() {
   const mode = useReview((s) => s.mode)
   const me = useMe()
   const board = useWorkspace((s) => (open ? s.boards[open.boardId] : undefined))
-  const anyoneCanClose = useWorkspace((s) => !!s.meta?.settings?.review?.anyoneCanClose)
+  const anyoneCanClose = useWorkspace((s) => !s.meta?.settings?.review?.authorOnlyClose)
   const [reply, setReply] = useState<Record<string, string>>({})
   const [fresh, setFresh] = useState('')
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
