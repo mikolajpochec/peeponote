@@ -52,12 +52,16 @@ export interface ChangeSummary {
   deleted: string[]
 }
 
-/** Stage every change in the working tree. Returns what changed. */
-export async function stageAll(fs: PeepoFS): Promise<ChangeSummary> {
+/** `filepath` is inside `within` ('' = whole repo) */
+const inside = (filepath: string, within: string) => !within || filepath === within || filepath.startsWith(`${within}/`)
+
+/** Stage every change in the working tree (only under `within`, when given). Returns what changed. */
+export async function stageAll(fs: PeepoFS, within = ''): Promise<ChangeSummary> {
   const matrix = await git.statusMatrix({ ...ctx(fs) })
   const out: ChangeSummary = { added: [], modified: [], deleted: [] }
   for (const [filepath, head, workdir, stage] of matrix) {
     if (head === 1 && workdir === 1 && stage === 1) continue
+    if (!inside(filepath, within)) continue // stray files elsewhere in a monorepo are not ours to commit
     if (workdir === 0) {
       await git.remove({ ...ctx(fs), filepath })
       out.deleted.push(filepath)
@@ -70,9 +74,34 @@ export async function stageAll(fs: PeepoFS): Promise<ChangeSummary> {
   return out
 }
 
-export async function hasChanges(fs: PeepoFS): Promise<boolean> {
+export async function hasChanges(fs: PeepoFS, within = ''): Promise<boolean> {
   const matrix = await git.statusMatrix({ ...ctx(fs) })
-  return matrix.some(([, h, w, s]) => !(h === 1 && w === 1 && s === 1))
+  return matrix.some(([f, h, w, s]) => inside(f, within) && !(h === 1 && w === 1 && s === 1))
+}
+
+/** Folders ('' = root) holding peeponote.json in the commit `ref` points at. */
+export async function workspacesAt(fs: PeepoFS, ref: string): Promise<string[]> {
+  try {
+    const files = await git.listFiles({ ...ctx(fs), ref })
+    return files.filter((f) => f === 'peeponote.json' || f.endsWith('/peeponote.json')).map((f) => f.slice(0, Math.max(0, f.length - 'peeponote.json'.length - 1)))
+  } catch {
+    return []
+  }
+}
+
+/** Bring folders/files back from HEAD into the working tree (someone deleted them on disk). */
+export async function restorePaths(fs: PeepoFS, filepaths: string[]): Promise<void> {
+  await git.checkout({ ...ctx(fs), ref: await currentBranch(fs), filepaths: filepaths.map((p) => p || '.'), force: true })
+}
+
+/** Does `filepath` exist in the commit `ref` points at? */
+export async function existsAt(fs: PeepoFS, ref: string, filepath: string): Promise<boolean> {
+  try {
+    await readBlobAt(fs, ref, filepath)
+    return true
+  } catch {
+    return false
+  }
 }
 
 export const APP_TAG = '[peeponote]'

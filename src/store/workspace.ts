@@ -302,6 +302,19 @@ function safeName(name: string) {
   return name.replace(/[^\w.\-]+/g, '_')
 }
 
+/**
+ * Which of the discovered workspace folders to use. Folders whose peeponote.json is committed beat
+ * stray ones (an app instance that kept writing drafts to the old location after the workspace moved
+ * leaves an untracked peeponote.json behind — that must not win). Then the user's pick, then the first.
+ */
+async function chooseWorkspace(fs: PeepoFS, found: string[], preferred: string | null): Promise<string | undefined> {
+  if (!found.length) return undefined
+  const committed: string[] = []
+  for (const dir of found) if (await repo.existsAt(fs, 'HEAD', dir ? `${dir}/${WORKSPACE_FILE}` : WORKSPACE_FILE)) committed.push(dir)
+  const pool = committed.length ? committed : found
+  return preferred !== null && pool.includes(preferred) ? preferred : pool[0]
+}
+
 export const useWorkspace = create<WorkspaceState>((set, get) => {
   async function openFs(fs: PeepoFS) {
     set({ busy: 'loading', fs, status: 'ready', error: null, viewingRef: null, viewingBoards: {} })
@@ -310,12 +323,21 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         await repo.initRepo(fs)
       }
       // monorepo-friendly: the workspace is wherever peeponote.json lives (root, or one subfolder)
-      const found = await findWorkspaces(fs)
+      let found = await findWorkspaces(fs)
+      if (!found.length) {
+        // nothing on disk, but the last commit has a workspace → the folder was deleted by accident; bring it
+        // back instead of seeding a second, empty workspace next to it
+        const committed = await repo.workspacesAt(fs, 'HEAD')
+        if (committed.length) {
+          await repo.restorePaths(fs, committed)
+          found = await findWorkspaces(fs)
+          if (found.length) toast.info(`Restored the boards folder${committed[0] ? ` /${committed[0]}/` : ''} from the last save.`, 'peepoThink')
+        }
+      }
       const preferred = localStorage.getItem(`peeponote-wsroot:${fs.label}`)
-      let root: string
-      if (preferred !== null && found.includes(preferred)) root = preferred
-      else if (found.length) root = found[0]
-      else root = (await rootHasOtherFiles(fs)) ? 'peeponote' : '' // fresh workspace in a non-empty repo → its own folder
+      const chosen = await chooseWorkspace(fs, found, preferred)
+      // fresh workspace in a non-empty repo → its own folder
+      const root = chosen ?? ((await rootHasOtherFiles(fs)) ? 'peeponote' : '')
       setWsPrefix(root)
       if (!found.length && wsPrefix()) await mkdirp(fs, abs(fs, wsPrefix()))
       set({ wsRoot: wsPrefix(), wsCandidates: found })
@@ -335,7 +357,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         deletedBoards: new Set(),
         assetsTouched: false,
         metaDirty: false,
-        treeDirty: await repo.hasChanges(fs),
+        treeDirty: await repo.hasChanges(fs, wsPrefix()),
         selection: new Set(),
       })
       await get().refreshGit()
@@ -394,14 +416,12 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     const prev = get().boards
     undoStack.length = 0
     redoStack.length = 0
-    // the workspace folder may have moved in the commits we just pulled (e.g. repo turned into a monorepo)
-    if (!(await exists(fs, abs(fs, wp(WORKSPACE_FILE))))) {
-      const found = await findWorkspaces(fs)
-      if (found.length) {
-        setWsPrefix(found[0])
-        set({ wsRoot: found[0], wsCandidates: found })
-      }
-    }
+    // the workspace folder may have moved in the commits we just pulled (e.g. repo turned into a monorepo):
+    // re-pick, preferring the committed location over leftovers at the old one
+    const found = await findWorkspaces(fs)
+    const chosen = await chooseWorkspace(fs, found, wsPrefix())
+    if (chosen !== undefined && chosen !== wsPrefix()) setWsPrefix(chosen)
+    set({ wsRoot: wsPrefix(), wsCandidates: found })
     const { meta, boards } = await loadBoards(fs)
     const arrived = diffWorkspaces(prev, boards)
     useArrivals.getState().mark(arrived.cards, arrived.boards)
@@ -414,7 +434,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       deletedBoards: new Set(),
       assetsTouched: false,
       metaDirty: false,
-      treeDirty: await repo.hasChanges(fs),
+      treeDirty: await repo.hasChanges(fs, wsPrefix()),
       selection: new Set(),
     })
     await get().refreshGit()
@@ -435,6 +455,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         return undefined
       }
     }
+    // the workspace itself moved on the remote (monorepo restructuring) → take the full merge path instead
+    if ((await at(remote, WORKSPACE_FILE)) === undefined) return false
     const plan: { id: string; json: string }[] = []
     for (const id of s.dirtyBoards) {
       const mine = s.boards[id]
@@ -898,7 +920,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
             if (!referenced.has(`${ASSETS_DIR}/${f}`)) await fs.promises.unlink(`${assetsDir}/${f}`)
           }
         }
-        const changes = await repo.stageAll(fs)
+        const changes = await repo.stageAll(fs, wsPrefix())
         const n = changes.added.length + changes.modified.length + changes.deleted.length
         if (n === 0) {
           set({ dirtyBoards: new Set(), deletedBoards: new Set(), assetsTouched: false, metaDirty: false, treeDirty: false })

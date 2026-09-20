@@ -18,22 +18,29 @@ export interface Settings {
   /** first-run wizard finished (or skipped) */
   onboarded: boolean
   theme: ThemeName
-  set: (patch: Partial<Omit<Settings, 'set'>>) => void
+  set: (patch: Partial<Omit<Settings, 'set' | 'reset'>>) => void
+  /** back to factory defaults (token gone, wizard shows again) */
+  reset: () => void
+}
+
+const DEFAULTS: Omit<Settings, 'set' | 'reset'> = {
+  authorName: '',
+  authorEmail: '',
+  token: '',
+  username: '',
+  corsProxy: DEFAULT_CORS_PROXY,
+  transport: 'auto',
+  autoPull: true,
+  onboarded: false,
+  theme: 'dark',
 }
 
 export const useSettings = create<Settings>()(
   persist(
     (set) => ({
-      authorName: '',
-      authorEmail: '',
-      token: '',
-      username: '',
-      corsProxy: DEFAULT_CORS_PROXY,
-      transport: 'auto',
-      autoPull: true,
-      onboarded: false,
-      theme: 'dark',
+      ...DEFAULTS,
       set: (patch) => set(patch),
+      reset: () => set({ ...DEFAULTS }),
     }),
     { name: 'peeponote-settings' },
   ),
