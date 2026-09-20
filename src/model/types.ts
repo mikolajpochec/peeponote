@@ -45,6 +45,8 @@ export interface CardBase {
   h: number
   z: number
   style?: CardStyle
+  /** cards sharing a groupId select and move together */
+  groupId?: string
 }
 
 export interface NoteCard extends CardBase {

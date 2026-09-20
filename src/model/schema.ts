@@ -22,6 +22,7 @@ const base = {
   h: z.number(),
   z: z.number().default(0),
   style: cardStyleSchema.optional(),
+  groupId: z.string().optional(),
 }
 
 const cardSchema = z.discriminatedUnion('type', [

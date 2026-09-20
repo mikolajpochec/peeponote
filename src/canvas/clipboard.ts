@@ -65,10 +65,16 @@ export function pastePayload(boardId: string, payload: ClipPayload, at?: { x: nu
   const dx = at ? at.x - minX : 24
   const dy = at ? at.y - minY : 24
   const idMap = new Map<string, string>()
+  const groupMap = new Map<string, string>()
   const cards = payload.cards.map((c) => {
     const id = newId()
     idMap.set(c.id, id)
-    return { ...structuredClone(c), id, x: Math.round(c.x + dx), y: Math.round(c.y + dy) }
+    const copy = { ...structuredClone(c), id, x: Math.round(c.x + dx), y: Math.round(c.y + dy) }
+    if (copy.groupId) {
+      if (!groupMap.has(copy.groupId)) groupMap.set(copy.groupId, newId())
+      copy.groupId = groupMap.get(copy.groupId)
+    }
+    return copy
   })
   const remap = (a: Anchor): Anchor => ('cardId' in a ? { cardId: idMap.get(a.cardId) ?? a.cardId, side: a.side } : { x: Math.round(a.x + dx), y: Math.round(a.y + dy) })
   const connectors = payload.connectors.map((k) => ({ ...structuredClone(k), id: newId(), from: remap(k.from), to: remap(k.to) }))

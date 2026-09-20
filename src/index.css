@@ -42,6 +42,10 @@ html, body, #root {
 
 * { box-sizing: border-box; }
 
+/* app chrome (toolbars, menus, sidebar…) is never text-selectable; only real text fields and previews are */
+body { user-select: none; -webkit-user-select: none; }
+input, textarea, [contenteditable="true"], pre, code, .selectable { user-select: text; -webkit-user-select: text; }
+
 .canvas-bg {
   background-color: var(--color-swamp-800);
   background-image:

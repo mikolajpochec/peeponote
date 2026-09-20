@@ -2,9 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 import type { Card, CardStyle, FontFamily, TextAlign } from '../model/types'
 import { useWorkspace } from '../store/workspace'
 import { FILLS, FONT_LABEL, INKS, RADII, defaultBold, defaultFontSize } from '../canvas/styles'
+import { ALIGN_LABEL, alignCards, distributeCards, type AlignMode } from '../canvas/arrange'
 import { ColorPicker } from './ColorPicker'
 
 const ALIGN_ICON: Record<TextAlign, string> = { left: '⫷', center: '☰', right: '⫸' }
+const ARRANGE: [AlignMode, string][] = [
+  ['left', '⇤'],
+  ['hcenter', '↔'],
+  ['right', '⇥'],
+  ['top', '⤒'],
+  ['vcenter', '↕'],
+  ['bottom', '⤓'],
+]
 const FONTS: FontFamily[] = ['sans', 'serif', 'mono', 'hand']
 
 const btn = 'flex h-7 min-w-7 items-center justify-center rounded-md px-1 text-[13px] font-bold text-frog-100 hover:bg-(--hover-strong)'
@@ -13,14 +22,21 @@ const on = 'bg-frog-600 text-white hover:bg-frog-500'
 /** Floating toolbar for styling the selected cards. */
 export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] }) {
   const styleCards = useWorkspace((s) => s.styleCards)
+  const moveCards = useWorkspace((s) => s.moveCards)
+  const groupCards = useWorkspace((s) => s.groupCards)
+  const ungroupCards = useWorkspace((s) => s.ungroupCards)
   const ids = cards.map((c) => c.id)
+  const many = cards.length > 1
+  const groupIds = new Set(cards.map((c) => c.groupId).filter(Boolean))
+  // one group covering the whole selection → offer ungroup; otherwise group
+  const oneGroup = groupIds.size === 1 && cards.every((c) => c.groupId)
   const first = cards[0]
   const s: CardStyle = first.style ?? {}
   const apply = (patch: Partial<CardStyle>) => styleCards(boardId, ids, patch)
   const textual = cards.some((c) => c.type !== 'asset' && c.type !== 'board')
   const size = s.fontSize ?? defaultFontSize(first)
   const bold = s.bold ?? defaultBold(first)
-  const [menu, setMenu] = useState<'font' | 'align' | null>(null)
+  const [menu, setMenu] = useState<'font' | 'align' | 'arrange' | null>(null)
   const root = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -93,6 +109,59 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
         </>
       )}
 
+      {(many || oneGroup) && (
+        <>
+          <Sep />
+          {many && (
+            <div className="relative">
+              <button className={btn} title="Align / distribute" onClick={() => setMenu(menu === 'arrange' ? null : 'arrange')}>
+                ⊞
+              </button>
+              {menu === 'arrange' && (
+                <Menu>
+                  <div className="flex gap-0.5">
+                    {ARRANGE.slice(0, 3).map(([m, icon]) => (
+                      <MenuItem key={m} active={false} title={ALIGN_LABEL[m]} onClick={() => (moveCards(boardId, alignCards(cards, m)), setMenu(null))}>
+                        {icon}
+                      </MenuItem>
+                    ))}
+                  </div>
+                  <div className="flex gap-0.5">
+                    {ARRANGE.slice(3).map(([m, icon]) => (
+                      <MenuItem key={m} active={false} title={ALIGN_LABEL[m]} onClick={() => (moveCards(boardId, alignCards(cards, m)), setMenu(null))}>
+                        {icon}
+                      </MenuItem>
+                    ))}
+                  </div>
+                  {cards.length > 2 && (
+                    <>
+                      <span className="my-0.5 h-px bg-(--hair)" />
+                      <MenuItem active={false} title="Equal horizontal gaps" onClick={() => (moveCards(boardId, distributeCards(cards, 'horizontal')), setMenu(null))}>
+                        ⇹ Distribute horizontally
+                      </MenuItem>
+                      <MenuItem active={false} title="Equal vertical gaps" onClick={() => (moveCards(boardId, distributeCards(cards, 'vertical')), setMenu(null))}>
+                        ⇳ Distribute vertically
+                      </MenuItem>
+                    </>
+                  )}
+                </Menu>
+              )}
+            </div>
+          )}
+          {oneGroup ? (
+            <button className={`${btn} ${on}`} title="Ungroup (⌘⇧G)" onClick={() => ungroupCards(boardId, ids)}>
+              ⧉
+            </button>
+          ) : (
+            many && (
+              <button className={btn} title="Group (⌘G)" onClick={() => groupCards(boardId, ids)}>
+                ⧉
+              </button>
+            )
+          )}
+        </>
+      )}
+
       <Sep />
       <button
         className={btn}
@@ -142,9 +211,9 @@ function Menu({ children, row }: { children: React.ReactNode; row?: boolean }) {
   )
 }
 
-function MenuItem({ children, active, onClick }: { children: React.ReactNode; active: boolean; onClick: () => void }) {
+function MenuItem({ children, active, onClick, title }: { children: React.ReactNode; active: boolean; onClick: () => void; title?: string }) {
   return (
-    <button onClick={onClick} className={`rounded-md px-2 py-1 text-left text-[13px] whitespace-nowrap ${active ? on : 'text-frog-100 hover:bg-(--hover-strong)'}`}>
+    <button onClick={onClick} title={title} className={`rounded-md px-2 py-1 text-left text-[13px] whitespace-nowrap ${active ? on : 'text-frog-100 hover:bg-(--hover-strong)'}`}>
       {children}
     </button>
   )

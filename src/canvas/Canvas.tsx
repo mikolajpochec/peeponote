@@ -16,6 +16,7 @@ import { TOOLS } from '../ui/Palette'
 import { copySelection, duplicateSelection, hasClipboard, pastePayload, readPayload } from './clipboard'
 import { downloadAsset } from '../cards/AssetCard'
 import { boardVars } from './styles'
+import { bbox } from './arrange'
 import { useSettings } from '../store/settings'
 import { resolveTheme } from '../theme/themes'
 import { LONG_PRESS_MS, LONG_PRESS_SLOP, activeTouches, isDuplicateDblClick, markLongPress, registerTap, shouldSwallowContextMenu, useIsMobile } from './touch'
@@ -46,6 +47,8 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
   const [menu, setMenu] = useState<{ x: number; y: number; at: { x: number; y: number }; cardId: string | null; connectorId: string | null } | null>(null)
   const bringToFront = useWorkspace((s) => s.bringToFront)
   const sendToBack = useWorkspace((s) => s.sendToBack)
+  const groupCards = useWorkspace((s) => s.groupCards)
+  const ungroupCards = useWorkspace((s) => s.ungroupCards)
   const navigate = useWorkspace((s) => s.navigate)
   const [dragOver, setDragOver] = useState(false)
   const spaceHeld = useRef(false)
@@ -151,6 +154,14 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         const sel = useWorkspace.getState().selection
         if (live && sel.size) duplicateSelection(live, sel)
       }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'g' && !readOnly) {
+        e.preventDefault()
+        const live = useWorkspace.getState().boards[board.id]
+        const sel = useWorkspace.getState().selection
+        const ids = live?.cards.filter((c) => sel.has(c.id)).map((c) => c.id) ?? []
+        if (e.shiftKey) ungroupCards(board.id, ids)
+        else if (ids.length > 1) groupCards(board.id, ids)
+      }
     }
     // system clipboard integration (fires for ⌘C/⌘X/⌘V outside inputs)
     const onCopy = (e: ClipboardEvent) => {
@@ -214,7 +225,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       document.removeEventListener('cut', onCut)
       document.removeEventListener('paste', onPaste)
     }
-  }, [board.id, board.cards, board.connectors, readOnly, removeCards, removeConnectors, clearSelection, select, setVp, addAssets, addCard])
+  }, [board.id, board.cards, board.connectors, readOnly, removeCards, removeConnectors, clearSelection, select, setVp, addAssets, addCard, groupCards, ungroupCards])
 
   /** board coords at the middle of the visible canvas */
   const viewCenter = () => {
@@ -325,6 +336,13 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         { kind: 'item', label: 'Bring to front', icon: '⤒', disabled: readOnly, onClick: () => ids.forEach((id) => bringToFront(board.id, id)) },
         { kind: 'item', label: 'Send to back', icon: '⤓', disabled: readOnly, onClick: () => sendToBack(board.id, ids) },
         sep,
+        ...(selCards.some((c) => c.groupId)
+          ? [{ kind: 'item', label: 'Ungroup', icon: '⧉', shortcut: '⌘⇧G', disabled: readOnly, onClick: () => ungroupCards(board.id, ids) } as MenuItem]
+          : []),
+        ...(n > 1 && !(selCards.every((c) => c.groupId) && new Set(selCards.map((c) => c.groupId)).size === 1)
+          ? [{ kind: 'item', label: `Group ${n} items`, icon: '⧉', shortcut: '⌘G', disabled: readOnly, onClick: () => groupCards(board.id, ids) } as MenuItem]
+          : []),
+        ...(n > 1 || selCards.some((c) => c.groupId) ? [sep] : []),
         { kind: 'item', label: n > 1 ? `Delete ${n} items` : 'Delete', icon: '✕', shortcut: '⌫', danger: true, disabled: readOnly, onClick: () => removeCards(board.id, ids) },
       )
       return items
@@ -495,6 +513,14 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
   const theme = useSettings((s) => resolveTheme(s.theme))
   const mobile = useIsMobile()
 
+  // dashed frame around each group that has a selected (or hovered) member
+  const activeGroups = new Set<string>()
+  for (const c of board.cards) if (c.groupId && (selection.has(c.id) || c.id === hoveredCard)) activeGroups.add(c.groupId)
+  const groupOutlines = [...activeGroups].flatMap((id) => {
+    const b = bbox(board.cards.filter((c) => c.groupId === id))
+    return b ? [{ id, ...b }] : []
+  })
+
   // style bar floats (unscaled) above the selected cards
   const selectedCards = board.cards.filter((c) => selection.has(c.id))
   let styleBarPos: { x: number; y: number; below: boolean } | null = null
@@ -556,6 +582,13 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
           }}
           onSelect={(id, additive) => select([id], additive)}
         />
+        {groupOutlines.map((g) => (
+          <div
+            key={g.id}
+            className="pointer-events-none absolute rounded-2xl border border-dashed"
+            style={{ left: g.x - 10, top: g.y - 10, width: g.w + 20, height: g.h + 20, borderColor: 'var(--board-line-sel)', opacity: 0.7 }}
+          />
+        ))}
         {board.cards.map((card) => (
           <CardView key={card.id} card={card} boardId={board.id} selected={selection.has(card.id)} readOnly={readOnly} scale={scale} />
         ))}

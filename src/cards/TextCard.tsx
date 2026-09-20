@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { TextCard as TextCardT } from '../model/types'
 import { useWorkspace } from '../store/workspace'
 import type { CardProps } from './CardView'
@@ -34,9 +34,11 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
   }, [editing])
 
   // auto: card hugs its content (wrapping at maxW). manual: keep user width, only grow height to fit.
-  // A ResizeObserver on the hidden measurer catches every reason the text box changes size:
-  // typing, style bar changes (font size / family / bold), late font loads.
-  useEffect(() => {
+  // Runs as a layout effect so the card is resized in the same frame the text changes — otherwise the
+  // textarea wraps at the old width for one paint and the caret visibly jumps while typing. The
+  // ResizeObserver on the hidden measurer catches the remaining reasons the box changes size:
+  // style bar changes (font size / family / bold), late font loads.
+  useLayoutEffect(() => {
     if (readOnly) return
     const m = measure.current
     if (!m) return

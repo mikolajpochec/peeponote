@@ -59,6 +59,7 @@ interface WorkspaceState {
 
   // navigation / selection
   navigate: (boardId: string) => void
+  /** selecting any member of a group selects the whole group */
   select: (ids: string[], additive?: boolean) => void
   clearSelection: () => void
 
@@ -67,6 +68,8 @@ interface WorkspaceState {
   updateCard: (boardId: string, cardId: string, patch: Partial<Card>) => void
   moveCards: (boardId: string, deltas: Record<string, { x: number; y: number }>) => void
   removeCards: (boardId: string, ids: string[]) => void
+  groupCards: (boardId: string, ids: string[]) => void
+  ungroupCards: (boardId: string, ids: string[]) => void
   bringToFront: (boardId: string, cardId: string) => void
   sendToBack: (boardId: string, ids: string[]) => void
   /** insert ready-made cards + connectors (ids already fresh) */
@@ -164,6 +167,29 @@ function workspaceReadme(): string {
     'Everything is plain JSON and regular files, so it diffs, merges and greps like any other repo.',
     '',
   ].join('\n')
+}
+
+/** every member of every group touched by `ids` */
+export function expandGroups(cards: Card[], ids: Iterable<string>): string[] {
+  const want = new Set(ids)
+  const groups = new Set<string>()
+  for (const c of cards) if (want.has(c.id) && c.groupId) groups.add(c.groupId)
+  if (groups.size) for (const c of cards) if (c.groupId && groups.has(c.groupId)) want.add(c.id)
+  return [...want]
+}
+
+/** a group of one is no group */
+function dissolveSingletons(cards: Card[]): Card[] {
+  const count = new Map<string, number>()
+  for (const c of cards) if (c.groupId) count.set(c.groupId, (count.get(c.groupId) ?? 0) + 1)
+  if (![...count.values()].some((n) => n < 2)) return cards
+  return cards.map((c) => {
+    if (c.groupId && (count.get(c.groupId) ?? 0) < 2) {
+      const { groupId: _g, ...rest } = c
+      return rest as Card
+    }
+    return c
+  })
 }
 
 async function sha1Short(buf: ArrayBuffer): Promise<string> {
@@ -327,9 +353,30 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     select: (ids, additive) =>
       set((s) => {
         const sel = additive ? new Set(s.selection) : new Set<string>()
-        for (const id of ids) sel.add(id)
+        const cards = s.currentBoardId ? (s.viewingRef ? s.viewingBoards : s.boards)[s.currentBoardId]?.cards ?? [] : []
+        for (const id of expandGroups(cards, ids)) sel.add(id)
         return { selection: sel }
       }),
+
+    groupCards: (boardId, ids) => {
+      if (ids.length < 2) return
+      const gid = newId()
+      const set_ = new Set(ids)
+      mutateBoard(boardId, (b) => ({ ...b, cards: dissolveSingletons(b.cards.map((c) => (set_.has(c.id) ? { ...c, groupId: gid } : c))) }))
+    },
+    ungroupCards: (boardId, ids) => {
+      const set_ = new Set(ids)
+      mutateBoard(boardId, (b) => ({
+        ...b,
+        cards: dissolveSingletons(
+          b.cards.map((c) => {
+            if (!set_.has(c.id) || !c.groupId) return c
+            const { groupId: _g, ...rest } = c
+            return rest as Card
+          }),
+        ),
+      }))
+    },
     clearSelection: () => set({ selection: new Set() }),
 
     addCard: (boardId, card) => mutateBoard(boardId, (b) => ({ ...b, cards: [...b.cards, card] })),
@@ -370,7 +417,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       const gone = new Set(ids)
       boards[boardId] = {
         ...b,
-        cards: b.cards.filter((c) => !gone.has(c.id)),
+        cards: dissolveSingletons(b.cards.filter((c) => !gone.has(c.id))),
         // drop connectors glued to removed cards
         connectors: b.connectors.filter((k) => !('cardId' in k.from && gone.has(k.from.cardId)) && !('cardId' in k.to && gone.has(k.to.cardId))),
       }
