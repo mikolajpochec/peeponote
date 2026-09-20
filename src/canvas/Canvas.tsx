@@ -5,7 +5,7 @@ import { ConnectorLayer, type DraftConnector } from './ConnectorLayer'
 import { anchorForDrop, anchorPoint } from './connectors'
 import { useWorkspace } from '../store/workspace'
 import { CardView } from '../cards/CardView'
-import { screenToBoard, useViewport, zoomAt } from './viewport'
+import { MAX_SCALE, MIN_SCALE, screenToBoard, useViewport, zoomAt } from './viewport'
 import { Peepo } from '../ui/Peepo'
 import { autoEdit } from '../cards/autoEdit'
 import { setGlobalCursor } from './cursor'
@@ -154,7 +154,12 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       }
       if (e.key === '0' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
-        setVp(board.id, { x: 80, y: 80, scale: 1 })
+        centerView()
+      }
+      // ⌘1 is taken by the browser (tab switch), so fit-all is ⇧F
+      if (e.key.toLowerCase() === 'f' && e.shiftKey && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        fitView()
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd' && !readOnly) {
         e.preventDefault()
@@ -234,6 +239,25 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       document.removeEventListener('paste', onPaste)
     }
   }, [board.id, board.cards, board.connectors, readOnly, removeCards, removeConnectors, clearSelection, select, setVp, addAssets, addCard, groupCards, ungroupCards])
+
+  /** put the board origin (the ⌖ marker) in the middle of the canvas at 100% */
+  const centerView = () => {
+    const el = ref.current
+    const w = el?.clientWidth ?? 800
+    const h = el?.clientHeight ?? 600
+    setVp(board.id, { x: w / 2, y: h / 2, scale: 1 })
+  }
+  /** zoom out/in so every card is visible */
+  const fitView = () => {
+    const el = ref.current
+    const b = bbox(board.cards)
+    if (!el || !b) return centerView()
+    const w = el.clientWidth
+    const h = el.clientHeight
+    const pad = 60
+    const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.min((w - pad * 2) / Math.max(b.w, 1), (h - pad * 2) / Math.max(b.h, 1), 1.5)))
+    setVp(board.id, { scale, x: w / 2 - (b.x + b.w / 2) * scale, y: h / 2 - (b.y + b.h / 2) * scale })
+  }
 
   /** board coords at the middle of the visible canvas */
   const viewCenter = () => {
@@ -390,7 +414,8 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       })),
       sep,
       { kind: 'item', label: 'Select all', icon: '▣', shortcut: '⌘A', onClick: () => select(live.cards.map((c) => c.id)) },
-      { kind: 'item', label: 'Reset view', icon: '⌖', shortcut: '⌘0', onClick: () => setVp(board.id, { x: 80, y: 80, scale: 1 }) },
+      { kind: 'item', label: 'Center view', icon: '⌖', shortcut: '⌘0', onClick: centerView },
+      { kind: 'item', label: 'Fit everything', icon: '⤢', shortcut: '⇧F', onClick: fitView },
     ]
   }
 
@@ -626,6 +651,16 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
           }}
           onSelect={(id, additive) => select([id], additive)}
         />
+        {/* board origin: the ⌖ button brings you back here */}
+        <svg className="pointer-events-none absolute overflow-visible" style={{ left: 0, top: 0, opacity: 0.55 }} width={1} height={1}>
+          <g stroke="var(--board-line)" strokeWidth={1.5 / vp.scale} fill="none">
+            <line x1={-14 / vp.scale} y1={0} x2={-5 / vp.scale} y2={0} />
+            <line x1={5 / vp.scale} y1={0} x2={14 / vp.scale} y2={0} />
+            <line x1={0} y1={-14 / vp.scale} x2={0} y2={-5 / vp.scale} />
+            <line x1={0} y1={5 / vp.scale} x2={0} y2={14 / vp.scale} />
+            <circle cx={0} cy={0} r={3 / vp.scale} />
+          </g>
+        </svg>
         {groupOutlines.map((g) => (
           <div
             key={g.id}
@@ -685,8 +720,17 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
           <StyleBar boardId={board.id} cards={selectedCards} />
         </div>
       )}
-      <div className="pointer-events-none absolute bottom-2 right-3 rounded px-2 py-0.5 text-[11px] max-md:hidden" style={{ color: 'var(--board-fg-muted)', background: 'color-mix(in srgb, var(--board-fg) 8%, transparent)' }}>
-        {Math.round(vp.scale * 100)}%
+      <div
+        className="absolute bottom-2 right-3 flex items-center gap-0.5 rounded-lg p-0.5 text-[11px] max-md:bottom-20"
+        style={{ color: 'var(--board-fg-muted)', background: 'color-mix(in srgb, var(--board-fg) 8%, transparent)' }}
+      >
+        <button onClick={centerView} title="Center on the board origin (⌘0)" className="h-7 w-7 rounded-md text-[15px] hover:bg-(--hover-strong)" style={{ color: 'var(--board-fg)' }}>
+          ⌖
+        </button>
+        <button onClick={fitView} title="Fit everything (⇧F)" className="h-7 w-7 rounded-md text-[13px] hover:bg-(--hover-strong)" style={{ color: 'var(--board-fg)' }}>
+          ⤢
+        </button>
+        <span className="px-1.5 tabular-nums max-md:hidden">{Math.round(vp.scale * 100)}%</span>
       </div>
     </div>
   )
