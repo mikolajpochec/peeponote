@@ -16,6 +16,7 @@ import { detectKind } from '../model/assetKind'
 import { tutorialBoards } from '../model/tutorial'
 import { useSettings } from './settings'
 import { toast } from './toast'
+import { diffWorkspaces, formatAuthors, useArrivals } from '../canvas/arrivals'
 
 export type Busy = 'saving' | 'pushing' | 'pulling' | 'syncing' | 'cloning' | 'loading' | null
 export type Resolution = 'merge-ours' | 'merge-theirs' | 'force-push' | 'take-theirs'
@@ -97,6 +98,8 @@ interface WorkspaceState {
   sync: (opts?: { silent?: boolean }) => Promise<void>
   resolveDivergence: (mode: Resolution) => Promise<void>
   push: () => Promise<boolean>
+  /** background check: pull others' commits when it's a clean fast-forward; never blocks, never dialogs */
+  autoSync: () => Promise<void>
   pull: () => Promise<void>
   setRemote: (url: string) => Promise<void>
   refreshGit: () => Promise<void>
@@ -207,6 +210,23 @@ async function pictureSize(file: File): Promise<{ w: number; h: number } | null>
   }
 }
 
+let lastNotifiedRemote: string | null = null
+
+/** display names of everyone who committed between `from` (exclusive) and `to` (inclusive) */
+async function authorsBetween(fs: PeepoFS, to: string, from: string | null): Promise<string> {
+  try {
+    const log = await repo.log(fs, 50, to)
+    const names: string[] = []
+    for (const c of log) {
+      if (c.oid === from) break
+      names.push(c.commit.author.name)
+    }
+    return formatAuthors(names)
+  } catch {
+    return 'Someone'
+  }
+}
+
 async function sha1Short(buf: ArrayBuffer): Promise<string> {
   const d = await crypto.subtle.digest('SHA-1', buf)
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 8)
@@ -266,9 +286,12 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
   }
   const progress = (m: string) => set({ busyDetail: m })
 
-  /** re-read boards from the working tree (after pull / merge / restore) */
+  /** re-read boards from the working tree (after pull / merge / restore); highlights what changed */
   async function reloadBoards(fs: PeepoFS) {
+    const prev = get().boards
     const { meta, boards } = await loadBoards(fs)
+    const arrived = diffWorkspaces(prev, boards)
+    useArrivals.getState().mark(arrived.cards, arrived.boards)
     const cur = get().currentBoardId
     set({
       meta,
@@ -671,6 +694,45 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         toast.err(`Sync failed: ${(e as Error).message}`)
       } finally {
         set({ busy: null, busyDetail: null })
+      }
+    },
+
+    autoSync: async () => {
+      const ctx = syncCtx()
+      if (!ctx || get().busy || get().viewingRef || get().divergence || document.visibilityState === 'hidden') return
+      const { fs } = ctx
+      try {
+        const remote = await fetchRemote(ctx)
+        const local = await repo.headOid(fs)
+        if (!remote || remote === local) return
+        const st = await compare(fs, local, remote)
+        if (st.relation !== 'behind' && st.relation !== 'local-empty') {
+          // diverged: something to decide — say so once per remote head, don't nag
+          if (st.relation === 'diverged' && lastNotifiedRemote !== remote) {
+            lastNotifiedRemote = remote
+            toast.info('Others pushed changes that conflict with yours — press ⇅ to merge. monkaS', 'monkaS')
+          }
+          return
+        }
+        if (isDirty(get())) {
+          if (lastNotifiedRemote !== remote) {
+            lastNotifiedRemote = remote
+            toast.info(`${await authorsBetween(fs, remote, local)} pushed changes — Save yours to pull them in. peepoShy`, 'peepoShy')
+          }
+          return
+        }
+        if (get().busy) return // a save started meanwhile
+        set({ busy: 'syncing', busyDetail: 'pulling changes…' })
+        const who = await authorsBetween(fs, remote, local)
+        await resetTo(fs, remote)
+        await reloadBoards(fs)
+        lastNotifiedRemote = remote
+        toast.ok(`${who} added changes (${st.behind} ${st.behind === 1 ? 'commit' : 'commits'}). peepoHey`, 'peepoHey')
+      } catch (e) {
+        // background job: log, don't toast on every flaky network tick
+        console.warn('auto-sync', e)
+      } finally {
+        if (get().busy === 'syncing') set({ busy: null, busyDetail: null })
       }
     },
 

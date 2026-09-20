@@ -3,6 +3,7 @@ import type { Board } from '../model/types'
 import { selectBoards, useWorkspace } from '../store/workspace'
 import { Peepo } from './Peepo'
 import { BoardIconView } from './BoardIcon'
+import { useArrivals } from '../canvas/arrivals'
 import { contrast } from '../canvas/styles'
 import { ContextMenu, sep, type MenuItem } from './ContextMenu'
 
@@ -206,6 +207,7 @@ function BoardNode({
   const isRenaming = renaming === board.id
   const children = board.cards.filter((c) => c.type === 'board').map((c) => (c.type === 'board' ? boards[c.boardId] : undefined)).filter(Boolean) as Board[]
   const active = board.id === current
+  const flash = useArrivals((s) => !!s.boards[board.id])
   const bg = boardColor(board, boards)
 
   useEffect(() => {
@@ -227,7 +229,7 @@ function BoardNode({
     <div>
       <div
         data-board={board.id}
-        className={`flex items-center gap-1 rounded-md px-2 py-1 text-[13px] ${active ? 'font-bold' : 'text-frog-100 hover:bg-swamp-700'} ${active && !bg ? 'bg-frog-700 text-white' : ''}`}
+        className={`flex items-center gap-1 rounded-md px-2 py-1 text-[13px] ${flash ? 'row-flash' : ''} ${active ? 'font-bold' : 'text-frog-100 hover:bg-swamp-700'} ${active && !bg ? 'bg-frog-700 text-white' : ''}`}
         style={{
           paddingLeft: 8 + depth * 12,
           // the active row wears the board's own color

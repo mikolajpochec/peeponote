@@ -15,6 +15,8 @@ export interface Settings {
   transport: TransportPref
   /** show a separate Push button instead of pushing as part of Save */
   separatePush: boolean
+  /** poll the remote every ~45s and fast-forward when others pushed and there's nothing local to lose */
+  autoPull: boolean
   /** first-run wizard finished (or skipped) */
   onboarded: boolean
   theme: ThemeName
@@ -31,6 +33,7 @@ export const useSettings = create<Settings>()(
       corsProxy: DEFAULT_CORS_PROXY,
       transport: 'auto',
       separatePush: false,
+      autoPull: true,
       onboarded: false,
       theme: 'dark',
       set: (patch) => set(patch),

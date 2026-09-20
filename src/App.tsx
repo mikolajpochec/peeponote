@@ -55,6 +55,25 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [save])
 
+  // background pull: every 45s while visible, and right when the tab comes back into view
+  const autoPull = useSettings((s) => s.autoPull)
+  const remoteUrl = useWorkspace((s) => s.remoteUrl)
+  useEffect(() => {
+    if (!autoPull || !remoteUrl || status !== 'ready') return
+    const tick = () => void useWorkspace.getState().autoSync()
+    const id = setInterval(tick, 45_000)
+    const onVis = () => {
+      if (document.visibilityState === 'visible') tick()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    const first = setTimeout(tick, 4_000)
+    return () => {
+      clearInterval(id)
+      clearTimeout(first)
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [autoPull, remoteUrl, status])
+
   // edits are written to the working tree continuously; make sure the last ones land before we go
   useEffect(() => {
     const onHide = () => void useWorkspace.getState().flush()

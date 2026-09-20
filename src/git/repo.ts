@@ -83,9 +83,9 @@ export async function commit(fs: PeepoFS, message: string, who: GitIdentity): Pr
   })
 }
 
-export async function log(fs: PeepoFS, depth = 100): Promise<ReadCommitResult[]> {
+export async function log(fs: PeepoFS, depth = 100, ref?: string): Promise<ReadCommitResult[]> {
   try {
-    return await git.log({ ...ctx(fs), depth })
+    return await git.log({ ...ctx(fs), depth, ref })
   } catch {
     return []
   }

@@ -5,6 +5,7 @@ import { useWorkspace } from '../store/workspace'
 import { isInteractiveTarget, useDrag } from './useDrag'
 import { setGlobalCursor } from './cursor'
 import { cardStyles } from './styles'
+import { useArrivals } from './arrivals'
 
 export const GRID = 20
 export const MIN_W = 120
@@ -30,6 +31,7 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
   const bringToFront = useWorkspace((s) => s.bringToFront)
   const removeCards = useWorkspace((s) => s.removeCards)
   const [editTick, setEditTick] = useState(0)
+  const arrived = useArrivals((s) => !!s.cards[card.id])
 
   const onDragStart = useDrag(
     {
@@ -94,7 +96,7 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
   return (
     <div
       data-card={card.id}
-      className={`absolute group rounded-xl select-none ${readOnly ? '' : 'cursor-grab'} ${bare ? '' : 'shadow-lg shadow-black/30'} ${
+      className={`absolute group rounded-xl select-none ${arrived ? 'card-arrive' : ''} ${readOnly ? '' : 'cursor-grab'} ${bare ? '' : 'shadow-lg shadow-black/30'} ${
         selected ? 'ring-2 ring-offset-2' : bare ? 'ring-1 ring-transparent hover:ring-(--board-line)/40' : 'ring-1'
       } ${className}`}
       style={{
