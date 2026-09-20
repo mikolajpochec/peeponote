@@ -10,10 +10,12 @@ interface Props {
   /** what the button shows when no color is set */
   fallback: string
   icon?: string
+  /** offer a "none" (transparent) choice */
+  allowNone?: boolean
 }
 
 /** Swatch button that opens a small palette with "none" and a custom color input. */
-export function ColorPicker({ value, swatches, onChange, title, fallback, icon }: Props) {
+export function ColorPicker({ value, swatches, onChange, title, fallback, icon, allowNone }: Props) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const pop = useRef<HTMLDivElement>(null)
@@ -46,7 +48,7 @@ export function ColorPicker({ value, swatches, onChange, title, fallback, icon }
       >
         <span
           className="flex h-4.5 w-4.5 items-center justify-center rounded-full border border-(--hair) text-[10px] font-black leading-none"
-          style={{ background: value ?? fallback, color: contrast(value ?? fallback) }}
+          style={{ background: value === 'transparent' ? 'repeating-conic-gradient(#8884 0 25%, transparent 0 50%) 0 0 / 8px 8px' : (value ?? fallback), color: contrast(value === 'transparent' ? '#888888' : (value ?? fallback)) }}
         >
           {icon}
         </span>
@@ -72,7 +74,20 @@ export function ColorPicker({ value, swatches, onChange, title, fallback, icon }
               <input type="color" value={toHex(value ?? fallback)} onChange={(e) => onChange(e.target.value)} className="h-4 w-4 cursor-pointer border-0 bg-transparent p-0" />
               custom
             </label>
+            {allowNone && (
+              <button
+                title="No color — transparent"
+                onClick={() => {
+                  onChange('transparent')
+                  setOpen(false)
+                }}
+                className={`rounded-md px-2 py-1 hover:bg-(--hover-strong) ${value === 'transparent' ? 'bg-frog-700/60 text-white' : 'bg-(--hover)'}`}
+              >
+                none
+              </button>
+            )}
             <button
+              title="Back to the default for this kind of card"
               onClick={() => {
                 onChange(undefined)
                 setOpen(false)

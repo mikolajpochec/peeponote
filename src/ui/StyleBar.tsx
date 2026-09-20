@@ -91,9 +91,9 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
         </>
       )}
       {/* a new fill resets the ink so it re-derives its contrast automatically */}
-      <ColorPicker title="Fill (text color adapts)" icon="◼" value={s.bg} fallback={first.type === 'text' || allShapes ? '#00000000' : '#fbf8ef'} onChange={(bg) => apply({ bg, fg: undefined })} />
+      <ColorPicker title="Fill (text color adapts)" icon="◼" value={s.bg} fallback={first.type === 'text' || allShapes ? '#00000000' : '#fbf8ef'} allowNone onChange={(bg) => apply({ bg, fg: undefined })} />
       <ColorPicker title="Text color" icon="A" value={s.fg} fallback={s.bg ? contrast(s.bg) : '#1b1d1a'} onChange={(fg) => apply({ fg })} />
-      <ColorPicker title={allShapes ? 'Stroke color' : 'Border'} icon="◻" value={s.border} fallback="#00000000" onChange={(border) => apply({ border })} />
+      <ColorPicker title={allShapes ? 'Stroke color' : 'Border'} icon="◻" value={s.border} fallback="#00000000" allowNone onChange={(border) => apply({ border: border === 'transparent' ? undefined : border })} />
       {(allShapes || s.border) && (
         <>
           <button

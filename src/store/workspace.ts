@@ -81,7 +81,9 @@ interface WorkspaceState {
   moveCards: (boardId: string, deltas: Record<string, { x: number; y: number }>) => void
   removeCards: (boardId: string, ids: string[]) => void
   groupCards: (boardId: string, ids: string[]) => void
-  /** restore the state from before the last removal (cards, connectors, nested boards) */
+  /** whole-workspace undo / redo of board edits (⌘Z / ⇧⌘Z); text typing has its own history inside the editor */
+  undo: () => boolean
+  redo: () => boolean
   undoRemoval: () => boolean
   ungroupCards: (boardId: string, ids: string[]) => void
   bringToFront: (boardId: string, cardId: string) => void
@@ -229,7 +231,19 @@ async function pictureSize(file: File): Promise<{ w: number; h: number } | null>
 
 let lastNotifiedRemote: string | null = null
 
-const undoStack: { boards: Record<string, Board>; dirtyBoards: Set<string>; deletedBoards: Set<string>; currentBoardId: string | null }[] = []
+// ---- undo / redo: whole-workspace snapshots (cheap — they share the untouched board objects) ------
+interface Snapshot {
+  boards: Record<string, Board>
+  dirtyBoards: Set<string>
+  deletedBoards: Set<string>
+  currentBoardId: string | null
+}
+const undoStack: Snapshot[] = []
+const redoStack: Snapshot[] = []
+let lastMutationAt = 0
+const UNDO_LIMIT = 100
+/** mutations closer than this are one gesture (a drag, a resize) and share one undo step */
+const COALESCE_MS = 350
 
 function withRemembered(card: Card): Card {
   if (card.style) return card
@@ -330,11 +344,35 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     }
   }
 
+  /** call before changing boards: pushes an undo step (coalescing rapid-fire changes) and clears redo */
+  function record(force = false) {
+    const now = Date.now()
+    if (!force && now - lastMutationAt < COALESCE_MS && undoStack.length) {
+      lastMutationAt = now
+      return
+    }
+    lastMutationAt = now
+    undoStack.push({ boards: get().boards, dirtyBoards: new Set(get().dirtyBoards), deletedBoards: new Set(get().deletedBoards), currentBoardId: get().currentBoardId })
+    if (undoStack.length > UNDO_LIMIT) undoStack.shift()
+    redoStack.length = 0
+  }
+  function restore(snap: Snapshot) {
+    const dirty = new Set(snap.dirtyBoards)
+    for (const id of Object.keys(snap.boards)) if (!get().boards[id] || JSON.stringify(snap.boards[id]) !== JSON.stringify(get().boards[id])) dirty.add(id)
+    // boards that exist now but not in the snapshot were created after it → their files must go
+    const deleted = new Set([...get().deletedBoards].filter((id) => !snap.boards[id]))
+    for (const id of Object.keys(get().boards)) if (!snap.boards[id]) deleted.add(id)
+    const cur = get().currentBoardId
+    set({ boards: snap.boards, dirtyBoards: dirty, deletedBoards: deleted, selection: new Set(), currentBoardId: cur && snap.boards[cur] ? cur : snap.currentBoardId })
+    scheduleFlush()
+  }
+
   function mutateBoard(boardId: string, fn: (b: Board) => Board) {
     const b = get().boards[boardId]
     if (!b || get().viewingRef) return
     const next = fn(b)
     if (next === b) return // a no-op (e.g. bringing the top card to front) must not mark anything unsaved
+    record()
     const dirtyBoards = new Set(get().dirtyBoards)
     dirtyBoards.add(boardId)
     set({ boards: { ...get().boards, [boardId]: next }, dirtyBoards })
@@ -351,6 +389,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
   /** re-read boards from the working tree (after pull / merge / restore); highlights what changed */
   async function reloadBoards(fs: PeepoFS) {
     const prev = get().boards
+    undoStack.length = 0
+    redoStack.length = 0
     // the workspace folder may have moved in the commits we just pulled (e.g. repo turned into a monorepo)
     if (!(await exists(fs, abs(fs, wp(WORKSPACE_FILE))))) {
       const found = await findWorkspaces(fs)
@@ -602,9 +642,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       if (!b) return
       const removed = b.cards.filter((c) => ids.includes(c.id))
       if (!removed.length) return
-      // snapshot for Undo: in-memory boards + dirty bookkeeping (cheap: shared references)
-      undoStack.push({ boards: get().boards, dirtyBoards: new Set(get().dirtyBoards), deletedBoards: new Set(get().deletedBoards), currentBoardId: get().currentBoardId })
-      if (undoStack.length > 30) undoStack.shift()
+      record(true)
       const nestedBoards = removed.filter((c) => c.type === 'board').length
       // recursively delete nested boards
       const deleted = new Set(get().deletedBoards)
@@ -634,19 +672,22 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       toast.action(`${what} deleted (⌘Z to undo)`, 'Undo', () => get().undoRemoval(), nestedBoards ? 'PepeHands' : 'peepoShy')
     },
 
-    undoRemoval: () => {
+    undo: () => {
       const snap = undoStack.pop()
       if (!snap) return false
-      // everything that was live before comes back; boards deleted since are files again
-      const dirty = new Set(snap.dirtyBoards)
-      for (const id of Object.keys(snap.boards)) if (!get().boards[id]) dirty.add(id)
-      for (const id of Object.keys(snap.boards)) if (JSON.stringify(snap.boards[id]) !== JSON.stringify(get().boards[id])) dirty.add(id)
-      const deleted = new Set([...get().deletedBoards].filter((id) => !snap.boards[id]))
-      set({ boards: snap.boards, dirtyBoards: dirty, deletedBoards: deleted, selection: new Set(), currentBoardId: get().boards[get().currentBoardId ?? ''] ? get().currentBoardId : snap.currentBoardId })
-      scheduleFlush()
-      toast.ok('Restored.', 'peepoClap')
+      redoStack.push({ boards: get().boards, dirtyBoards: new Set(get().dirtyBoards), deletedBoards: new Set(get().deletedBoards), currentBoardId: get().currentBoardId })
+      restore(snap)
       return true
     },
+    redo: () => {
+      const snap = redoStack.pop()
+      if (!snap) return false
+      undoStack.push({ boards: get().boards, dirtyBoards: new Set(get().dirtyBoards), deletedBoards: new Set(get().deletedBoards), currentBoardId: get().currentBoardId })
+      lastMutationAt = 0
+      restore(snap)
+      return true
+    },
+    undoRemoval: () => get().undo(),
 
     bringToFront: (boardId, cardId) =>
       mutateBoard(boardId, (b) => {
@@ -679,10 +720,12 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       const board: Board = { id, name, parentId, createdAt: new Date().toISOString(), cards: [], connectors: [] }
       const parent = get().boards[parentId]
       const z = parent ? parent.cards.reduce((m, c) => Math.max(m, c.z), 0) + 1 : 1
+      record(true)
       const dirtyBoards = new Set(get().dirtyBoards)
       dirtyBoards.add(id)
       set({ boards: { ...get().boards, [id]: board }, dirtyBoards })
       scheduleFlush()
+      lastMutationAt = Date.now() // the parent's card below is the same step
       mutateBoard(parentId, (b) => ({
         ...b,
         cards: [...b.cards, withRemembered({ id: newId(), type: 'board', boardId: id, x: at.x, y: at.y, w: 200, h: 96, z })],

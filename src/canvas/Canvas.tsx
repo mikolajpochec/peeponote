@@ -172,8 +172,12 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         const sel = useWorkspace.getState().selection
         if (live && sel.size) duplicateSelection(live, sel)
       }
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey && !readOnly) {
-        if (useWorkspace.getState().undoRemoval()) e.preventDefault()
+      // undo / redo: ⌘Z / ⇧⌘Z (mac), Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z (windows, linux)
+      if ((e.metaKey || e.ctrlKey) && !readOnly && (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y')) {
+        e.preventDefault()
+        const redo = e.key.toLowerCase() === 'y' || e.shiftKey
+        if (redo) useWorkspace.getState().redo()
+        else useWorkspace.getState().undo()
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'g' && !readOnly) {
         e.preventDefault()
@@ -416,6 +420,9 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     }
     // empty canvas
     return [
+      { kind: 'item', label: 'Undo', icon: '↶', shortcut: '⌘Z', disabled: readOnly, onClick: () => void useWorkspace.getState().undo() },
+      { kind: 'item', label: 'Redo', icon: '↷', shortcut: '⇧⌘Z', disabled: readOnly, onClick: () => void useWorkspace.getState().redo() },
+      sep,
       paste,
       {
         kind: 'item',
