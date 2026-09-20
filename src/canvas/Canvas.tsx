@@ -23,6 +23,7 @@ import { useLastStyle } from '../store/lastStyle'
 import { copyLink } from '../nav/links'
 import { toast } from '../store/toast'
 import { removeCardsChecked } from '../store/removeCards'
+import { useProperties } from '../ui/PropertiesDialog'
 import { useSettings } from '../store/settings'
 import { resolveTheme } from '../theme/themes'
 import { LONG_PRESS_MS, LONG_PRESS_SLOP, activeTouches, isDuplicateDblClick, markLongPress, registerTap, shouldSwallowContextMenu, useIsMobile } from './touch'
@@ -353,6 +354,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       const k = live.connectors.find((x) => x.id === menu.connectorId)
       return [
         { kind: 'item', label: 'Flip direction', icon: '⇄', disabled: readOnly || !k, onClick: () => k && updateConnector(board.id, k.id, { from: k.to, to: k.from }) },
+        { kind: 'item', label: 'Properties…', icon: 'ⓘ', onClick: () => useProperties.getState().open({ kind: 'connector', boardId: board.id, connectorId: menu.connectorId! }) },
         sep,
         { kind: 'item', label: 'Delete', icon: '✕', shortcut: '⌫', danger: true, disabled: readOnly, onClick: () => removeConnectors(board.id, [menu.connectorId!]) },
       ]
@@ -400,6 +402,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
           ? [{ kind: 'item', label: `Group ${n} items`, icon: '⧉', shortcut: '⌘G', disabled: readOnly, onClick: () => groupCards(board.id, ids) } as MenuItem]
           : []),
         ...(n > 1 || selCards.some((c) => c.groupId) ? [sep] : []),
+        ...(one ? [{ kind: 'item', label: 'Properties…', icon: 'ⓘ', onClick: () => useProperties.getState().open({ kind: 'card', boardId: board.id, cardId: one.id }) } as MenuItem, sep] : []),
         { kind: 'item', label: n > 1 ? `Delete ${n} items` : 'Delete', icon: '✕', shortcut: '⌫', danger: true, disabled: readOnly, onClick: () => void removeCardsChecked(board.id, ids) },
       )
       return items

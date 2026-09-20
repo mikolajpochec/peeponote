@@ -18,6 +18,7 @@ import { useSettings } from './settings'
 import { toast } from './toast'
 import { diffWorkspaces, formatAuthors, useArrivals } from '../canvas/arrivals'
 import { rememberedStyle, styleKeyOf, useLastStyle } from './lastStyle'
+import { boardSlug, cardSlug, validateSlug } from '../nav/peepoUrl'
 
 export type Busy = 'saving' | 'pushing' | 'pulling' | 'syncing' | 'cloning' | 'loading' | null
 export type Resolution = 'merge-ours' | 'merge-theirs' | 'force-push' | 'take-theirs'
@@ -82,6 +83,9 @@ interface WorkspaceState {
   createBoard: (parentId: string, name: string, at: { x: number; y: number }) => string
   renameBoard: (boardId: string, name: string) => void
   setBoardIcon: (boardId: string, icon: string | undefined) => void
+  /** peepo:// path segment; validated for uniqueness among siblings, '' clears */
+  setBoardSlug: (boardId: string, slug: string) => boolean
+  setCardSlug: (boardId: string, cardId: string, slug: string) => boolean
   /** shared workspace settings + name (committed) */
   updateMeta: (patch: { name?: string; settings?: Partial<WorkspaceSettings> }) => void
   styleCards: (boardId: string, ids: string[], patch: Partial<CardStyle>) => void
@@ -566,6 +570,45 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
 
     renameBoard: (boardId, name) => mutateBoard(boardId, (b) => ({ ...b, name })),
     setBoardIcon: (boardId, icon) => mutateBoard(boardId, (b) => ({ ...b, icon })),
+    setBoardSlug: (boardId, slugRaw) => {
+      const slug = slugRaw.trim()
+      const b = get().boards[boardId]
+      if (!b) return false
+      if (slug) {
+        const siblings = Object.values(get().boards).filter((x) => x.parentId === b.parentId && x.id !== boardId)
+        const err = validateSlug(slug, siblings.map(boardSlug), undefined)
+        if (err) {
+          toast.err(err)
+          return false
+        }
+      }
+      mutateBoard(boardId, (x) => {
+        const { slug: _s, ...rest } = x
+        return slug ? { ...rest, slug } : (rest as Board)
+      })
+      return true
+    },
+    setCardSlug: (boardId, cardId, slugRaw) => {
+      const slug = slugRaw.trim()
+      const b = get().boards[boardId]
+      if (!b) return false
+      if (slug) {
+        const err = validateSlug(slug, b.cards.filter((c) => c.id !== cardId).map(cardSlug))
+        if (err) {
+          toast.err(err)
+          return false
+        }
+      }
+      mutateBoard(boardId, (x) => ({
+        ...x,
+        cards: x.cards.map((c) => {
+          if (c.id !== cardId) return c
+          const { slug: _s, ...rest } = c
+          return (slug ? { ...rest, slug } : rest) as Card
+        }),
+      }))
+      return true
+    },
 
     updateMeta: (patch) => {
       const meta = get().meta

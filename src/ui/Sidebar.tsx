@@ -6,6 +6,7 @@ import { BoardIconView } from './BoardIcon'
 import { useArrivals } from '../canvas/arrivals'
 import { copyLink } from '../nav/links'
 import { countItems } from '../store/removeCards'
+import { useProperties } from './PropertiesDialog'
 import { toast } from '../store/toast'
 import { contrast } from '../canvas/styles'
 import { ContextMenu, sep, type MenuItem } from './ContextMenu'
@@ -91,6 +92,7 @@ export function Sidebar({ onOpenSettings, onNavigate, onClose }: { onOpenSetting
         },
       },
       { kind: 'item', label: 'Rename', icon: '✎', shortcut: 'dbl-click', disabled: readOnly, onClick: () => setRenaming(b.id) },
+      { kind: 'item', label: 'Properties…', icon: 'ⓘ', onClick: () => useProperties.getState().open({ kind: 'board', boardId: b.id }) },
       sep,
       { kind: 'item', label: 'Add sub-board', icon: '🐸', disabled: readOnly, onClick: () => addSubBoard(b.id) },
       sep,

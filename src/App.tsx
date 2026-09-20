@@ -11,6 +11,7 @@ import { BootScreen } from './ui/BootScreen'
 import { Onboarding } from './ui/Onboarding'
 import { SyncDialog } from './ui/SyncDialog'
 import { ConfirmDialog } from './ui/ConfirmDialog'
+import { PropertiesDialog } from './ui/PropertiesDialog'
 import { useSettings } from './store/settings'
 import { applyTheme, resolveTheme } from './theme/themes'
 import { useIsMobile } from './canvas/touch'
@@ -149,6 +150,7 @@ export default function App() {
       {showOnboarding && <Onboarding onFinish={() => setShowOnboarding(false)} />}
       <SyncDialog />
       <ConfirmDialog />
+      <PropertiesDialog />
       <Toasts />
     </div>
   )
