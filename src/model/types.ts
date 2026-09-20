@@ -113,7 +113,32 @@ export interface ShapeCard extends CardBase {
   label: string
 }
 
-export type Card = NoteCard | TextCard | TodoCard | LinkCard | BoardCard | AssetCard | ShapeCard
+export type StoryKind = 'character' | 'location' | 'event' | 'dialogue' | 'scene' | 'beat'
+
+export interface DialogueLine {
+  id: string
+  /** who speaks — free text, usually a peepo:// link to a character */
+  speaker: string
+  text: string
+  /** stage direction */
+  note?: string
+}
+
+/** Story-planning cards: one type, several kinds, free-text fields (inline markdown, peepo:// links) */
+export interface StoryCard extends CardBase {
+  type: 'story'
+  kind: StoryKind
+  title: string
+  fields: Record<string, string>
+  /** dialogue only */
+  lines?: DialogueLine[]
+  /** beat only */
+  stage?: 'setup' | 'complication' | 'turning point' | 'climax' | 'resolution'
+  /** asset path of a portrait / picture (character, location) */
+  portrait?: string
+}
+
+export type Card = NoteCard | TextCard | TodoCard | LinkCard | BoardCard | AssetCard | ShapeCard | StoryCard
 export type CardType = Card['type']
 
 export type Side = 'top' | 'right' | 'bottom' | 'left'

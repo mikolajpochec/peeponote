@@ -9,6 +9,8 @@ Visual boards on an infinite canvas where **Save = `git commit`** (and push, if 
 - Repo lives in the browser (IndexedDB) or in a real folder on disk. Plain JSON in `boards/`, files in `assets/` — diffs and merges like any repo.
 - Remotes: GitHub via its REST API (no proxy) or any git host over HTTP through a CORS proxy (`proxy/worker.ts`). Sync does fast-forward, push, or a card-level merge when histories diverge.
 - Auth: a personal access token kept in your browser only — the app walks you through creating one.
+- Text takes inline markdown everywhere (`**bold**`, `_italic_`, `[links](…)`) with a selection toolbar (⌘B ⌘I ⌘K). Links can point at the web or into the project: `peepo://Home/Styl-Graficzny/Obrazki/image1` (boards by name or slug, then a card slug — set slugs via *PPM → Properties*).
+- Story planning cards under **📖 Story**: character, location, event, dialogue, scene, plot beat — fields link to each other with `peepo://` paths.
 
 ## Develop
 

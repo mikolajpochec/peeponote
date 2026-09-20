@@ -88,6 +88,8 @@ export function cardSummary(card: Card): string {
       return card.name
     case 'shape':
       return one(card.label) || 'Shape'
+    case 'story':
+      return one(card.title) || card.kind[0].toUpperCase() + card.kind.slice(1)
   }
 }
 

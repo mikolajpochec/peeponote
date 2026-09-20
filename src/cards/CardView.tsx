@@ -8,6 +8,7 @@ import { LinkCard } from './LinkCard'
 import { BoardCard } from './BoardCard'
 import { AssetCard, ImageAssetCard, isPicture } from './AssetCard'
 import { ShapeCard } from './ShapeCard'
+import { StoryCard } from './story/StoryCard'
 import { isInternalLink, openLink, parseLink } from '../nav/links'
 import { useWorkspace } from '../store/workspace'
 
@@ -53,6 +54,12 @@ export const CardView = memo(function CardView({ card, boardId, readOnly, select
         </CardShell>
       )
     }
+    case 'story':
+      return (
+        <CardShell {...common} scale={scale} className="bg-paper text-ink">
+          <StoryCard {...common} card={card} />
+        </CardShell>
+      )
     case 'shape':
       return (
         <CardShell {...common} scale={scale} bare>

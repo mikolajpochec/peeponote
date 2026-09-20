@@ -7,7 +7,7 @@ import { persist } from 'zustand/middleware'
 import type { ArrowStyle, Card, CardStyle, ConnectorStyle, ShapeKind } from '../model/types'
 
 /** styles are remembered per "kind of thing" — titles and body text separately, pictures apart from files */
-export type StyleKey = 'note' | 'title' | 'text' | 'todo' | 'link' | 'board' | 'asset' | 'picture' | 'shape' | 'connector'
+export type StyleKey = 'note' | 'title' | 'text' | 'todo' | 'link' | 'board' | 'asset' | 'picture' | 'shape' | 'story' | 'connector'
 
 interface LastStyleState {
   cards: Partial<Record<StyleKey, CardStyle>>

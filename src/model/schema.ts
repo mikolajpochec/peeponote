@@ -47,6 +47,16 @@ const cardSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     ...base,
+    type: z.literal('story'),
+    kind: z.enum(['character', 'location', 'event', 'dialogue', 'scene', 'beat']),
+    title: z.string().default(''),
+    fields: z.record(z.string(), z.string()).default({}),
+    lines: z.array(z.object({ id: z.string(), speaker: z.string().default(''), text: z.string().default(''), note: z.string().optional() })).optional(),
+    stage: z.enum(['setup', 'complication', 'turning point', 'climax', 'resolution']).optional(),
+    portrait: z.string().optional(),
+  }),
+  z.object({
+    ...base,
     type: z.literal('asset'),
     path: z.string(),
     name: z.string(),

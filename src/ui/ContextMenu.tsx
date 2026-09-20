@@ -3,12 +3,15 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 export type MenuItem =
   | { kind: 'sep' }
   | { kind: 'item'; label: string; shortcut?: string; icon?: string; disabled?: boolean; danger?: boolean; onClick: () => void }
+  /** expands inline (click / tap) — works without hover on phones */
+  | { kind: 'submenu'; label: string; icon?: string; disabled?: boolean; items: MenuItem[] }
 
 export const sep: MenuItem = { kind: 'sep' }
 
 export function ContextMenu({ x, y, items, onClose }: { x: number; y: number; items: MenuItem[]; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ x, y })
+  const [openSub, setOpenSub] = useState<number | null>(null)
 
   // keep the menu inside the viewport
   useLayoutEffect(() => {
@@ -19,7 +22,7 @@ export function ContextMenu({ x, y, items, onClose }: { x: number; y: number; it
       x: Math.min(x, window.innerWidth - r.width - 8),
       y: Math.min(y, window.innerHeight - r.height - 8),
     })
-  }, [x, y, items.length])
+  }, [x, y, items.length, openSub])
 
   useEffect(() => {
     const down = (e: PointerEvent) => {
@@ -49,6 +52,38 @@ export function ContextMenu({ x, y, items, onClose }: { x: number; y: number; it
       {items.map((it, i) =>
         it.kind === 'sep' ? (
           <div key={i} className="my-1 h-px bg-(--hair)" />
+        ) : it.kind === 'submenu' ? (
+          <div key={i}>
+            <button
+              disabled={it.disabled}
+              onClick={() => setOpenSub((o) => (o === i ? null : i))}
+              className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-frog-50 hover:bg-frog-700 disabled:opacity-40 ${openSub === i ? 'bg-(--hover-strong)' : ''}`}
+            >
+              <span className="w-4 text-center text-[12px] opacity-80">{it.icon ?? ''}</span>
+              <span className="flex-1">{it.label}</span>
+              <span className="text-[11px] opacity-50">{openSub === i ? '▾' : '▸'}</span>
+            </button>
+            {openSub === i && (
+              <div className="ml-4 border-l border-(--hair) pl-1">
+                {it.items.map((sub, j) =>
+                  sub.kind === 'item' ? (
+                    <button
+                      key={j}
+                      disabled={sub.disabled}
+                      onClick={() => {
+                        sub.onClick()
+                        onClose()
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1 text-left text-frog-50 hover:bg-frog-700 disabled:opacity-40"
+                    >
+                      <span className="w-4 text-center text-[12px] opacity-80">{sub.icon ?? ''}</span>
+                      <span className="flex-1">{sub.label}</span>
+                    </button>
+                  ) : null,
+                )}
+              </div>
+            )}
+          </div>
         ) : (
           <button
             key={i}

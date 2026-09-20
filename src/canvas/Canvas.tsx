@@ -420,13 +420,23 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         },
       },
       sep,
-      ...TOOLS.filter((t) => t.id !== 'file').map<MenuItem>((t) => ({
-        kind: 'item',
-        label: `Add ${t.label.toLowerCase()} here`,
-        icon: t.icon,
-        disabled: readOnly,
-        onClick: () => placeTool(board.id, t, { x: menu.at.x, y: menu.at.y }),
-      })),
+      ...TOOLS.filter((t) => t.id !== 'file').map<MenuItem>((t) =>
+        t.children
+          ? {
+              kind: 'submenu',
+              label: `Add ${t.label.toLowerCase()}…`,
+              icon: t.icon,
+              disabled: readOnly,
+              items: t.children.map<MenuItem>((c) => ({ kind: 'item', label: c.label, icon: c.icon, onClick: () => placeTool(board.id, c, { x: menu.at.x, y: menu.at.y }) })),
+            }
+          : {
+              kind: 'item',
+              label: `Add ${t.label.toLowerCase()} here`,
+              icon: t.icon,
+              disabled: readOnly,
+              onClick: () => placeTool(board.id, t, { x: menu.at.x, y: menu.at.y }),
+            },
+      ),
       sep,
       { kind: 'item', label: 'Select all', icon: '▣', shortcut: '⌘A', onClick: () => select(live.cards.map((c) => c.id)) },
       { kind: 'item', label: 'Center view', icon: '⌖', shortcut: '⌘0', onClick: centerView },

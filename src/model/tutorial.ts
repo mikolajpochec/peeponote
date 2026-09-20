@@ -90,5 +90,36 @@ export function tutorialBoards(rootId: string): Board[] {
 
   const howBoard: Board = { id: howId, name: 'How to use peeponote', parentId: rootId, createdAt: now, cards: how, connectors: howConnectors }
   const sandbox: Board = { id: sandboxId, name: 'Sandbox', parentId: howId, createdAt: now, cards: [], connectors: [] }
-  return [home, howBoard, sandbox]
+
+  // a small story-planning example: character + location linked from a scene by peepo:// paths
+  const storyId = id()
+  const hero = id()
+  const bog = id()
+  const scene = id()
+  const beat = id()
+  const dlg = id()
+  const story: Board = {
+    id: storyId,
+    name: 'Story example',
+    slug: 'Story',
+    parentId: howId,
+    createdAt: now,
+    icon: '📖',
+    cards: [
+      { id: id(), type: 'text', x: 60, y: 40, w: 520, h: 44, z: 1, variant: 'title', autoSize: true, text: 'Planning a story' },
+      { id: id(), type: 'text', x: 60, y: 90, w: 560, h: 60, z: 1, variant: 'body', autoSize: true, text: 'Story cards live under **📖 Story** in the palette (hover or tap). Fields take inline markdown and `peepo://` links — click a link to jump.' },
+      { id: hero, type: 'story', kind: 'character', slug: 'peepo', x: 60, y: 170, w: 280, h: 280, z: 2, title: 'Peepo', fields: { role: 'protagonist', traits: 'small, brave, easily distracted', motivation: 'wants to find the lost lily pad', arc: 'timid → trusts the swamp' } },
+      { id: bog, type: 'story', kind: 'location', slug: 'the-bog', x: 380, y: 170, w: 280, h: 220, z: 2, title: 'The Bog', fields: { description: 'Mist, reeds, one very old heron.', mood: 'uneasy but familiar' } },
+      { id: scene, type: 'story', kind: 'scene', slug: 'crossing', x: 60, y: 480, w: 300, h: 340, z: 2, title: 'Crossing the bog', fields: { location: '[The Bog](peepo://Home/How-to-use-peeponote/Story/the-bog)', characters: '[Peepo](peepo://Home/How-to-use-peeponote/Story/peepo)', goal: 'get across before dark', conflict: 'the heron demands a riddle', outcome: 'yes, but — Peepo loses the map' } },
+      { id: beat, type: 'story', kind: 'beat', x: 400, y: 480, w: 260, h: 170, z: 2, title: 'Inciting incident', stage: 'setup', fields: { description: 'The lily pad is gone. Someone took it.' } },
+      { id: dlg, type: 'story', kind: 'dialogue', x: 400, y: 680, w: 320, h: 220, z: 2, title: 'At the water\'s edge', fields: { context: 'Peepo meets the heron' }, lines: [ { id: id(), speaker: '[Peepo](peepo://Home/How-to-use-peeponote/Story/peepo)', text: 'Is this the way across?', note: 'nervous' }, { id: id(), speaker: 'Heron', text: 'Every way is across, if you answer me this…' } ] },
+      { id: id(), type: 'text', x: 60, y: 850, w: 560, h: 60, z: 1, variant: 'body', autoSize: true, text: 'Right-click any card → **Properties…** to see its id and give it a short slug for links like `peepo://Home/…/peepo`.' },
+    ],
+    connectors: [
+      { id: id(), from: { cardId: scene, side: 'top' }, to: { cardId: hero, side: 'bottom' }, arrows: 'end', style: { dashed: true } },
+      { id: id(), from: { cardId: scene, side: 'right' }, to: { cardId: beat, side: 'left' }, arrows: 'end' },
+    ],
+  }
+  how.push({ id: id(), type: 'board', x: 630, y: 820, w: 260, h: 110, z: 1, boardId: storyId, style: { bg: '#c9a8f5' } })
+  return [home, howBoard, sandbox, story]
 }
