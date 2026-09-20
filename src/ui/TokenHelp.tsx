@@ -93,7 +93,7 @@ export function TokenHelp({ remote, className = '' }: { remote: string; classNam
               Copy the <code className={code}>ghp_…</code> string and paste it here. A classic token works for <em>all</em> your repos, so the fine-grained one above is the safer pick.
             </li>
           </ol>
-          <p className="mt-2 text-frog-200/50">The token is kept in this browser's localStorage only and is sent exclusively to api.github.com.</p>
+          <p className="mt-2 text-frog-200/50">The token stays in this browser and is sent only to api.github.com — it is never written to the repo.</p>
         </details>
       </div>
     )

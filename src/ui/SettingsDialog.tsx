@@ -80,12 +80,9 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             />
             Snap cards to grid
           </label>
-          <p className="text-[11px] text-frog-200/50">
-            The remote URL is also repo-level, but lives in <code>.git/config</code> of this clone — it's set below and never committed.
-          </p>
         </section>
 
-        <GroupHeader title="You" hint="Stored in this browser's localStorage only. Never written to the repo; your token only ever goes to the git host." tone="user" />
+        <GroupHeader title="You, on this device" hint="Personal settings kept in this browser — never committed to the repo. The remote URL lives in this clone's .git/config; the token is only ever sent to your git host." tone="user" />
 
         <section className="mb-5 space-y-2">
           <div className={label}>Storage</div>
