@@ -103,7 +103,7 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
         }}
           placeholder={placeholder}
           className={`h-full w-full resize-none overflow-hidden whitespace-pre-wrap break-words bg-frog-300/10 p-2 text-inherit outline-none placeholder:text-frog-200/30 ${cls}`}
-          style={{ font: 'inherit', color: 'inherit', textAlign: 'inherit' }}
+          style={{ fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', letterSpacing: 'inherit', color: 'inherit', textAlign: 'inherit' }}
         />
       </>
     )

@@ -51,7 +51,7 @@ export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
         }}
         placeholder="Write markdown… (Esc or ⌘⏎ to finish)"
         className="h-full w-full resize-none bg-transparent p-3 leading-snug outline-none placeholder:opacity-40"
-        style={{ font: 'inherit', color: 'inherit', textAlign: 'inherit' }}
+        style={{ fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', letterSpacing: 'inherit', color: 'inherit', textAlign: 'inherit' }}
       />
     )
   }

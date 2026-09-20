@@ -69,7 +69,9 @@ input, textarea, [contenteditable="true"], pre, code, .selectable { user-select:
 .prose-note h1 { font-size: 1.35em; }
 .prose-note h2 { font-size: 1.2em; }
 .prose-note h3 { font-size: 1.05em; }
-.prose-note p { margin: 0.3em 0; }
+.prose-note p { margin: 0.7em 0; } /* ≈ one blank textarea line between paragraphs, so edit ↔ view doesn't shift */
+.prose-note > :first-child { margin-top: 0; }
+.prose-note > :last-child { margin-bottom: 0; }
 .prose-note ul, .prose-note ol { padding-left: 1.3em; margin: 0.3em 0; }
 .prose-note ul { list-style: disc; }
 .prose-note ol { list-style: decimal; }

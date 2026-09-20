@@ -135,7 +135,7 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
             }}
             placeholder="Label"
             className="h-full w-full resize-none bg-transparent text-center outline-none placeholder:opacity-40"
-            style={{ font: 'inherit', color: 'inherit', textAlign: 'inherit' }}
+            style={{ fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', letterSpacing: 'inherit', color: 'inherit', textAlign: 'inherit' }}
           />
         ) : (
           <div className="whitespace-pre-wrap break-words">{card.label}</div>
