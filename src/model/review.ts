@@ -91,6 +91,8 @@ export const userStateSchema = z
     me: person,
     seen: z.record(z.string(), z.string()),
     muted: z.array(z.string()),
+    /** notifications removed from the panel (their ids) */
+    hidden: z.array(z.string()).optional(),
     updatedAt: z.string(),
     sig: z.string().optional(),
   })
@@ -102,7 +104,7 @@ export const signedFields = {
   review: (r: ReviewRequest) => ({ id: r.id, boardId: r.boardId, targets: r.targets, requester: r.requester, reviewers: r.reviewers, message: r.message, status: r.status, createdAt: r.createdAt, updatedAt: r.updatedAt, closedAt: r.closedAt, closedBy: r.closedBy }),
   verdict: (v: Verdict) => ({ reviewId: v.reviewId, reviewer: v.reviewer, verdict: v.verdict, note: v.note, at: v.at }),
   comment: (c: Comment) => ({ id: c.id, boardId: c.boardId, anchor: c.anchor, reviewId: c.reviewId, parentId: c.parentId, author: c.author, text: c.text, createdAt: c.createdAt, editedAt: c.editedAt, resolved: c.resolved }),
-  state: (s: UserState) => ({ me: s.me, seen: s.seen, muted: s.muted, updatedAt: s.updatedAt }),
+  state: (s: UserState) => ({ me: s.me, seen: s.seen, muted: s.muted, hidden: s.hidden, updatedAt: s.updatedAt }),
 }
 
 export const isCardAnchor = (a: CommentAnchor): a is { cardId: string; itemId?: string } => 'cardId' in a

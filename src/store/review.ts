@@ -88,6 +88,9 @@ interface ReviewState {
   deleteComment: (id: string) => Promise<void>
   resolveThread: (rootId: string, resolved: boolean) => Promise<void>
   markSeen: (ids: string[]) => void
+  markUnseen: (ids: string[]) => void
+  /** take notifications off the panel (per user) */
+  hideNotifications: (ids: string[]) => void
   muteThread: (rootId: string, muted: boolean) => void
 
   setMode: (mode: ReviewMode) => void
@@ -391,6 +394,31 @@ export const useReview = create<ReviewState>((set, get) => {
       if (!fresh.length) return
       const t = now()
       const next: UserState = { ...cur, me: { name: id.account.name, email: id.account.email }, seen: { ...cur.seen, ...Object.fromEntries(fresh.map((x) => [x, t])) }, updatedAt: t }
+      set((s) => ({ states: { ...s.states, [k]: next } }))
+      void sign(id.keys, signedFields.state(next)).then((sig) => writeJson(`${STATE_DIR}/${k}.json`, { ...next, sig }, 'seen'))
+    },
+
+    markUnseen: (ids) => {
+      const id = get().identity
+      if (id.kind !== 'verified' || !ids.length) return
+      const k = userKey(id.account.email)
+      const cur = get().states[k]
+      if (!cur) return
+      const seen = { ...cur.seen }
+      let n = 0
+      for (const x of ids) if (x in seen) (delete seen[x], n++)
+      if (!n) return
+      const next: UserState = { ...cur, seen, updatedAt: now() }
+      set((s) => ({ states: { ...s.states, [k]: next } }))
+      void sign(id.keys, signedFields.state(next)).then((sig) => writeJson(`${STATE_DIR}/${k}.json`, { ...next, sig }, 'seen'))
+    },
+
+    hideNotifications: (ids) => {
+      const id = get().identity
+      if (id.kind !== 'verified' || !ids.length) return
+      const k = userKey(id.account.email)
+      const cur = get().states[k] ?? { me: { name: id.account.name, email: id.account.email }, seen: {}, muted: [], updatedAt: now() }
+      const next: UserState = { ...cur, hidden: [...new Set([...(cur.hidden ?? []), ...ids])], updatedAt: now() }
       set((s) => ({ states: { ...s.states, [k]: next } }))
       void sign(id.keys, signedFields.state(next)).then((sig) => writeJson(`${STATE_DIR}/${k}.json`, { ...next, sig }, 'seen'))
     },

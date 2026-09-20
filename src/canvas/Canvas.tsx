@@ -49,6 +49,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
   const addCard = useWorkspace((s) => s.addCard)
   const removeCards = useWorkspace((s) => s.removeCards)
   const lockCards = useWorkspace((s) => s.lockCards)
+  const stepZ = useWorkspace((s) => s.stepZ)
   const updateCard = useWorkspace((s) => s.updateCard)
   const addAssets = useWorkspace((s) => s.addAssets)
   const addConnector = useWorkspace((s) => s.addConnector)
@@ -421,6 +422,8 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
           onClick: () => lockCards(board.id, ids, !selCards.every((c) => c.locked)),
         },
         { kind: 'item', label: 'Bring to front', icon: '⤒', disabled: readOnly, onClick: () => ids.forEach((id) => bringToFront(board.id, id)) },
+        { kind: 'item', label: 'Bring forward', icon: '↑', disabled: readOnly, onClick: () => stepZ(board.id, ids, 1) },
+        { kind: 'item', label: 'Send backward', icon: '↓', disabled: readOnly, onClick: () => stepZ(board.id, ids, -1) },
         { kind: 'item', label: 'Send to back', icon: '⤓', disabled: readOnly, onClick: () => sendToBack(board.id, ids) },
         sep,
         ...(selCards.some((c) => c.groupId)
@@ -781,7 +784,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         <button
           onClick={goBack}
           title={`Back to ${backTo.name || 'Untitled'}`}
-          className="absolute left-3 top-3 z-20 flex max-w-[60%] items-center gap-1.5 rounded-full border border-(--hair) bg-swamp-900/85 px-3 py-1.5 text-[12px] font-semibold text-frog-50 shadow-lg backdrop-blur hover:bg-swamp-800"
+          className={`absolute left-3 z-20 flex max-w-[60%] items-center gap-1.5 rounded-full border border-(--hair) bg-swamp-900/85 px-3 py-1.5 text-[12px] font-semibold text-frog-50 shadow-lg backdrop-blur hover:bg-swamp-800 ${reviewOn ? 'top-12' : 'top-3'}`}
         >
           <span aria-hidden>←</span>
           <span className="truncate">{backTo.name || 'Untitled'}</span>

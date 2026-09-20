@@ -65,7 +65,13 @@ export function ReviewBar({ board }: { board: Board }) {
             {!onThisBoard && <span className="text-frog-200/60"> (on another board)</span>}
           </span>
           <StatusPill status={reviewStatus(review, vs, Object.values(comments))} />
-          {review.message && <span className="max-w-72 truncate text-frog-200/80" title={review.message}>“{review.message}”</span>}
+          {vs.map((v) => (
+            <span key={v.reviewer.email} className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] ${v.verdict === 'approved' ? 'bg-frog-700/60 text-frog-50' : 'bg-amber-600/50 text-amber-50'}`} title={v.note || undefined}>
+              <Avatar person={v.reviewer} size={14} />
+              {v.verdict === 'approved' ? '✓' : '✎'} {v.reviewer.name}
+              {v.note && <span className="max-w-48 truncate opacity-80">— {v.note}</span>}
+            </span>
+          ))}
         </>
       ) : (
         <span className="text-frog-200/80">Click a card, a row or an empty spot to comment. Nothing on the board can change while reviewing.</span>
@@ -96,6 +102,15 @@ export function ReviewBar({ board }: { board: Board }) {
       <button onClick={() => setMode({ on: false })} className="rounded-md bg-swamp-700 px-2.5 py-1 text-[12px] font-bold text-frog-50 hover:bg-swamp-600">
         Exit review
       </button>
+      {review?.message && (
+        <div className="flex w-full items-start gap-2 rounded-lg bg-black/25 px-3 py-2 text-[14px] leading-snug text-frog-50">
+          <Avatar person={review.requester} size={22} className="mt-0.5" />
+          <div className="min-w-0">
+            <span className="mr-1.5 text-[11px] font-black uppercase tracking-wider text-amber-200/90">{review.requester.name} asks</span>
+            <span className="whitespace-pre-wrap">{review.message}</span>
+          </div>
+        </div>
+      )}
       {asking && review && (
         <div className="flex w-full items-center gap-2 pt-1">
           <input

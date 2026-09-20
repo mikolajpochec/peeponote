@@ -59,6 +59,8 @@ interface WorkspaceState {
   /** local and remote both have new commits — waiting for the user to pick a resolution */
   divergence: SyncState | null
   remoteUrl: string | null
+  /** who we last auto-merged with (for the toast) */
+  lastCombinedWith: string | null
   head: ReadCommitResult | null
   commits: ReadCommitResult[]
   /** the log has been walked to the root — nothing more to load */
@@ -101,6 +103,8 @@ interface WorkspaceState {
   ungroupCards: (boardId: string, ids: string[]) => void
   bringToFront: (boardId: string, cardId: string) => void
   sendToBack: (boardId: string, ids: string[]) => void
+  /** one step up / down in the stacking order (swap z with the next card above / below) */
+  stepZ: (boardId: string, ids: string[], dir: 1 | -1) => void
   /** insert ready-made cards + connectors (ids already fresh) */
   insert: (boardId: string, cards: Card[], connectors: Connector[]) => void
   createBoard: (parentId: string, name: string, at: { x: number; y: number }) => string
@@ -558,6 +562,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     busyDetail: null,
     divergence: null,
     remoteUrl: null,
+    lastCombinedWith: null,
     head: null,
     commits: [],
     historyDone: false,
@@ -792,6 +797,23 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         return { ...b, cards: b.cards.map((c) => (ids.includes(c.id) ? { ...c, z: minZ - ids.length + ids.indexOf(c.id) } : c)) }
       }),
 
+    stepZ: (boardId, ids, dir) =>
+      mutateBoard(boardId, (b) => {
+        const order = [...b.cards].sort((a, c) => a.z - c.z)
+        const idx = order.map((c, i) => (ids.includes(c.id) ? i : -1)).filter((i) => i >= 0)
+        if (!idx.length) return b
+        const lo = Math.min(...idx)
+        const hi = Math.max(...idx)
+        // the neighbour just beyond the selection in that direction jumps to its other side; nothing to do at the edge
+        const edge = dir > 0 ? hi + 1 : lo - 1
+        if (edge < 0 || edge >= order.length) return b
+        const neighbour = order[edge]
+        const rest = order.filter((c) => c !== neighbour)
+        rest.splice(dir > 0 ? lo : hi, 0, neighbour)
+        const zOf = new Map(rest.map((c, i) => [c.id, i + 1]))
+        return { ...b, cards: b.cards.map((c) => (zOf.get(c.id) !== c.z ? { ...c, z: zOf.get(c.id)! } : c)) }
+      }),
+
     insert: (boardId, cards, connectors) => {
       mutateBoard(boardId, (b) => {
         const maxZ = b.cards.reduce((m, c) => Math.max(m, c.z), 0)
@@ -1020,6 +1042,50 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       const { fs } = ctx
       if (get().busy) return
       set({ busy: 'syncing', busyDetail: null })
+      /**
+       * both sides have new commits: with no unsaved edits and no card touched by both → merge quietly
+       * (returns true, nothing pushed yet); otherwise the plain-language dialog takes over (returns false)
+       */
+      const combine = async (local: string, remote: string, st: SyncState): Promise<boolean> => {
+        const dirty = isDirty(get())
+        const who = await authorsBetween(fs, remote, local)
+        if (dirty) {
+          set({ divergence: { ...st, who, dirty } })
+          return false
+        }
+        const probe = await mergeRemote(fs, local, remote, 'ours', identity(), progress, true)
+        if (probe.conflicts !== 0) {
+          set({ divergence: { ...st, who, dirty } })
+          return false
+        }
+        await mergeRemote(fs, local, remote, 'ours', identity(), progress)
+        await reloadBoards(fs)
+        set({ lastCombinedWith: who })
+        return true
+      }
+      /** push; when the remote moved meanwhile (someone's auto-commit landed), fetch, combine and try again */
+      const pushWithRetry = async (): Promise<boolean> => {
+        if (!ctx.auth.token) throw new Error('A token is needed to push. Add one in Settings.')
+        for (let attempt = 0; attempt < 4; attempt++) {
+          try {
+            await pushRemote(ctx, progress)
+            return true
+          } catch (e) {
+            if (!(e instanceof NotFastForwardError)) throw e
+            const remote2 = await fetchRemote(ctx, progress)
+            const local2 = await repo.headOid(fs)
+            const st2 = await compare(fs, local2, remote2)
+            if (st2.relation === 'diverged') {
+              if (!(await combine(local2!, remote2!, st2))) return false // dialog is up
+            } else if (st2.relation === 'behind') {
+              await resetTo(fs, remote2!)
+              await reloadBoards(fs)
+              return true
+            } else if (st2.relation === 'same') return true
+          }
+        }
+        throw new Error('The remote keeps changing under us — try again in a moment.')
+      }
       try {
         const remote = await fetchRemote(ctx, progress)
         const local = await repo.headOid(fs)
@@ -1031,25 +1097,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
             break
           case 'remote-empty':
           case 'ahead': {
-            if (!ctx.auth.token) throw new Error('A token is needed to push. Add one in Settings.')
-            try {
-              await pushRemote(ctx, progress)
-            } catch (e) {
-              if (!(e instanceof NotFastForwardError)) throw e
-              // the remote moved while we were pushing: look again and offer the merge dialog instead of failing
-              const remote2 = await fetchRemote(ctx, progress)
-              const st2 = await compare(fs, await repo.headOid(fs), remote2)
-              if (st2.relation === 'diverged') {
-                set({ divergence: { ...st2, who: await authorsBetween(fs, remote2!, await repo.headOid(fs)), dirty: isDirty(get()) } })
-                break
-              }
-              if (st2.relation === 'ahead') await pushRemote(ctx, progress)
-              else if (st2.relation === 'behind') {
-                await resetTo(fs, remote2!)
-                await reloadBoards(fs)
-              }
-            }
-            toast.ok(`Pushed ${st.ahead || ''} ${st.ahead === 1 ? 'commit' : 'commits'}.`.replace('  ', ' '), 'peepoRun')
+            if (await pushWithRetry()) toast.ok(`Pushed ${st.ahead || ''} ${st.ahead === 1 ? 'commit' : 'commits'}.`.replace('  ', ' '), 'peepoRun')
             break
           }
           case 'local-empty':
@@ -1065,24 +1113,9 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
             await reloadBoards(fs)
             toast.ok(`Pulled ${st.behind} ${st.behind === 1 ? 'commit' : 'commits'}.`, 'peepoGlad')
             break
-          case 'diverged': {
-            if (dirty) {
-              set({ divergence: { ...st, who: await authorsBetween(fs, remote!, local), dirty } })
-              break
-            }
-            // no card edited by both sides → combine silently and push; otherwise ask which version wins
-            const probe = await mergeRemote(fs, local!, remote!, 'ours', identity(), progress, true)
-            const who = await authorsBetween(fs, remote!, local)
-            if (probe.conflicts === 0) {
-              await mergeRemote(fs, local!, remote!, 'ours', identity(), progress)
-              await reloadBoards(fs)
-              await pushRemote(ctx, progress)
-              toast.ok(`Combined with ${who}'s changes and pushed.`, 'peepoClap')
-            } else {
-              set({ divergence: { ...st, who, dirty } })
-            }
+          case 'diverged':
+            if ((await combine(local!, remote!, st)) && (await pushWithRetry())) toast.ok(`Combined with ${get().lastCombinedWith}'s changes and pushed.`, 'peepoClap')
             break
-          }
         }
         await get().refreshGit()
       } catch (e) {

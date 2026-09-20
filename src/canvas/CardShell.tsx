@@ -30,7 +30,6 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
   const select = useWorkspace((s) => s.select)
   const moveCards = useWorkspace((s) => s.moveCards)
   const updateCard = useWorkspace((s) => s.updateCard)
-  const bringToFront = useWorkspace((s) => s.bringToFront)
   const [editTick, setEditTick] = useState(0)
   const arrived = useArrivals((s) => !!s.cards[card.id])
 
@@ -42,7 +41,6 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
         const sel = useWorkspace.getState().selection
         if (e.shiftKey) select([card.id], true)
         else if (!sel.has(card.id)) select([card.id])
-        if (!readOnly) bringToFront(boardId, card.id)
       },
       onMove: (dx, dy) => {
         if (readOnly || card.locked) return

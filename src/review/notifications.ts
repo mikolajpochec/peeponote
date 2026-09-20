@@ -56,12 +56,12 @@ export function textOfCard(c: Card): string {
 }
 
 const excerpt = (s: string, n = 90) => {
-  const t = s.replace(/\s+/g, ' ').trim()
+  const t = s.replace(/@\[([^\]]+)\]/g, '@$1').replace(/\s+/g, ' ').trim()
   return t.length > n ? `${t.slice(0, n - 1)}…` : t
 }
 
 export function deriveNotifications(
-  s: { reviews: Record<string, ReviewRequest>; verdicts: Record<string, Verdict>; comments: Record<string, Comment>; states: Record<string, { seen: Record<string, string>; muted: string[] }>; verified: Record<string, boolean> },
+  s: { reviews: Record<string, ReviewRequest>; verdicts: Record<string, Verdict>; comments: Record<string, Comment>; states: Record<string, { seen: Record<string, string>; muted: string[]; hidden?: string[] }>; verified: Record<string, boolean> },
   boards: Record<string, Board>,
   me: Person | null,
 ): Notification[] {
@@ -69,6 +69,7 @@ export function deriveNotifications(
   const mine = s.states[userKey(me.email)]
   const seen = mine?.seen ?? {}
   const muted = new Set(mine?.muted ?? [])
+  const hidden = new Set(mine?.hidden ?? [])
   const out: Notification[] = []
   const comments = Object.values(s.comments)
   const rootOf = (c: Comment): Comment => (c.parentId && s.comments[c.parentId] ? rootOf(s.comments[c.parentId]) : c)
@@ -150,7 +151,7 @@ export function deriveNotifications(
       out.push({ id, kind: 'mention', at: seen[id] ?? '', who: { name: 'Someone', email: '' }, boardId: b.id, cardId: c.id, what: `you're mentioned in "${excerpt(textOfCard(c), 40)}" on ${b.name}`, unseen: !seen[id], verified: true })
     }
   }
-  return out.sort((a, b) => (a.unseen === b.unseen ? (b.at || '').localeCompare(a.at || '') : a.unseen ? -1 : 1))
+  return out.filter((n) => !hidden.has(n.id)).sort((a, b) => (a.unseen === b.unseen ? (b.at || '').localeCompare(a.at || '') : a.unseen ? -1 : 1))
 }
 
 export function useNotifications(): Notification[] {

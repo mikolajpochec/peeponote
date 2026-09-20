@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo, useState } from 'react'
 import { useReview, useMe, anchorKey } from '../store/review'
 import { useWorkspace } from '../store/workspace'
 import { openLink } from '../nav/links'
@@ -27,6 +27,16 @@ export function NotificationsPanel({ onClose, mobile }: { onClose: () => void; m
   const verdicts = useReview((s) => s.verdicts)
   const comments = useReview((s) => s.comments)
   const markSeen = useReview((s) => s.markSeen)
+  const markUnseen = useReview((s) => s.markUnseen)
+  const hide = useReview((s) => s.hideNotifications)
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const toggle = (id: string) =>
+    setPicked((p) => {
+      const n = new Set(p)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
+      return n
+    })
   const boards = useWorkspace((s) => s.boards)
   const identity = useReview((s) => s.identity)
 
@@ -42,6 +52,11 @@ export function NotificationsPanel({ onClose, mobile }: { onClose: () => void; m
         openLink(rq.targets.length ? { kind: 'card', boardId: rq.boardId, cardId: rq.targets[0] } : { kind: 'board', boardId: rq.boardId })
         r.setMode({ on: true, reviewId: rq.id })
       }
+    } else if (n.kind === 'verdict' && n.reviewId && reviews[n.reviewId]) {
+      // a verdict on my request: show the review itself (bar with who said what), targets highlighted
+      const rq = reviews[n.reviewId]
+      openLink(rq.targets.length ? { kind: 'card', boardId: rq.boardId, cardId: rq.targets[0] } : { kind: 'board', boardId: rq.boardId })
+      r.setMode({ on: true, reviewId: rq.id })
     } else if (n.rootId && comments[n.rootId]) {
       const root = comments[n.rootId]
       openLink(isCardAnchor(root.anchor) ? { kind: 'card', boardId: root.boardId, cardId: root.anchor.cardId } : { kind: 'place', boardId: root.boardId, x: root.anchor.x, y: root.anchor.y, scale: 1 })
@@ -57,7 +72,7 @@ export function NotificationsPanel({ onClose, mobile }: { onClose: () => void; m
       <div className="flex items-center gap-2 border-b border-(--hair) px-3 py-2">
         <Peepo name="peepoHey" size={24} />
         <div className="flex-1 text-sm font-extrabold">Notifications</div>
-        {unseen.length > 0 && (
+        {picked.size === 0 && unseen.length > 0 && (
           <button onClick={() => markSeen(unseen.map((n) => n.id))} className="rounded px-1.5 py-0.5 text-[11px] font-semibold text-frog-200/70 hover:bg-(--hover-strong) hover:text-white">
             Mark all seen
           </button>
@@ -134,8 +149,27 @@ export function NotificationsPanel({ onClose, mobile }: { onClose: () => void; m
           </Section>
         )}
         <Section title="Activity">
+          {picked.size > 0 && (
+            <div className="sticky top-0 z-10 mx-2 mb-1 flex flex-wrap items-center gap-1 rounded-lg bg-swamp-700 px-2 py-1 text-[11px] shadow">
+              <span className="font-bold">{picked.size} selected</span>
+              <span className="flex-1" />
+              <button onClick={() => (markSeen([...picked]), setPicked(new Set()))} className="rounded px-1.5 py-0.5 font-semibold hover:bg-(--hover-strong)">
+                Seen
+              </button>
+              <button onClick={() => (markUnseen([...picked]), setPicked(new Set()))} className="rounded px-1.5 py-0.5 font-semibold hover:bg-(--hover-strong)">
+                Unseen
+              </button>
+              <button onClick={() => (hide([...picked]), setPicked(new Set()))} className="rounded px-1.5 py-0.5 font-semibold text-red-200 hover:bg-red-900/40">
+                Remove
+              </button>
+              <button onClick={() => setPicked(new Set())} className="rounded px-1.5 py-0.5 text-frog-200/60 hover:bg-(--hover-strong)">
+                ✕
+              </button>
+            </div>
+          )}
+          {items.length > 1 && picked.size === 0 && <div className="px-3 pb-1 text-[10px] text-frog-200/40">Tick rows to mark several seen / unseen, or remove them.</div>}
           {items.map((n) => (
-            <Row key={n.id} n={n} onOpen={() => open(n)} onSeen={() => markSeen([n.id])} />
+            <Row key={n.id} n={n} picked={picked.has(n.id)} onPick={() => toggle(n.id)} onOpen={() => open(n)} onToggleSeen={() => (n.unseen ? markSeen([n.id]) : markUnseen([n.id]))} />
           ))}
           {!items.length && <div className="px-3 py-4 text-[13px] text-frog-200/50">{me ? 'Nothing yet. Comments, mentions and review requests land here.' : ''}</div>}
         </Section>
@@ -159,39 +193,31 @@ export function StatusPill({ status }: { status: ReturnType<typeof reviewStatus>
   return <span className={`rounded px-1.5 py-px text-[10px] font-bold ${cls}`}>{status}</span>
 }
 
-/** a notification row; counts as seen after it has been on screen for a moment */
-function Row({ n, onOpen, onSeen }: { n: Notification; onOpen: () => void; onSeen: () => void }) {
-  const ref = useRef<HTMLButtonElement>(null)
-  useEffect(() => {
-    const el = ref.current
-    if (!el || !n.unseen) return
-    let t: ReturnType<typeof setTimeout> | undefined
-    const io = new IntersectionObserver((es) => {
-      if (es.some((e) => e.isIntersecting)) t = setTimeout(onSeen, 1500)
-      else clearTimeout(t)
-    })
-    io.observe(el)
-    return () => {
-      io.disconnect()
-      clearTimeout(t)
-    }
-  }, [n.unseen, onSeen])
+/** a notification row: click opens it (and marks it seen); the checkbox selects it for the batch bar; the dot toggles seen */
+function Row({ n, picked, onPick, onOpen, onToggleSeen }: { n: Notification; picked: boolean; onPick: () => void; onOpen: () => void; onToggleSeen: () => void }) {
   return (
-    <button ref={ref} onClick={onOpen} className={`flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-swamp-700 ${n.unseen ? 'bg-frog-900/20' : ''}`}>
-      <div className="relative">
-        {n.who.email ? <Avatar person={n.who} size={26} /> : <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-swamp-600 text-[12px]">@</span>}
-        <span className="absolute -bottom-1 -right-1 rounded-full bg-swamp-900 px-0.5 text-[10px] leading-none">{KIND_ICON[n.kind]}</span>
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-[13px] leading-snug">
-          {n.who.email && <b>{n.who.name} </b>}
-          {n.what}
-          {!n.verified && <span className="ml-1 rounded bg-swamp-600 px-1 text-[9px] font-bold uppercase text-frog-200/60">unverified</span>}
+    <div className={`group/row flex w-full items-start gap-2 px-2 py-2 text-left hover:bg-swamp-700 ${n.unseen ? 'bg-frog-900/20' : ''} ${picked ? 'bg-frog-800/40' : ''}`}>
+      <input type="checkbox" checked={picked} onChange={onPick} className={`mt-2 accent-frog-500 ${picked ? '' : 'opacity-0 group-hover/row:opacity-100'}`} title="Select" />
+      <button onClick={onOpen} className="flex min-w-0 flex-1 items-start gap-2 text-left">
+        <div className="relative">
+          {n.who.email ? <Avatar person={n.who} size={26} /> : <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-swamp-600 text-[12px]">@</span>}
+          <span className="absolute -bottom-1 -right-1 rounded-full bg-swamp-900 px-0.5 text-[10px] leading-none">{KIND_ICON[n.kind]}</span>
         </div>
-        {n.excerpt && <div className="truncate text-[12px] text-frog-200/70">{n.excerpt}</div>}
-        <div className="text-[11px] text-frog-200/50">{timeAgo(n.at)}</div>
-      </div>
-      {n.unseen && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-frog-400" />}
-    </button>
+        <div className="min-w-0 flex-1">
+          <div className={`text-[13px] leading-snug ${n.unseen ? '' : 'text-frog-100/80'}`}>
+            {n.who.email && <b>{n.who.name} </b>}
+            {n.what}
+            {!n.verified && <span className="ml-1 rounded bg-swamp-600 px-1 text-[9px] font-bold uppercase text-frog-200/60">unverified</span>}
+          </div>
+          {n.excerpt && <div className="truncate text-[12px] text-frog-200/70">{n.excerpt}</div>}
+          <div className="text-[11px] text-frog-200/50">{timeAgo(n.at)}</div>
+        </div>
+      </button>
+      <button
+        onClick={onToggleSeen}
+        title={n.unseen ? 'Mark seen' : 'Mark unseen'}
+        className={`mt-1.5 h-3 w-3 shrink-0 rounded-full ring-1 ring-frog-400/60 ${n.unseen ? 'bg-frog-400' : 'bg-transparent opacity-40 group-hover/row:opacity-100'}`}
+      />
+    </div>
   )
 }
