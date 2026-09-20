@@ -118,7 +118,7 @@ function SaveBar() {
         className="flex items-center gap-1.5 rounded-md bg-frog-500 px-3 py-1 text-[13px] font-bold text-white hover:bg-frog-400 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Peepo name={willPush ? 'peepoRun' : 'peepoClap'} size={20} />
-        {busy === 'saving' ? 'Saving…' : busy === 'pushing' ? 'Pushing…' : willPush ? 'Save & push' : 'Save'}
+        {busy === 'saving' ? 'Saving…' : busy === 'syncing' ? 'Syncing…' : willPush ? 'Save & push' : 'Save'}
       </button>
       {separatePush && (
         <button
@@ -127,16 +127,16 @@ function SaveBar() {
           title={remoteUrl ? `git push → ${remoteUrl}` : 'No remote configured — open Settings'}
           className="flex items-center gap-1.5 rounded-md bg-swamp-600 px-3 py-1 text-[13px] font-bold text-frog-50 hover:bg-swamp-500 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          <Peepo name="peepoRun" size={20} /> {busy === 'pushing' ? 'Pushing…' : 'Push'}
+          <Peepo name="peepoRun" size={20} /> {busy === 'syncing' ? 'Syncing…' : 'Push'}
         </button>
       )}
       <button
         onClick={pull}
         disabled={!remoteUrl || !!busy || !!viewingRef}
-        title="git pull (fast-forward only)"
+        title="Sync: fetch, then pull or push (asks if histories diverged)"
         className="rounded-md bg-swamp-600 px-2 py-1 text-[13px] font-bold text-frog-50 hover:bg-swamp-500 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        ⤓
+        ⇅
       </button>
     </div>
   )

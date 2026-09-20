@@ -5,6 +5,8 @@ import {
   writeBytes, writeText, type PeepoFS,
 } from '../fs'
 import * as repo from '../git/repo'
+import { chooseTransport, compare, fetchRemote, mergeRemote, pushRemote, resetTo, type SyncCtx, type SyncState } from '../git/sync'
+import { ghClone, parseGitHubUrl } from '../git/githubApi'
 import {
   ASSETS_DIR, BOARDS_DIR, WORKSPACE_FILE, boardPath, newId,
   type Board, type BoardStyle, type Card, type CardStyle, type Connector, type ConnectorStyle, type WorkspaceMeta, type WorkspaceSettings,
@@ -14,7 +16,8 @@ import { detectKind } from '../model/assetKind'
 import { useSettings } from './settings'
 import { toast } from './toast'
 
-export type Busy = 'saving' | 'pushing' | 'pulling' | 'cloning' | 'loading' | null
+export type Busy = 'saving' | 'pushing' | 'pulling' | 'syncing' | 'cloning' | 'loading' | null
+export type Resolution = 'merge-ours' | 'merge-theirs' | 'force-push' | 'take-theirs'
 
 interface WorkspaceState {
   fs: PeepoFS | null
@@ -35,6 +38,10 @@ interface WorkspaceState {
   treeDirty: boolean
   selection: Set<string>
   busy: Busy
+  /** what the current long operation is doing right now */
+  busyDetail: string | null
+  /** local and remote both have new commits — waiting for the user to pick a resolution */
+  divergence: SyncState | null
   remoteUrl: string | null
   head: ReadCommitResult | null
   commits: ReadCommitResult[]
@@ -81,6 +88,9 @@ interface WorkspaceState {
 
   // git
   save: (message?: string) => Promise<boolean>
+  /** fetch, then push / fast-forward / ask about a merge — the one entry point for talking to the remote */
+  sync: (opts?: { silent?: boolean }) => Promise<void>
+  resolveDivergence: (mode: Resolution) => Promise<void>
   push: () => Promise<boolean>
   pull: () => Promise<void>
   setRemote: (url: string) => Promise<void>
@@ -187,6 +197,31 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     scheduleFlush()
   }
 
+  function syncCtx(): SyncCtx | null {
+    const { fs, remoteUrl } = get()
+    if (!fs || !remoteUrl) return null
+    return { fs, remoteUrl, auth: remoteAuth(), transport: chooseTransport(remoteUrl, useSettings.getState().transport), who: identity() }
+  }
+  const progress = (m: string) => set({ busyDetail: m })
+
+  /** re-read boards from the working tree (after pull / merge / restore) */
+  async function reloadBoards(fs: PeepoFS) {
+    const { meta, boards } = await loadBoards(fs)
+    const cur = get().currentBoardId
+    set({
+      meta,
+      boards,
+      currentBoardId: cur && boards[cur] ? cur : meta.rootBoardId,
+      dirtyBoards: new Set(),
+      deletedBoards: new Set(),
+      assetsTouched: false,
+      metaDirty: false,
+      treeDirty: await repo.hasChanges(fs),
+      selection: new Set(),
+    })
+    await get().refreshGit()
+  }
+
   let flushTimer: ReturnType<typeof setTimeout> | undefined
   function scheduleFlush() {
     clearTimeout(flushTimer)
@@ -208,6 +243,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     treeDirty: false,
     selection: new Set(),
     busy: null,
+    busyDetail: null,
+    divergence: null,
     remoteUrl: null,
     head: null,
     commits: [],
@@ -254,13 +291,14 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       set({ busy: 'cloning' })
       try {
         if (await repo.isRepo(fs)) throw new Error('This storage already has a repo. Pick an empty folder or wipe browser storage first.')
-        await repo.clone(fs, url, remoteAuth())
+        if (chooseTransport(url, useSettings.getState().transport) === 'api' && parseGitHubUrl(url)) await ghClone(fs, url, useSettings.getState().token, progress)
+        else await repo.clone(fs, url, remoteAuth())
         toast.ok('Cloned! peepoPog', 'peepoPog')
         await openFs(fs)
       } catch (e) {
         toast.err(`Clone failed: ${(e as Error).message}`)
       } finally {
-        set({ busy: null })
+        set({ busy: null, busyDetail: null })
       }
     },
 
@@ -484,9 +522,10 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         set({ dirtyBoards: new Set(), deletedBoards: new Set(), assetsTouched: false, metaDirty: false, treeDirty: false })
         await get().refreshGit()
         toast.ok(`Committed: ${msg}`, 'peepoClap')
-        // default: a save also pushes when a remote is set up (unless the user wants them separate)
+        // default: a save also syncs when a remote is set up (unless the user wants them separate)
         if (!useSettings.getState().separatePush && get().remoteUrl && useSettings.getState().token) {
-          await get().push()
+          set({ busy: null })
+          await get().sync({ silent: true })
         }
         return true
       } catch (e) {
@@ -498,52 +537,97 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       }
     },
 
-    push: async () => {
-      const fs = get().fs
-      if (!fs) return false
-      if (!get().remoteUrl) {
+    sync: async ({ silent } = {}) => {
+      const ctx = syncCtx()
+      if (!ctx) {
         toast.err('No remote configured. Open settings. monkaS', 'monkaS')
-        return false
+        return
       }
-      if (!useSettings.getState().token) {
-        toast.err('No access token set. Open settings. monkaS', 'monkaS')
-        return false
-      }
-      set({ busy: 'pushing' })
+      const { fs } = ctx
+      if (get().busy) return
+      set({ busy: 'syncing', busyDetail: null })
       try {
-        await repo.push(fs, remoteAuth())
-        toast.ok('Pushed to remote. peepoRun', 'peepoRun')
-        return true
+        const remote = await fetchRemote(ctx, progress)
+        const local = await repo.headOid(fs)
+        const st = await compare(fs, local, remote)
+        const dirty = isDirty(get())
+        switch (st.relation) {
+          case 'same':
+            if (!silent) toast.info('Already in sync. peepoSit', 'peepoSit')
+            break
+          case 'remote-empty':
+          case 'ahead':
+            if (!ctx.auth.token) throw new Error('A token is needed to push. Add one in Settings.')
+            await pushRemote(ctx, progress)
+            toast.ok(`Pushed ${st.ahead || ''} ${st.ahead === 1 ? 'commit' : 'commits'}. peepoRun`.replace('  ', ' '), 'peepoRun')
+            break
+          case 'local-empty':
+          case 'behind':
+            if (dirty) {
+              toast.err('Remote has new changes — Save yours first, then pull. peepoShy', 'peepoShy')
+              break
+            }
+            progress('updating working tree…')
+            await resetTo(fs, remote!)
+            await reloadBoards(fs)
+            toast.ok(`Pulled ${st.behind} ${st.behind === 1 ? 'commit' : 'commits'}. peepoGlad`, 'peepoGlad')
+            break
+          case 'diverged':
+            if (dirty) {
+              toast.err('Remote has new changes — Save yours first, then sync. peepoShy', 'peepoShy')
+              break
+            }
+            set({ divergence: st })
+            break
+        }
+        await get().refreshGit()
       } catch (e) {
         console.error(e)
-        toast.err(`Push failed: ${(e as Error).message}`)
-        return false
+        toast.err(`Sync failed: ${(e as Error).message}`)
       } finally {
-        set({ busy: null })
+        set({ busy: null, busyDetail: null })
       }
     },
 
-    pull: async () => {
-      const fs = get().fs
-      if (!fs || !get().remoteUrl) return
-      if (isDirty(get())) {
-        toast.err('Save first, then pull. peepoShy', 'peepoShy')
-        return
-      }
-      set({ busy: 'pulling' })
+    resolveDivergence: async (mode) => {
+      const d = get().divergence
+      const ctx = syncCtx()
+      if (!d || !ctx || !d.local || !d.remote) return
+      set({ divergence: null, busy: 'syncing', busyDetail: null })
       try {
-        await repo.pull(fs, remoteAuth(), identity())
-        const { meta, boards } = await loadBoards(fs)
-        const cur = get().currentBoardId
-        set({ meta, boards, currentBoardId: cur && boards[cur] ? cur : meta.rootBoardId })
+        const { fs } = ctx
+        if (mode === 'force-push') {
+          await pushRemote(ctx, progress, true)
+          toast.ok('Remote overwritten with your version. monkaS', 'monkaS')
+        } else if (mode === 'take-theirs') {
+          await resetTo(fs, d.remote)
+          await reloadBoards(fs)
+          toast.ok('Took the remote version. Your commits are gone from this branch. FeelsOkayMan', 'FeelsOkayMan')
+        } else {
+          const r = await mergeRemote(fs, d.local, d.remote, mode === 'merge-ours' ? 'ours' : 'theirs', identity(), progress)
+          await reloadBoards(fs)
+          await pushRemote(ctx, progress)
+          toast.ok(
+            `Merged${r.files ? ` ${r.files} file${r.files === 1 ? '' : 's'}` : ''}${r.conflicts ? `, ${r.conflicts} conflict${r.conflicts === 1 ? '' : 's'} resolved` : ''} and pushed. peepoClap`,
+            'peepoClap',
+          )
+        }
         await get().refreshGit()
-        toast.ok('Pulled latest. peepoGlad', 'peepoGlad')
       } catch (e) {
         console.error(e)
-        toast.err(`Pull failed: ${(e as Error).message}`)
+        toast.err(`Could not resolve: ${(e as Error).message}`)
       } finally {
-        set({ busy: null })
+        set({ busy: null, busyDetail: null })
       }
+    },
+
+    push: async () => {
+      await get().sync()
+      return true
+    },
+
+    pull: async () => {
+      await get().sync()
     },
 
     setRemote: async (url) => {

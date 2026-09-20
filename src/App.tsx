@@ -9,6 +9,7 @@ import { Toasts } from './ui/Toasts'
 import { Peepo } from './ui/Peepo'
 import { BootScreen } from './ui/BootScreen'
 import { Onboarding } from './ui/Onboarding'
+import { SyncDialog } from './ui/SyncDialog'
 import { useSettings } from './store/settings'
 import { applyTheme, resolveTheme } from './theme/themes'
 
@@ -20,6 +21,7 @@ export default function App() {
   const board = useWorkspace((s) => (s.currentBoardId ? selectBoards(s)[s.currentBoardId] : undefined))
   const viewingRef = useWorkspace((s) => s.viewingRef)
   const busy = useWorkspace((s) => s.busy)
+  const busyDetail = useWorkspace((s) => s.busyDetail)
   const [showHistory, setShowHistory] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   // first run: no identity yet and the wizard was never finished/skipped — decided once, at startup
@@ -79,8 +81,8 @@ export default function App() {
             {busy && busy !== 'saving' && (
               <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
                 <div className="flex items-center gap-2 rounded-full bg-swamp-600/90 px-3 py-1 text-sm shadow">
-                  <Peepo name={busy === 'pushing' ? 'peepoRun' : busy === 'cloning' ? 'peepoLeave' : 'peepoThink'} size={22} className="peepo-bounce" />
-                  {busy}…
+                  <Peepo name={busy === 'pushing' || busy === 'syncing' ? 'peepoRun' : busy === 'cloning' ? 'peepoLeave' : 'peepoThink'} size={22} className="peepo-bounce" />
+                  {busyDetail ?? `${busy}…`}
                 </div>
               </div>
             )}
@@ -90,6 +92,7 @@ export default function App() {
       </div>
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
       {showOnboarding && <Onboarding onFinish={() => setShowOnboarding(false)} />}
+      <SyncDialog />
       <Toasts />
     </div>
   )

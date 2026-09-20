@@ -176,11 +176,35 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             value={settings.username}
             onChange={(e) => settings.set({ username: e.target.value })}
           />
-          <input className={field} placeholder={DEFAULT_CORS_PROXY} value={settings.corsProxy} onChange={(e) => settings.set({ corsProxy: e.target.value })} />
-          <p className="text-[11px] text-frog-200/50">
-            Browsers can't talk to GitHub's git endpoint directly, so pushes go through a CORS proxy. The default is the public isomorphic-git demo proxy (rate limited, don't
-            trust it with secrets you care about). Self-host <code>proxy/worker.ts</code> from the repo for your own.
-          </p>
+          <div className="rounded-lg bg-swamp-700/60 p-2">
+            <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-frog-200/60">Transport</div>
+            <div className="flex flex-wrap gap-1.5">
+              {(
+                [
+                  ['auto', 'Auto', 'GitHub → REST API, anything else → proxy'],
+                  ['api', 'GitHub API', 'api.github.com directly, no proxy. Objects are recreated 1:1 (same commit ids).'],
+                  ['proxy', 'git over HTTP', 'Standard git protocol through a CORS proxy. Works with any host.'],
+                ] as const
+              ).map(([v, title, hint]) => (
+                <button
+                  key={v}
+                  title={hint}
+                  onClick={() => settings.set({ transport: v })}
+                  className={`rounded-md px-2.5 py-1 text-[12px] font-semibold ring-1 ${settings.transport === v ? 'bg-frog-700/50 ring-frog-400' : 'ring-(--hair) hover:bg-(--hover)'}`}
+                >
+                  {title}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[11px] text-frog-200/50">
+              {settings.transport === 'proxy'
+                ? 'Browsers can\'t reach git smart-HTTP endpoints directly (no CORS), so requests go through a proxy. The default is the public isomorphic-git demo proxy — rate limited; self-host proxy/worker.ts for real use.'
+                : 'GitHub remotes talk to api.github.com directly — no third party in between. Non-GitHub hosts fall back to the proxy.'}
+            </p>
+            {settings.transport !== 'api' && (
+              <input className={`${field} mt-2`} placeholder={DEFAULT_CORS_PROXY} value={settings.corsProxy} onChange={(e) => settings.set({ corsProxy: e.target.value })} />
+            )}
+          </div>
           <label className="flex items-center gap-2 text-[13px]">
             <input type="checkbox" checked={settings.separatePush} onChange={(e) => settings.set({ separatePush: e.target.checked })} className="accent-frog-500" />
             Separate commit and push (adds a Push button; Save only commits)
