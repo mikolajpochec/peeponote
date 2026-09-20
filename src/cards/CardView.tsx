@@ -25,7 +25,7 @@ interface Props extends CardProps {
 
 export const CardView = memo(function CardView({ card, boardId, readOnly, selected, scale }: Props) {
   const navigate = useWorkspace((s) => s.navigate)
-  const common = { card, boardId, readOnly, selected }
+  const common = { card, boardId, readOnly: readOnly || !!card.locked, selected }
   switch (card.type) {
     case 'note':
       return (

@@ -225,7 +225,7 @@ function YouTab() {
           </div>
           <span className="text-[11px] text-frog-300">✓ verified</span>
           <button className={btn} onClick={open}>
-            Picture / log out…
+            Manage…
           </button>
         </div>
         </Row>

@@ -42,6 +42,8 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
   const shapes = cards.filter((c) => c.type === 'shape')
   const allShapes = shapes.length === cards.length
   const strokeW = s.strokeWidth ?? (allShapes ? DEFAULT_SHAPE_STROKE : 2)
+  const lockCards = useWorkspace((s) => s.lockCards)
+  const allLocked = cards.every((c) => c.locked)
   const setShape = (kind: ShapeKind) => {
     for (const c of shapes) updateCard(boardId, c.id, { shape: kind } as Partial<Card>)
   }
@@ -55,6 +57,17 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
     window.addEventListener('pointerdown', close, true)
     return () => window.removeEventListener('pointerdown', close, true)
   }, [menu])
+
+  // locked cards: nothing to style or arrange — just the way out
+  if (allLocked)
+    return (
+      <div ref={root} data-nodrag onPointerDown={(e) => e.stopPropagation()} className="flex items-center gap-1 rounded-xl border border-(--hair) bg-swamp-900/95 p-1 shadow-2xl shadow-black/50 backdrop-blur">
+        <span className="px-1.5 text-[12px] text-frog-200/70">🔒 {many ? `${cards.length} items locked` : 'Locked in place'}</span>
+        <button className={`${btn} px-2`} title="Unlock: move, resize and edit again" onClick={() => lockCards(boardId, ids, false)}>
+          🔓 Unlock
+        </button>
+      </div>
+    )
 
   return (
     <div
@@ -239,6 +252,9 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
         />
       </label>
       <Sep />
+      <button className={btn} title="Lock in place: no moving, resizing or editing (links still work)" onClick={() => lockCards(boardId, ids, true)}>
+        🔒
+      </button>
       <button
         className={btn}
         title="Reset style"

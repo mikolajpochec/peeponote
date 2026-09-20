@@ -24,6 +24,7 @@ const base = {
   h: z.number(),
   z: z.number().default(0),
   style: cardStyleSchema.optional(),
+  locked: z.boolean().optional(),
   groupId: z.string().optional(),
   slug: z.string().optional(),
 }

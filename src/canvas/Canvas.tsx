@@ -48,6 +48,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
   const clearSelection = useWorkspace((s) => s.clearSelection)
   const addCard = useWorkspace((s) => s.addCard)
   const removeCards = useWorkspace((s) => s.removeCards)
+  const lockCards = useWorkspace((s) => s.lockCards)
   const updateCard = useWorkspace((s) => s.updateCard)
   const addAssets = useWorkspace((s) => s.addAssets)
   const addConnector = useWorkspace((s) => s.addConnector)
@@ -155,7 +156,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         const sel = useWorkspace.getState().selection
         if (sel.size) {
           e.preventDefault()
-          const cardIds = board.cards.filter((c) => sel.has(c.id)).map((c) => c.id)
+          const cardIds = board.cards.filter((c) => sel.has(c.id) && !c.locked).map((c) => c.id)
           const connIds = board.connectors.filter((k) => sel.has(k.id)).map((k) => k.id)
           if (connIds.length) removeConnectors(board.id, connIds)
           if (cardIds.length) void removeCardsChecked(board.id, cardIds)
@@ -412,6 +413,13 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         { kind: 'item', label: 'Duplicate', icon: '⊕', shortcut: '⌘D', disabled: readOnly, onClick: () => duplicateSelection(live, sel) },
         paste,
         sep,
+        {
+          kind: 'item',
+          label: selCards.every((c) => c.locked) ? (n > 1 ? `Unlock ${n} items` : 'Unlock') : n > 1 ? `Lock ${n} items` : 'Lock in place',
+          icon: selCards.every((c) => c.locked) ? '🔓' : '🔒',
+          disabled: readOnly,
+          onClick: () => lockCards(board.id, ids, !selCards.every((c) => c.locked)),
+        },
         { kind: 'item', label: 'Bring to front', icon: '⤒', disabled: readOnly, onClick: () => ids.forEach((id) => bringToFront(board.id, id)) },
         { kind: 'item', label: 'Send to back', icon: '⤓', disabled: readOnly, onClick: () => sendToBack(board.id, ids) },
         sep,
@@ -426,7 +434,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
           ? [{ kind: 'item', label: 'Auto size text', icon: '⤢', disabled: readOnly, onClick: () => selCards.forEach((c) => c.type === 'text' && updateCard(board.id, c.id, { autoSize: true } as Partial<Card>)) } as MenuItem]
           : []),
         ...(one ? [{ kind: 'item', label: 'Properties…', icon: 'ⓘ', onClick: () => useProperties.getState().open({ kind: 'card', boardId: board.id, cardId: one.id }) } as MenuItem, sep] : []),
-        { kind: 'item', label: n > 1 ? `Delete ${n} items` : 'Delete', icon: '✕', shortcut: '⌫', danger: true, disabled: readOnly, onClick: () => void removeCardsChecked(board.id, ids) },
+        { kind: 'item', label: n > 1 ? `Delete ${n} items` : 'Delete', icon: '✕', shortcut: '⌫', danger: true, disabled: readOnly || selCards.every((c) => c.locked), onClick: () => void removeCardsChecked(board.id, selCards.filter((c) => !c.locked).map((c) => c.id)) },
       )
       return items
     }

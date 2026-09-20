@@ -45,7 +45,7 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
         if (!readOnly) bringToFront(boardId, card.id)
       },
       onMove: (dx, dy) => {
-        if (readOnly) return
+        if (readOnly || card.locked) return
         setGlobalCursor('grabbing')
         const sel = useWorkspace.getState().selection
         const ids = sel.has(card.id) ? [...sel] : [card.id]
@@ -74,7 +74,7 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
     {
       onStart: (e) => {
         e.stopPropagation()
-        if (readOnly) return false
+        if (readOnly || card.locked) return false
       },
       onMove: (dx, dy) => {
         setGlobalCursor('nwse-resize')
@@ -112,11 +112,12 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
   )
 
   const styles = cardStyles(card)
+  const locked = !!card.locked
 
   return (
     <div
       data-card={card.id}
-      className={`absolute group rounded-xl select-none ${arrived ? 'card-arrive' : ''} ${readOnly ? '' : 'cursor-grab'} ${bare ? '' : 'shadow-lg shadow-black/30'} ${
+      className={`absolute group rounded-xl select-none ${arrived ? 'card-arrive' : ''} ${readOnly || locked ? '' : 'cursor-grab'} ${bare ? '' : 'shadow-lg shadow-black/30'} ${
         selected ? 'ring-2 ring-offset-2' : bare ? 'ring-1 ring-transparent hover:ring-(--board-line)/40' : 'ring-1'
       } ${className}`}
       style={{
@@ -136,7 +137,7 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
         if (isInteractiveTarget(e as unknown as PointerEvent)) return
         e.stopPropagation()
         if (onOpen) onOpen()
-        else if (!readOnly) setEditTick((t) => t + 1)
+        else if (!readOnly && !locked) setEditTick((t) => t + 1)
       }}
     >
       <EditRequestContext.Provider value={editTick}>
@@ -144,7 +145,12 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
           {children}
         </div>
       </EditRequestContext.Provider>
-      {!readOnly && (
+      {locked && (
+        <span className="pointer-events-none absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-swamp-700 text-[11px] shadow ring-2 ring-(--board-bg)" title="Locked">
+          🔒
+        </span>
+      )}
+      {!readOnly && !locked && (
         <>
           <button
             data-nodrag

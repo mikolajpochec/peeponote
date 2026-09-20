@@ -89,6 +89,8 @@ interface WorkspaceState {
   // editing
   addCard: (boardId: string, card: Card) => void
   updateCard: (boardId: string, cardId: string, patch: Partial<Card>, opts?: { quiet?: boolean }) => void
+  /** pin / unpin cards (no move, resize, edit while locked) */
+  lockCards: (boardId: string, ids: string[], locked: boolean) => void
   moveCards: (boardId: string, deltas: Record<string, { x: number; y: number }>) => void
   removeCards: (boardId: string, ids: string[]) => void
   groupCards: (boardId: string, ids: string[]) => void
@@ -717,9 +719,12 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         ...b,
         cards: b.cards.map((c) => {
           const d = deltas[c.id]
-          return d ? { ...c, x: c.x + d.x, y: c.y + d.y } : c
+          return d && !c.locked ? { ...c, x: c.x + d.x, y: c.y + d.y } : c
         }),
       })),
+
+    lockCards: (boardId, ids, locked) =>
+      mutateBoard(boardId, (b) => ({ ...b, cards: b.cards.map((c) => (ids.includes(c.id) ? { ...c, locked: locked || undefined } : c)) })),
 
     removeCards: (boardId, ids) => {
       const b = get().boards[boardId]

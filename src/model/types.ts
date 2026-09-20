@@ -52,6 +52,8 @@ export interface CardBase {
   groupId?: string
   /** stable, human-chosen id used in peepo:// links (Properties); the auto id is used when absent */
   slug?: string
+  /** pinned in place: no moving, resizing or editing — links and buttons inside still work */
+  locked?: boolean
 }
 
 export interface NoteCard extends CardBase {
