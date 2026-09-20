@@ -4,6 +4,7 @@ import { useWorkspace } from '../store/workspace'
 import type { CardProps } from './CardView'
 import { autoEdit } from './autoEdit'
 import { useEditRequest } from '../canvas/editRequest'
+import { useViewport } from '../canvas/viewport'
 
 /** Free-floating text on the board: a big title or a plain paragraph, no card background. */
 export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
@@ -46,9 +47,13 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
       const c = useWorkspace.getState().boards[boardId]?.cards.find((x) => x.id === card.id)
       if (!c || c.type !== 'text') return
       if (c.autoSize !== false) {
-        const w = Math.max(60, Math.ceil(m.offsetWidth))
-        const h = Math.max(32, Math.ceil(m.offsetHeight))
-        if (Math.abs(w - c.w) > 1 || Math.abs(h - c.h) > 1) updateCard(boardId, card.id, { w, h })
+        // offsetWidth is rounded to whole px — a 213.6px line reported as 213 makes the last word wrap.
+        // Measure fractionally (undoing the canvas zoom) and round up with a little slack.
+        const k = useViewport.getState().get(boardId).scale || 1
+        const r = m.getBoundingClientRect()
+        const w = Math.max(60, Math.ceil(r.width / k) + 2)
+        const h = Math.max(32, Math.ceil(r.height / k) + 1)
+        if (w !== c.w || h !== c.h) updateCard(boardId, card.id, { w, h })
       } else {
         const needed = Math.ceil(editing ? (ta.current?.scrollHeight ?? 0) : (view.current?.scrollHeight ?? 0))
         if (needed > c.h + 1) updateCard(boardId, card.id, { h: needed })
@@ -64,7 +69,7 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
     <div
       ref={measure}
       aria-hidden
-      className={`pointer-events-none invisible absolute left-0 top-0 whitespace-pre-wrap p-2 ${cls}`}
+      className={`pointer-events-none invisible absolute left-0 top-0 whitespace-pre-wrap break-words p-2 ${cls}`}
       style={{ width: 'max-content', maxWidth: maxW }}
     >
       {shown || placeholder}
@@ -97,7 +102,7 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
           e.stopPropagation()
         }}
           placeholder={placeholder}
-          className={`h-full w-full resize-none overflow-hidden bg-frog-300/10 p-2 text-inherit outline-none placeholder:text-frog-200/30 ${cls}`}
+          className={`h-full w-full resize-none overflow-hidden whitespace-pre-wrap break-words bg-frog-300/10 p-2 text-inherit outline-none placeholder:text-frog-200/30 ${cls}`}
           style={{ font: 'inherit', color: 'inherit', textAlign: 'inherit' }}
         />
       </>
@@ -107,7 +112,7 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
   return (
     <>
       {measurer}
-      <div ref={view} className={`h-full w-full overflow-hidden whitespace-pre-wrap p-2 ${cls}`}>
+      <div ref={view} className={`h-full w-full overflow-hidden whitespace-pre-wrap break-words p-2 ${cls}`}>
         {card.text || <span className="text-frog-200/30">{placeholder}</span>}
       </div>
     </>
