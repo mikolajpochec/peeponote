@@ -147,7 +147,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
                     await exportRepoZip(fs, meta?.name)
                     toast.ok('Zipped the whole repo.', 'peepoPog')
                   } catch (e) {
-                    toast.err(`Export failed: ${(e as Error).message}`)
+                    toast.fail('Export failed', e)
                   } finally {
                     setZipping(false)
                   }
@@ -227,10 +227,6 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           <label className="flex items-center gap-2 text-[13px]">
             <input type="checkbox" checked={settings.autoPull} onChange={(e) => settings.set({ autoPull: e.target.checked })} className="accent-frog-500" />
             Auto-pull: bring in others' commits automatically when nothing local would be lost (the remote is checked every 30 s either way; with this off you get a toast with a Pull button)
-          </label>
-          <label className="flex items-center gap-2 text-[13px]">
-            <input type="checkbox" checked={settings.separatePush} onChange={(e) => settings.set({ separatePush: e.target.checked })} className="accent-frog-500" />
-            Separate commit and push (adds a Push button; Save only commits)
           </label>
         </section>
 

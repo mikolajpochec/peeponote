@@ -38,7 +38,7 @@ export function tutorialBoards(rootId: string): Board[] {
     }),
     note(cGit, 620, 390, 280, 185, '### 6 · It\'s all git\nEdits are written to the working tree as you go — a refresh never loses anything. **Save (⌘S)** makes a commit. History (top right) lets you peek at and restore any version.'),
 
-    note(cSave, 40, 610, 260, 170, '### 7 · Save & push\nConnect a GitHub repo in ⚙ Settings (paste a token). From then on Save also pushes. ⇅ syncs: pulls if the remote moved, merges cards if both sides changed.', {
+    note(cSave, 40, 610, 260, 170, '### 7 · Save & share\nConnect a GitHub repo in ⚙ Settings (paste a token). From then on Save does everything: brings in what others saved, combines it with yours, and pushes. It only asks when you both edited the same card.', {
       style: { bg: '#c8f2d4' },
     }),
     note(cSync, 330, 610, 260, 170, '### 8 · Two ways to talk to GitHub\n**GitHub API** — direct, no middleman (default for github.com).\n**git over HTTP** — standard protocol via a CORS proxy, for any host.'),

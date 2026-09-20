@@ -39,7 +39,7 @@ export async function downloadAsset(card: AssetCardT) {
     a.remove()
     setTimeout(() => URL.revokeObjectURL(url), 10_000)
   } catch (e) {
-    toast.err(`Download failed: ${(e as Error).message}`)
+    toast.fail('Download failed', e, { path: card.path, size: card.size })
   }
 }
 

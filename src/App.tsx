@@ -12,6 +12,7 @@ import { Onboarding } from './ui/Onboarding'
 import { SyncDialog } from './ui/SyncDialog'
 import { ConfirmDialog } from './ui/ConfirmDialog'
 import { PropertiesDialog } from './ui/PropertiesDialog'
+import { ErrorDialog } from './ui/ErrorDialog'
 import { useSettings } from './store/settings'
 import { applyTheme, resolveTheme } from './theme/themes'
 import { useIsMobile } from './canvas/touch'
@@ -150,6 +151,7 @@ export default function App() {
       <SyncDialog />
       <ConfirmDialog />
       <PropertiesDialog />
+      <ErrorDialog />
       <Toasts />
     </div>
   )

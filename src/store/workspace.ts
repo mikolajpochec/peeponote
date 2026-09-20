@@ -445,7 +445,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         toast.ok('Cloned!', 'peepoPog')
         await openFs(fs)
       } catch (e) {
-        toast.err(`Clone failed: ${(e as Error).message}`)
+        toast.fail('Clone failed', e, { url, transport: chooseTransport(url, useSettings.getState().transport) })
       } finally {
         set({ busy: null, busyDetail: null })
       }
@@ -794,15 +794,15 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         set({ dirtyBoards: new Set(), deletedBoards: new Set(), assetsTouched: false, metaDirty: false, treeDirty: false })
         await get().refreshGit()
         toast.ok(`Committed: ${msg}`, 'peepoClap')
-        // default: a save also syncs when a remote is set up (unless the user wants them separate)
-        if (!useSettings.getState().separatePush && get().remoteUrl && useSettings.getState().token) {
+        // a save also syncs when a remote is set up: pull others' work, merge if needed, push
+        if (get().remoteUrl && useSettings.getState().token) {
           set({ busy: null })
           await get().sync({ silent: true })
         }
         return true
       } catch (e) {
         console.error(e)
-        toast.err(`Save failed: ${(e as Error).message}`)
+        toast.fail('Save failed', e, { storage: get().fs?.label, head: get().head?.oid, remote: get().remoteUrl })
         return false
       } finally {
         set({ busy: null })
@@ -838,7 +838,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
               const remote2 = await fetchRemote(ctx, progress)
               const st2 = await compare(fs, await repo.headOid(fs), remote2)
               if (st2.relation === 'diverged') {
-                set({ divergence: st2 })
+                set({ divergence: { ...st2, who: await authorsBetween(fs, remote2!, await repo.headOid(fs)), dirty: isDirty(get()) } })
                 break
               }
               if (st2.relation === 'ahead') await pushRemote(ctx, progress)
@@ -861,18 +861,29 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
             await reloadBoards(fs)
             toast.ok(`Pulled ${st.behind} ${st.behind === 1 ? 'commit' : 'commits'}.`, 'peepoGlad')
             break
-          case 'diverged':
+          case 'diverged': {
             if (dirty) {
-              toast.err('Remote has new changes — Save yours first, then sync.', 'peepoShy')
+              set({ divergence: { ...st, who: await authorsBetween(fs, remote!, local), dirty } })
               break
             }
-            set({ divergence: st })
+            // no card edited by both sides → combine silently and push; otherwise ask which version wins
+            const probe = await mergeRemote(fs, local!, remote!, 'ours', identity(), progress, true)
+            const who = await authorsBetween(fs, remote!, local)
+            if (probe.conflicts === 0) {
+              await mergeRemote(fs, local!, remote!, 'ours', identity(), progress)
+              await reloadBoards(fs)
+              await pushRemote(ctx, progress)
+              toast.ok(`Combined with ${who}'s changes and pushed.`, 'peepoClap')
+            } else {
+              set({ divergence: { ...st, who, dirty } })
+            }
             break
+          }
         }
         await get().refreshGit()
       } catch (e) {
         console.error(e)
-        toast.err(`Sync failed: ${(e as Error).message}`)
+        toast.fail('Sync failed', e, { remote: ctx.remoteUrl, transport: ctx.transport, head: get().head?.oid, hasToken: !!ctx.auth.token, storage: fs.label })
       } finally {
         set({ busy: null, busyDetail: null })
       }
@@ -891,7 +902,22 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
           // diverged: something to decide — say so once per remote head, don't nag
           if (st.relation === 'diverged' && lastNotifiedRemote !== remote) {
             lastNotifiedRemote = remote
-            toast.info('Others pushed changes that conflict with yours — press ⇅ to merge.', 'monkaS')
+            const who = await authorsBetween(fs, remote, local)
+            const dirty = isDirty(get())
+            // both sides moved. Clean tree + nobody edited the same card → combine and push by ourselves
+            if (!dirty && ctx.auth.token) {
+              const probe = await mergeRemote(fs, local!, remote, 'ours', identity(), progress, true)
+              if (probe.conflicts === 0) {
+                set({ busy: 'syncing', busyDetail: 'combining changes…' })
+                await mergeRemote(fs, local!, remote, 'ours', identity(), progress)
+                await reloadBoards(fs)
+                await pushRemote(ctx, progress)
+                toast.ok(`Combined with ${who}'s changes and pushed.`, 'peepoClap')
+                return
+              }
+            }
+            // real clashes (or unsaved edits): ask, in plain words
+            set({ divergence: { ...st, who, dirty } })
           }
           return
         }
@@ -950,7 +976,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         await get().refreshGit()
       } catch (e) {
         console.error(e)
-        toast.err(`Could not resolve: ${(e as Error).message}`)
+        toast.fail('Could not resolve', e, { mode, local: d.local, remote: d.remote, transport: ctx.transport })
       } finally {
         set({ busy: null, busyDetail: null })
       }
@@ -1009,7 +1035,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
           currentBoardId: cur && boards[cur] ? cur : meta && boards[meta.rootBoardId] ? meta.rootBoardId : Object.keys(boards)[0] ?? cur,
         })
       } catch (e) {
-        toast.err(`Could not load commit: ${(e as Error).message}`)
+        toast.fail('Could not load commit', e, { commit: oid })
       } finally {
         set({ busy: null })
       }
@@ -1037,7 +1063,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         await get().refreshGit()
         toast.ok('Restored. Time travel complete.', 'peepoPog')
       } catch (e) {
-        toast.err(`Restore failed: ${(e as Error).message}`)
+        toast.fail('Restore failed', e, { commit: oid })
       } finally {
         set({ busy: null })
       }

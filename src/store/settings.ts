@@ -13,8 +13,6 @@ export interface Settings {
   corsProxy: string
   /** how to talk to the remote: GitHub REST API (no proxy) or git-over-HTTP via CORS proxy */
   transport: TransportPref
-  /** show a separate Push button instead of pushing as part of Save */
-  separatePush: boolean
   /** poll the remote every ~45s and fast-forward when others pushed and there's nothing local to lose */
   autoPull: boolean
   /** first-run wizard finished (or skipped) */
@@ -32,7 +30,6 @@ export const useSettings = create<Settings>()(
       username: '',
       corsProxy: DEFAULT_CORS_PROXY,
       transport: 'auto',
-      separatePush: false,
       autoPull: true,
       onboarded: false,
       theme: 'dark',

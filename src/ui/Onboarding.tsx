@@ -95,7 +95,7 @@ export function Onboarding({ onFinish }: { onFinish: () => void }) {
               <Peepo name="peepoRun" size={56} />
               <div>
                 <h2 className="text-2xl font-black tracking-tight">Connect a remote?</h2>
-                <p className="text-[13px] text-frog-200/70">Optional. With a remote, Save also pushes. You can set this up any time in Settings.</p>
+                <p className="text-[13px] text-frog-200/70">Optional. With a remote, Save also syncs with everyone else. You can set this up any time in Settings.</p>
               </div>
             </div>
             <div className="space-y-2">

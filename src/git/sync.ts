@@ -92,6 +92,10 @@ export interface SyncState {
   /** commits only we have / only the remote has */
   ahead: number
   behind: number
+  /** display names of the people behind the remote-only commits (filled by the store) */
+  who?: string
+  /** the local tree has unsaved edits — merging must wait for a Save */
+  dirty?: boolean
 }
 
 export async function compare(fs: PeepoFS, local: string | null, remote: string | null): Promise<SyncState> {
@@ -224,7 +228,7 @@ export interface MergeResult {
 }
 
 /** Create a merge commit of ours + theirs with card-level resolution, check it out. */
-export async function mergeRemote(fs: PeepoFS, ours: string, theirs: string, prefer: Prefer, who: GitIdentity, progress: Progress = () => {}): Promise<MergeResult> {
+export async function mergeRemote(fs: PeepoFS, ours: string, theirs: string, prefer: Prefer, who: GitIdentity, progress: Progress = () => {}, dryRun = false): Promise<MergeResult> {
   const dir = fs.dir
   progress('finding common ancestor…')
   const bases = await git.findMergeBase({ fs, dir, oids: [ours, theirs] })
@@ -261,6 +265,9 @@ export async function mergeRemote(fs: PeepoFS, ours: string, theirs: string, pre
     }
     if (pick) result.set(path, pick)
   }
+
+  // dry run: only report how many cards clash (blobs written above are harmless loose objects)
+  if (dryRun) return { sha: '', conflicts, files: changed }
 
   progress('writing merge commit…')
   const tree = await writeTreeFromMap(fs, result)
