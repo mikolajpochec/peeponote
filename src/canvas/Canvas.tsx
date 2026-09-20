@@ -50,6 +50,11 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
   const groupCards = useWorkspace((s) => s.groupCards)
   const ungroupCards = useWorkspace((s) => s.ungroupCards)
   const navigate = useWorkspace((s) => s.navigate)
+  const goBack = useWorkspace((s) => s.goBack)
+  const backTo = useWorkspace((s) => {
+    for (let i = s.navStack.length - 1; i >= 0; i--) if (s.boards[s.navStack[i]]) return s.boards[s.navStack[i]]
+    return undefined
+  })
   const [dragOver, setDragOver] = useState(false)
   const spaceHeld = useRef(false)
   const scale = useCallback(() => useViewport.getState().get(board.id).scale, [board.id])
@@ -620,6 +625,16 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         </div>
       )}
       {!readOnly && <Palette board={board} />}
+      {backTo && (
+        <button
+          onClick={goBack}
+          title={`Back to ${backTo.name || 'Untitled'}`}
+          className="absolute left-3 top-3 z-20 flex max-w-[60%] items-center gap-1.5 rounded-full border border-(--hair) bg-swamp-900/85 px-3 py-1.5 text-[12px] font-semibold text-frog-50 shadow-lg backdrop-blur hover:bg-swamp-800"
+        >
+          <span aria-hidden>←</span>
+          <span className="truncate">{backTo.name || 'Untitled'}</span>
+        </button>
+      )}
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems()} onClose={() => setMenu(null)} />}
       {styleBarPos && (
         <div

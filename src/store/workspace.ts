@@ -30,6 +30,8 @@ interface WorkspaceState {
   meta: WorkspaceMeta | null
   boards: Record<string, Board>
   currentBoardId: string | null
+  /** boards visited before the current one (most recent last) — the floating Back button walks it */
+  navStack: string[]
   /** boards edited in memory but not yet written to the working tree */
   dirtyBoards: Set<string>
   deletedBoards: Set<string>
@@ -60,6 +62,7 @@ interface WorkspaceState {
 
   // navigation / selection
   navigate: (boardId: string) => void
+  goBack: () => void
   /** selecting any member of a group selects the whole group */
   select: (ids: string[], additive?: boolean) => void
   clearSelection: () => void
@@ -212,6 +215,30 @@ async function pictureSize(file: File): Promise<{ w: number; h: number } | null>
 
 let lastNotifiedRemote: string | null = null
 
+// where you were, per workspace — survives a refresh
+const navKey = (rootId: string) => `peeponote-nav:${rootId}`
+function saveNav(rootId: string | undefined, current: string, stack: string[]) {
+  if (!rootId) return
+  try {
+    localStorage.setItem(navKey(rootId), JSON.stringify({ current, stack }))
+  } catch {
+    /* storage unavailable */
+  }
+}
+function loadNav(rootId: string, boards: Record<string, Board>): { current: string; stack: string[] } {
+  try {
+    const raw = localStorage.getItem(navKey(rootId))
+    if (raw) {
+      const v = JSON.parse(raw) as { current?: string; stack?: string[] }
+      const stack = (v.stack ?? []).filter((id) => boards[id])
+      if (v.current && boards[v.current]) return { current: v.current, stack }
+    }
+  } catch {
+    /* ignore */
+  }
+  return { current: rootId, stack: [] }
+}
+
 /** display names of everyone who committed between `from` (exclusive) and `to` (inclusive) */
 async function authorsBetween(fs: PeepoFS, to: string, from: string | null): Promise<string> {
   try {
@@ -249,10 +276,12 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         await repo.commit(fs, 'peepoHey welcome board', identity())
       }
       const { meta, boards } = await loadBoards(fs)
+      const nav = loadNav(meta.rootBoardId, boards)
       set({
         meta,
         boards,
-        currentBoardId: meta.rootBoardId,
+        currentBoardId: nav.current,
+        navStack: nav.stack,
         dirtyBoards: new Set(),
         deletedBoards: new Set(),
         assetsTouched: false,
@@ -321,6 +350,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     meta: null,
     boards: {},
     currentBoardId: null,
+    navStack: [],
     dirtyBoards: new Set(),
     deletedBoards: new Set(),
     assetsTouched: false,
@@ -387,7 +417,25 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       }
     },
 
-    navigate: (boardId) => set({ currentBoardId: boardId, selection: new Set() }),
+    navigate: (boardId) =>
+      set((s) => {
+        if (boardId === s.currentBoardId) return s
+        const stack = s.currentBoardId ? [...s.navStack.filter((id) => id !== boardId), s.currentBoardId].slice(-30) : s.navStack
+        saveNav(s.meta?.rootBoardId, boardId, stack)
+        return { currentBoardId: boardId, navStack: stack, selection: new Set() }
+      }),
+    goBack: () =>
+      set((s) => {
+        const stack = [...s.navStack]
+        let target: string | undefined
+        while (stack.length && !target) {
+          const id = stack.pop()!
+          if (s.boards[id]) target = id
+        }
+        if (!target) return s
+        saveNav(s.meta?.rootBoardId, target, stack)
+        return { currentBoardId: target, navStack: stack, selection: new Set() }
+      }),
     select: (ids, additive) =>
       set((s) => {
         const sel = additive ? new Set(s.selection) : new Set<string>()
