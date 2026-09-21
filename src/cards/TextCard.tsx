@@ -7,6 +7,7 @@ import { useEditRequest } from '../canvas/editRequest'
 import { useViewport } from '../canvas/viewport'
 import { InlineMd } from './Inline'
 import { MdEditor } from '../editor'
+import { useLiveDraft } from './useLiveDraft'
 
 /** Free-floating text on the board: a big title or a plain paragraph, no card background. */
 export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
@@ -19,6 +20,7 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
     return false
   })
   const [draft, setDraft] = useState(card.text)
+  const live = useLiveDraft(editing, draft, card.text, (text, o) => updateCard(boardId, card.id, { text }, o))
   const view = useRef<HTMLDivElement>(null)
   const editorHost = useRef<HTMLDivElement>(null)
   // the editor is lazy-loaded; bump when it mounts so the measuring effect can find .cm-content
@@ -56,17 +58,17 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
         // the view lays text out at its own natural width, so a few px of drift never wraps or clips —
         // only resize past that tolerance (fixes boards turning "unsaved" just by being opened)
         // while editing it's your edit; otherwise (mount, zoom, font load, another machine's fonts) it's a quiet correction
-        if (Math.abs(w - c.w) > 3 || Math.abs(h - c.h) > 3) updateCard(boardId, card.id, { w, h }, { quiet: !editing })
+        if (Math.abs(w - c.w) > 3 || Math.abs(h - c.h) > 3) updateCard(boardId, card.id, { w, h }, { quiet: !editing, session: live.session })
       } else {
         const needed = editing ? px(r.height) : Math.ceil(view.current?.scrollHeight ?? 0)
-        if (needed > c.h + 1) updateCard(boardId, card.id, { h: needed }, { quiet: !editing })
+        if (needed > c.h + 1) updateCard(boardId, card.id, { h: needed }, { quiet: !editing, session: live.session })
       }
     }
     apply()
     const ro = new ResizeObserver(apply)
     ro.observe(m)
     return () => ro.disconnect()
-  }, [shown, auto, editing, readOnly, boardId, card.id, card.style, card.w, updateCard, editorReady])
+  }, [shown, auto, editing, readOnly, boardId, card.id, card.style, card.w, updateCard, editorReady, live.session])
 
   const measurer = (
     <div
@@ -87,7 +89,7 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
 
   const commit = () => {
     setEditing(false)
-    if (draft !== card.text) updateCard(boardId, card.id, { text: draft })
+    live.commit(draft, card.text)
   }
 
   if (editing) {

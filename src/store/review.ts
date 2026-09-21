@@ -12,6 +12,7 @@ import { newId } from '../model/types'
 import {
   COMMENTS_DIR,
   PEOPLE_DIR,
+  REVIEW_DIR,
   REVIEWS_DIR,
   STATE_DIR,
   VERDICTS_DIR,
@@ -236,6 +237,14 @@ export const useReview = create<ReviewState>((set, get) => {
       set({ accounts, reviews, verdicts, comments, states, pictures, verified, authors, loadedHead: await repo.headOid(fs) })
       await get().refreshIdentity()
       set({ loaded: true }) // only now: the identity prompt must see the settled identity, not the guest default
+      // review files written but never committed (the tab died inside the 5 s window): commit them now
+      if (!wasLoaded) {
+        const left = await repo.changedPaths(fs, wp(REVIEW_DIR)).catch(() => [] as string[])
+        if (left.length) {
+          for (const p of left) if (!pending.has(p)) pending.set(p, 'activity from before a restart')
+          schedule()
+        }
+      }
       // housekeeping: finished reviews (closed, or approved by everyone) older than 10 days go away by themselves
       if (get().identity.kind === 'verified') {
         const cutoff = Date.now() - 10 * 24 * 3600 * 1000
@@ -497,7 +506,7 @@ export const useReview = create<ReviewState>((set, get) => {
       const title = meaningful.length === 0 ? 'Review: seen' : meaningful.length === 1 ? `Review: ${meaningful[0]}` : `Review: ${meaningful[0]} (+${meaningful.length - 1} more)`
       try {
         const who = get().me() ?? { name: useSettings.getState().authorName, email: useSettings.getState().authorEmail }
-        await repo.commitPaths(fs, paths, title, who)
+        if (!(await repo.commitPaths(fs, paths, title, who))) return // nothing differed from HEAD after all
         await ws.refreshGit()
         // offline: the commit is in; sync() itself notes it for when the connection returns
         if (ws.remoteUrl && useSettings.getState().token) await ws.sync({ silent: true })

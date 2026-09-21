@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Canvas } from './canvas/Canvas'
-import { selectBoards, selectDirty, useWorkspace } from './store/workspace'
+import { selectBoards, selectDirty, selectUnwritten, useWorkspace } from './store/workspace'
 import { Sidebar } from './ui/Sidebar'
 import { TopBar } from './ui/TopBar'
 import { HistoryPanel } from './ui/HistoryPanel'
@@ -147,13 +147,16 @@ export default function App() {
     }
   }, [])
 
-  // closing the tab / window with uncommitted changes: the browser asks first. (The drafts themselves survive
-  // a reload — this is about not forgetting to Save so others get the work.)
+  // Unsaved edits live in the working tree and come back after a close, crash or power cut — so closing with
+  // them is fine. The browser only asks when the last edits haven't reached the disk yet (the write is
+  // debounced and asynchronous); we kick it off right here so a cancelled close leaves nothing behind.
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!selectDirty(useWorkspace.getState())) return
+      const ws = useWorkspace.getState()
+      if (!selectUnwritten(ws)) return
+      void ws.flush()
       e.preventDefault()
-      e.returnValue = 'You have unsaved changes.'
+      e.returnValue = 'Your last edits are still being written.'
     }
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)

@@ -92,7 +92,8 @@ interface WorkspaceState {
 
   // editing
   addCard: (boardId: string, card: Card) => void
-  updateCard: (boardId: string, cardId: string, patch: Partial<Card>, opts?: { quiet?: boolean }) => void
+  /** `session`: consecutive updates with the same id (typing in one editor) share one undo step */
+  updateCard: (boardId: string, cardId: string, patch: Partial<Card>, opts?: { quiet?: boolean; session?: string }) => void
   /** pin / unpin cards (no move, resize, edit while locked) */
   lockCards: (boardId: string, ids: string[], locked: boolean) => void
   moveCards: (boardId: string, deltas: Record<string, { x: number; y: number }>) => void
@@ -152,6 +153,8 @@ const isDirty = (s: Pick<WorkspaceState, 'dirtyBoards' | 'deletedBoards' | 'asse
   s.dirtyBoards.size > 0 || s.deletedBoards.size > 0 || s.assetsTouched || s.treeDirty || s.metaDirty
 
 export const selectDirty = (s: WorkspaceState) => isDirty(s)
+/** edits that live only in memory so far — the working tree doesn't have them yet (a write is pending or running) */
+export const selectUnwritten = (s: Pick<WorkspaceState, 'dirtyBoards' | 'deletedBoards' | 'metaDirty'>) => s.dirtyBoards.size > 0 || s.deletedBoards.size > 0 || s.metaDirty
 
 function identity() {
   const s = useSettings.getState()
@@ -264,6 +267,8 @@ interface Snapshot {
 const undoStack: Snapshot[] = []
 const redoStack: Snapshot[] = []
 let lastMutationAt = 0
+/** the editing session the previous mutation belonged to (typing in one card) — it keeps sharing that undo step */
+let lastSession: string | null = null
 const UNDO_LIMIT = 100
 /** mutations closer than this are one gesture (a drag, a resize) and share one undo step */
 const COALESCE_MS = 350
@@ -396,6 +401,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
   /** call before changing boards: pushes an undo step (coalescing rapid-fire changes) and clears redo */
   function record(force = false) {
     const now = Date.now()
+    lastSession = null
     if (!force && now - lastMutationAt < COALESCE_MS && undoStack.length) {
       lastMutationAt = now
       return
@@ -421,7 +427,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
    * counted as your edit: no undo step, no "unsaved" state, no commit. It rides along with the next real edit
    * of that board. Otherwise two machines with different font rendering would "fix" each other's sizes forever.
    */
-  function mutateBoard(boardId: string, fn: (b: Board) => Board, quiet = false) {
+  function mutateBoard(boardId: string, fn: (b: Board) => Board, quiet = false, session?: string) {
     const b = get().boards[boardId]
     if (!b || get().viewingRef) return
     const next = fn(b)
@@ -430,7 +436,10 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       set({ boards: { ...get().boards, [boardId]: next } })
       return
     }
-    record()
+    // `session`: keystrokes of one edit are written out as they happen (so a crash loses seconds, not the whole
+    // text) but stay one undo step — only the first change of the session snapshots
+    if (!session || session !== lastSession) record()
+    lastSession = session ?? null
     const dirtyBoards = new Set(get().dirtyBoards)
     dirtyBoards.add(boardId)
     set({ boards: { ...get().boards, [boardId]: next }, dirtyBoards })
@@ -536,10 +545,12 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     return true
   }
 
+  // edits reach the working tree this soon after the last change: it's the most a power cut can take
+  const FLUSH_MS = 250
   let flushTimer: ReturnType<typeof setTimeout> | undefined
   function scheduleFlush() {
     clearTimeout(flushTimer)
-    flushTimer = setTimeout(() => void get().flush(), 400)
+    flushTimer = setTimeout(() => void get().flush(), FLUSH_MS)
   }
 
   return {
@@ -718,6 +729,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
           cards: b.cards.map((c) => (c.id === cardId ? ({ ...c, ...patch } as Card) : c)),
         }),
         opts?.quiet,
+        opts?.session,
       )
     },
 
@@ -980,12 +992,16 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         if (await exists(fs, p)) await fs.promises.unlink(p)
         removed.push(id)
       }
+      // browser storage keeps its directory table in memory for a while — make it durable now
+      await fs.persist?.()
       // only clear what hasn't changed again while we were writing
       const nextDirty = new Set(get().dirtyBoards)
       for (const [id, b] of written) if (get().boards[id] === b) nextDirty.delete(id)
       const nextDeleted = new Set(get().deletedBoards)
       for (const id of removed) nextDeleted.delete(id)
       set({ dirtyBoards: nextDirty, deletedBoards: nextDeleted, treeDirty: true })
+      // a board changed under us while we were writing (e.g. a quiet auto-size right after an edit): go again
+      if (nextDirty.size || nextDeleted.size) scheduleFlush()
     },
 
     save: async (message) => {

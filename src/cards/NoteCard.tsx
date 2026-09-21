@@ -7,6 +7,7 @@ import { autoEdit } from './autoEdit'
 import { useEditRequest } from '../canvas/editRequest'
 import { keepPeepoUrls, mdLink } from './Inline'
 import { MdEditor } from '../editor'
+import { useLiveDraft } from './useLiveDraft'
 
 export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
   const updateCard = useWorkspace((s) => s.updateCard)
@@ -18,6 +19,7 @@ export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
     return false
   })
   const [draft, setDraft] = useState(card.md)
+  const live = useLiveDraft(editing, draft, card.md, (md, o) => updateCard(boardId, card.id, { md }, o))
 
   useEditRequest(() => {
     if (readOnly) return
@@ -27,7 +29,7 @@ export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
 
   const commit = () => {
     setEditing(false)
-    if (draft !== card.md) updateCard(boardId, card.id, { md: draft })
+    live.commit(draft, card.md)
   }
 
   if (editing) {

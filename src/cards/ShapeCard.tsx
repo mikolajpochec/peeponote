@@ -6,6 +6,7 @@ import { contrast } from '../canvas/styles'
 import type { CardProps } from './CardView'
 import { InlineMd } from './Inline'
 import { MdEditor } from '../editor'
+import { useLiveDraft } from './useLiveDraft'
 
 export const SHAPES: { kind: ShapeKind; label: string; icon: string }[] = [
   { kind: 'rect', label: 'Rectangle', icon: '▭' },
@@ -84,6 +85,7 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
   const updateCard = useWorkspace((s) => s.updateCard)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(card.label)
+  const live = useLiveDraft(editing, draft, card.label, (label, o) => updateCard(boardId, card.id, { label }, o))
   const s = card.style ?? {}
   const filled = !NO_FILL(s.bg)
   const fill = filled ? s.bg! : 'none'
@@ -101,7 +103,7 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
 
   const commit = () => {
     setEditing(false)
-    if (draft !== card.label) updateCard(boardId, card.id, { label: draft })
+    live.commit(draft, card.label)
   }
 
   return (

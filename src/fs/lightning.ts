@@ -18,6 +18,17 @@ export function createBrowserFS(name = 'peeponote', label = 'Browser storage (In
     label,
     dir: '/repo',
     promises: lfs.promises as unknown as PeepoFSPromises,
+    // LightningFS writes file contents to IndexedDB at once but saves its directory table (paths → inodes) only
+    // after a 500 ms pause — a crash in between forgets files created since. Saving it right after our writes
+    // closes that gap. Private API, so it is best-effort.
+    persist: async () => {
+      try {
+        const backend = (lfs.promises as unknown as { _backend?: { _saveSuperblock?: () => Promise<void> } })._backend
+        await backend?._saveSuperblock?.()
+      } catch (e) {
+        console.warn('peeponote: could not persist the directory table', e)
+      }
+    },
   }
 }
 

@@ -36,6 +36,8 @@ export interface PeepoFS {
   /** repo root inside this fs */
   dir: string
   promises: PeepoFSPromises
+  /** force anything still buffered in memory onto durable storage (browser storage batches its directory table) */
+  persist?: () => Promise<void>
 }
 
 /** absolute path inside the fs for a repo-relative path */

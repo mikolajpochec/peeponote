@@ -80,6 +80,12 @@ export async function hasChanges(fs: PeepoFS, within = '', exclude?: string): Pr
   return matrix.some(([f, h, w, s]) => inside(f, within) && !(exclude && inside(f, exclude)) && !(h === 1 && w === 1 && s === 1))
 }
 
+/** Files under `within` that differ from HEAD (changed, added or deleted in the working tree). */
+export async function changedPaths(fs: PeepoFS, within: string): Promise<string[]> {
+  const matrix = await git.statusMatrix({ ...ctx(fs), filepaths: [within] })
+  return matrix.filter(([, h, w, s]) => !(h === 1 && w === 1 && s === 1)).map(([f]) => f)
+}
+
 /**
  * Commit just these paths (added/changed → add, missing → remove), leaving everything else in the working
  * tree uncommitted. Between saves the index equals HEAD, so the commit contains exactly `filepaths`.
