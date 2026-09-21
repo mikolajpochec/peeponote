@@ -77,7 +77,8 @@ export function Popover({
       data-nodrag
       onPointerDown={(e) => e.stopPropagation()}
       onDoubleClick={(e) => e.stopPropagation()}
-      className={`fixed z-[60] select-none ${className}`}
+      // above every dialog (they sit at z-62/65): a popover is always the most recent thing opened
+      className={`fixed z-[80] select-none ${className}`}
       style={pos ?? { left: 0, top: 0, visibility: 'hidden' }}
     >
       {children}

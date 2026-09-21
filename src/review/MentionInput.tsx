@@ -28,7 +28,7 @@ export function MentionInput({
   rows?: number
 }) {
   const ta = useRef<HTMLTextAreaElement>(null)
-  const people = usePeople(false)
+  const people = usePeople(true) // never yourself
   const [caret, setCaret] = useState(0)
   const [sel, setSel] = useState(0)
   const [closedFor, setClosedFor] = useState<string | null>(null)

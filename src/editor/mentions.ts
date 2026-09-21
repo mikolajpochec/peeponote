@@ -1,6 +1,7 @@
 import { autocompletion, completionKeymap, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete'
 import { keymap, tooltips } from '@codemirror/view'
 import { listPeople, mentionToken } from '../review/people'
+import { useReview } from '../store/review'
 import { fuzzyFilter } from '../review/fuzzy'
 
 /** `@` in any board text → fuzzy list of known people; picking one inserts `@Name` / `@[Full Name]` */
@@ -11,7 +12,8 @@ function mentionSource(ctx: CompletionContext): CompletionResult | null {
   const from = word.from + at
   const query = word.text.slice(at + 1)
   if (!ctx.explicit && query.length === 0 && word.to - from < 1) return null
-  const people = fuzzyFilter(query, listPeople(), (p) => `${p.name} ${p.email}`).slice(0, 8)
+  const me = useReview.getState().me()
+  const people = fuzzyFilter(query, listPeople().filter((p) => !me || p.email !== me.email.toLowerCase()), (p) => `${p.name} ${p.email}`).slice(0, 8)
   if (!people.length) return null
   return {
     from,
