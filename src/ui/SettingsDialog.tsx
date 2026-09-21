@@ -14,6 +14,7 @@ import { confirm } from './confirm'
 import { ChangeRepoDialog } from './ChangeRepoDialog'
 import { useReview } from '../store/review'
 import { Avatar } from '../review/Avatar'
+import { usePeople } from '../review/people'
 
 const field = 'w-full rounded-md bg-swamp-700 px-2 py-1.5 text-[13px] outline-none focus:ring-1 focus:ring-frog-400 placeholder:text-frog-200/30'
 const btn = 'rounded-md bg-swamp-600 px-3 py-1.5 text-[13px] font-semibold hover:bg-swamp-500 disabled:opacity-40'
@@ -291,6 +292,7 @@ function WorkspaceTab() {
           <div className={hint}>Off (default): anyone can resolve a thread or close a review. On: only the comment's author resolves it and only the person who asked closes the review.</div>
         </span>
       </label>
+      <PeopleRow locked={locked} />
       <Row
         title="Folder in the repo"
         sub={
@@ -312,6 +314,39 @@ function WorkspaceTab() {
         )}
       </Row>
     </>
+  )
+}
+
+/** everyone git has seen in this repo; hide the ones that shouldn't be offered in @mentions / reviewer pickers */
+function PeopleRow({ locked }: { locked: boolean }) {
+  const people = usePeople(false, true)
+  const hidden = useWorkspace((s) => s.meta?.settings?.hiddenPeople ?? [])
+  const updateMeta = useWorkspace((s) => s.updateMeta)
+  const meta = useWorkspace((s) => s.meta)
+  const set = (email: string, hide: boolean) => {
+    const next = hide ? [...new Set([...hidden, email])] : hidden.filter((e) => e !== email)
+    updateMeta({ settings: { ...meta?.settings, hiddenPeople: next } })
+  }
+  if (!people.length) return null
+  return (
+    <Row title="People" sub="Everyone who ever committed here. Hidden people don't show up in @mentions or when asking for a review — handy for a stray commit from another account. Shared with the whole team.">
+      <div className="max-h-48 space-y-0.5 overflow-auto rounded-md bg-swamp-800/60 p-1 scrollbar-thin">
+        {people.map((p) => {
+          const isHidden = hidden.includes(p.email)
+          return (
+            <label key={p.email} className={`flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-(--hover) ${isHidden ? 'opacity-50' : ''}`}>
+              <Avatar person={p} size={22} />
+              <span className="min-w-0 flex-1 truncate text-[13px]">
+                <b>{p.name}</b> <span className="text-frog-200/50">{p.email}</span>
+                {p.hasAccount && <span className="ml-1 text-[10px] text-frog-300">✓ account</span>}
+              </span>
+              <span className="text-[11px] text-frog-200/60">{isHidden ? 'hidden' : ''}</span>
+              <input type="checkbox" className="accent-frog-500" checked={!isHidden} disabled={locked} onChange={(e) => set(p.email, !e.target.checked)} title={isHidden ? 'Show again' : 'Hide from mentions and reviewer lists'} />
+            </label>
+          )
+        })}
+      </div>
+    </Row>
   )
 }
 

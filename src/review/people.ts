@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useMe, useReview } from '../store/review'
+import { useWorkspace } from '../store/workspace'
 import { samePerson, userKey, type Person } from './identity'
 
 export interface KnownPerson extends Person {
@@ -7,13 +8,17 @@ export interface KnownPerson extends Person {
   hasAccount: boolean
 }
 
+/** emails hidden in this workspace (Settings → Workspace → People) */
+export const hiddenEmails = () => new Set((useWorkspace.getState().meta?.settings?.hiddenPeople ?? []).map((e) => e.trim().toLowerCase()))
+
 /** Everyone we know about: committed accounts, people who marked things seen, and git commit authors. */
-export function listPeople(): KnownPerson[] {
+export function listPeople(opts: { includeHidden?: boolean } = {}): KnownPerson[] {
   const r = useReview.getState()
+  const hidden = opts.includeHidden ? new Set<string>() : hiddenEmails()
   const out = new Map<string, KnownPerson>()
   const add = (p: Person, hasAccount: boolean) => {
     const email = p.email.trim().toLowerCase()
-    if (!email.includes('@') || email.endsWith('@users.noreply.github.com') && /\[bot\]/.test(email)) return
+    if (!email.includes('@') || (email.endsWith('@users.noreply.github.com') && /\[bot\]/.test(email)) || hidden.has(email)) return
     const cur = out.get(email)
     if (!cur) out.set(email, { name: p.name.trim() || email, email, hasAccount })
     else if (hasAccount && !cur.hasAccount) out.set(email, { ...cur, name: p.name.trim() || cur.name, hasAccount: true })
@@ -25,12 +30,13 @@ export function listPeople(): KnownPerson[] {
 }
 
 /** reactive version, minus me */
-export function usePeople(excludeMe = true): KnownPerson[] {
+export function usePeople(excludeMe = true, includeHidden = false): KnownPerson[] {
   const accounts = useReview((s) => s.accounts)
   const states = useReview((s) => s.states)
   const authors = useReview((s) => s.authors)
+  const hiddenList = useWorkspace((s) => s.meta?.settings?.hiddenPeople)
   const me = useMe()
-  return useMemo(() => listPeople().filter((p) => !excludeMe || !samePerson(p, me)), [accounts, states, authors, me, excludeMe])
+  return useMemo(() => listPeople({ includeHidden }).filter((p) => !excludeMe || !samePerson(p, me)), [accounts, states, authors, me, excludeMe, includeHidden, hiddenList])
 }
 
 /** does `text` mention this person? `@Name`, `@[Full Name]`, `@first-token`, accent/case-insensitive */

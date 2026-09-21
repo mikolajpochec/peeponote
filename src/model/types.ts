@@ -189,6 +189,8 @@ export interface WorkspaceSettings {
   snapToGrid?: boolean
   /** review: who may resolve threads / close reviews (default: the author / requester only) */
   review?: { authorOnlyClose?: boolean }
+  /** emails that never show up in @mentions / reviewer pickers (stray commits from another account, bots) */
+  hiddenPeople?: string[]
 }
 
 export interface WorkspaceMeta {
