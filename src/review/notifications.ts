@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { Board, Card } from '../model/types'
 import type { Comment, Person, ReviewRequest, Verdict } from '../model/review'
+import { stripMd } from '../nav/links'
 import { useMe, useReview } from '../store/review'
 import { useWorkspace } from '../store/workspace'
 import { samePerson, userKey } from './identity'
@@ -56,7 +57,13 @@ export function textOfCard(c: Card): string {
 }
 
 const excerpt = (s: string, n = 90) => {
-  const t = s.replace(/@\[([^\]]+)\]/g, '@$1').replace(/\s+/g, ' ').trim()
+  // plain words: no `### ` / `**` in a notification row
+  const t = s
+    .split('\n')
+    .map((l) => stripMd(l))
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
   return t.length > n ? `${t.slice(0, n - 1)}…` : t
 }
 

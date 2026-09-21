@@ -2,22 +2,24 @@
 
 **→ [mikolajpochec.github.io/peeponote](https://mikolajpochec.github.io/peeponote/)**
 
-Visual boards on an infinite canvas where **Save = `git commit`** (and push, if a remote is set). Static web app + installable PWA, no backend.
+Visual boards on an infinite canvas where **Save = `git commit`** (and push). A static web app / PWA — your repo is the backend.
 
-- Infinite canvas, nested boards, connectors, styling, grouping & alignment, works on phones.
-- Cards: text, markdown notes, to-dos, links, sub-boards and **any file** with a preview (images, textures, audio, video, 3D models, fonts, code) and a download button.
-- Repo lives in the browser (IndexedDB) or in a real folder on disk. Plain JSON in `boards/`, files in `assets/` — diffs and merges like any repo. Works inside a monorepo: the workspace is wherever `peeponote.json` sits (root or any subfolder, found automatically); a fresh workspace in a non-empty repo goes into `peeponote/`.
-- Remotes: GitHub via its REST API (no proxy) or any git host over HTTP through a CORS proxy (`proxy/worker.ts`). Save commits, pulls what others pushed, merges card-by-card and pushes — it only asks when the same card was edited on both sides. Every 15 s the app checks the remote; commits that don't touch what you're editing slide in under your unsaved edits. Commits made by the app are titled `[peeponote] …` and carry a `Co-Authored-By: peeponote[bot]` trailer (shows the peeponote logo next to the author on GitHub), so they're easy to spot in a shared repo.
-- Review & comments, without GitHub: select cards → **Ask for review…** (pick people, add a note). **🔍 Review** mode makes the board read-only and lets you comment on cards, rows or spots; bubbles place themselves and stretch a tail to what they talk about (no room → a "more comments" chip). Threads, verdicts (approve / request changes), resolve, mute, `@mentions` everywhere. Everything is files under `review/` in the workspace — one writer per file, auto-committed as `[peeponote] Review: …` and pushed, so it merges without conflicts and the 🔔 notifications (seen/unseen per person) come straight from the repo.
-- Identity: a password you pick once derives a signing key (name + email + password, PBKDF2 → Ed25519); the public half is committed as your account, every comment is signed, and readers see "unverified" on anything that doesn't check out. Guests (no password) can edit but not comment. Optional profile picture, cropped in-app.
-- Nothing is lost between saves: every edit — including text you're still typing — lands in the working tree within a moment, so a closed tab, a crash or a power cut brings you back to exactly where you were; Save is only about sharing it. The browser asks before closing only while the last edit is still being written.
-- Lock cards in place (context menu / 🔒 in the style bar): no moving, resizing or editing until unlocked; links inside still work.
-- Several repos: Settings → Sync → **Change repo…** takes a URL + token, checks the access on the spot and only then opens it (each repo keeps its own local clone and token; previous repos are one click away).
-- For Claude / the terminal: `cli/peepo.mjs` (no dependencies) prints boards as markdown — `tree`, `show`, `card`, `search`, `graph` (dialogue flow, `--mermaid`), `json`; it resolves `peepo://` addresses and follows arrows. `cli/SKILL.md` is a ready Claude Code skill: copy both files into `<your repo>/.claude/skills/peeponote-boards/`.
-- Updates: the installed app checks GitHub Pages for a new build every minute and switches over by itself once your work is saved (or right away via the toast).
-- Auth: a personal access token kept in your browser only — the app walks you through creating one. Collaborators on someone else's repo need a *classic* token with `repo` scope (fine-grained tokens can only target repos you or your org own).
-- Text takes inline markdown everywhere (`**bold**`, `_italic_`, `[links](…)`) with a selection toolbar (⌘B ⌘I ⌘K). Links can point at the web or into the project: `peepo://Home/Styl-Graficzny/Obrazki/image1` (boards by name or slug, then a card slug — set slugs via *PPM → Properties*).
-- Story planning cards under **📖 Story**: dialogue nodes (what's said + choices — drag an arrow from a choice to the next node), events, quests, scenes. Every field and choice is an arrow anchor; fields link to each other with `peepo://` paths.
+![Boards: notes, to-dos, links, nested boards and arrows on an infinite canvas](docs/canvas.webp)
+
+## What it does
+
+- **Cards of every kind** — text, markdown notes, to-dos, links, shapes, nested boards and **any file** with a live preview (images, audio, video, 3D models, fonts, code). Arrows between anything, styling, grouping, alignment. Works on phones.
+- **It's all git** — plain JSON in `boards/`, files in `assets/`, in the browser (IndexedDB) or a real folder. Diff it, branch it, merge it. Drops into any repo (even a monorepo subfolder).
+- **Save & share** — connect a GitHub repo with a token (or any git host through the CORS proxy): Save commits, pulls what others did, merges card-by-card and pushes. It only asks when you both edited the same card. Nothing is ever lost between saves — even text you're still typing survives a crash or a power cut.
+- **Review without GitHub** — select cards, ask people for a review, comment in **🔍 Review** mode with bubbles that point at what they mean, approve or request changes, `@mention` anyone. It's all files under `review/`, signed with a key derived from your password, auto-committed and merged without conflicts — and the 🔔 notifications come straight from the repo.
+- **Story planning** — dialogue nodes with choices, scenes, quests and events, linked with `peepo://` addresses and arrows.
+- **For Claude and the terminal** — `cli/peepo.mjs` prints boards as markdown (`tree`, `show`, `search`, `graph --mermaid`); `cli/SKILL.md` makes it a Claude Code skill.
+
+![Review mode: a request, comment bubbles pointing at cards, a verdict](docs/review.webp)
+
+![Notifications: requests, verdicts, replies and mentions, seen/unseen per person](docs/notifications.webp)
+
+![Story planning: scenes, quests, dialogue nodes with choices](docs/story.webp)
 
 ## Develop
 
