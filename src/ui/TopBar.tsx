@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Board } from '../model/types'
 import { selectBoards, selectDirty, useWorkspace } from '../store/workspace'
 import { useSettings } from '../store/settings'
@@ -159,6 +159,21 @@ function Identity({ compact }: { compact: boolean }) {
   )
 }
 
+/** navigator.onLine, live */
+function useOnline() {
+  const [on, setOn] = useState(navigator.onLine)
+  useEffect(() => {
+    const up = () => setOn(navigator.onLine)
+    window.addEventListener('online', up)
+    window.addEventListener('offline', up)
+    return () => {
+      window.removeEventListener('online', up)
+      window.removeEventListener('offline', up)
+    }
+  }, [])
+  return on
+}
+
 function SaveBar({ compact }: { compact: boolean }) {
   const dirty = useWorkspace(selectDirty)
   const busy = useWorkspace((s) => s.busy)
@@ -169,6 +184,8 @@ function SaveBar({ compact }: { compact: boolean }) {
   const token = useSettings((s) => s.token)
   const willPush = !!remoteUrl && !!token
   const [msg, setMsg] = useState('')
+  const online = useOnline()
+  const pendingSync = useWorkspace((s) => s.pendingSync)
 
   const doSave = async () => {
     const ok = await save(msg)
@@ -177,10 +194,16 @@ function SaveBar({ compact }: { compact: boolean }) {
 
   return (
     <div className="flex items-center gap-2">
-      <span
-        className={`h-2.5 w-2.5 rounded-full ${dirty ? 'bg-amber-400 shadow-[0_0_8px_2px_rgba(251,191,36,0.5)]' : 'bg-frog-400'}`}
-        title={dirty ? 'Unsaved changes' : 'All committed'}
-      />
+      {!online ? (
+        <span className="flex h-7 items-center gap-1 rounded-md bg-swamp-700 px-2 text-[11px] font-bold text-frog-200" title="No connection: saves stay on this device and go out when you're back online">
+          ⚡ Offline{pendingSync ? ' · to sync' : ''}
+        </span>
+      ) : (
+        <span
+          className={`h-2.5 w-2.5 rounded-full ${dirty ? 'bg-amber-400 shadow-[0_0_8px_2px_rgba(251,191,36,0.5)]' : pendingSync ? 'bg-sky-400' : 'bg-frog-400'}`}
+          title={dirty ? 'Unsaved changes' : pendingSync ? 'Saved here, not yet sent' : 'All committed'}
+        />
+      )}
       {!compact && (
         <input
           value={msg}

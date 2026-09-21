@@ -11,6 +11,7 @@ import { BootScreen } from './ui/BootScreen'
 import { Onboarding } from './ui/Onboarding'
 import { IdentityDialog, shouldPromptIdentity } from './review/IdentityDialog'
 import { useReview } from './store/review'
+import { toast } from './store/toast'
 import { NotificationsPanel } from './review/NotificationsPanel'
 import { RequestReviewDialog } from './review/RequestReviewDialog'
 import { ThreadDialog } from './review/ThreadDialog'
@@ -126,6 +127,23 @@ export default function App() {
     return () => {
       window.removeEventListener('pagehide', onHide)
       document.removeEventListener('visibilitychange', onHide)
+    }
+  }, [])
+
+  // back online: push what waited (and pull what others did meanwhile); going offline just says so
+  useEffect(() => {
+    const online = () => {
+      const ws = useWorkspace.getState()
+      if (ws.status !== 'ready' || !ws.remoteUrl || !useSettings.getState().token) return
+      toast.info('Back online — syncing.', 'peepoRun')
+      void ws.sync({ silent: true })
+    }
+    const offline = () => toast.info("You're offline. Keep working — saves stay here until the connection returns.", 'peepoSit')
+    window.addEventListener('online', online)
+    window.addEventListener('offline', offline)
+    return () => {
+      window.removeEventListener('online', online)
+      window.removeEventListener('offline', offline)
     }
   }, [])
 

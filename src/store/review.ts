@@ -499,6 +499,7 @@ export const useReview = create<ReviewState>((set, get) => {
         const who = get().me() ?? { name: useSettings.getState().authorName, email: useSettings.getState().authorEmail }
         await repo.commitPaths(fs, paths, title, who)
         await ws.refreshGit()
+        // offline: the commit is in; sync() itself notes it for when the connection returns
         if (ws.remoteUrl && useSettings.getState().token) await ws.sync({ silent: true })
       } catch (e) {
         for (const p of paths) pending.set(p, msgs[0] ?? 'review')

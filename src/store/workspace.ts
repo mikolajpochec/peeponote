@@ -61,6 +61,8 @@ interface WorkspaceState {
   remoteUrl: string | null
   /** who we last auto-merged with (for the toast) */
   lastCombinedWith: string | null
+  /** something was committed while offline and still needs to go out */
+  pendingSync: boolean
   head: ReadCommitResult | null
   commits: ReadCommitResult[]
   /** the log has been walked to the root — nothing more to load */
@@ -562,6 +564,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     divergence: null,
     remoteUrl: null,
     lastCombinedWith: null,
+    pendingSync: false,
     head: null,
     commits: [],
     historyDone: false,
@@ -1020,7 +1023,11 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         // a save also syncs when a remote is set up: pull others' work, merge if needed, push
         if (get().remoteUrl && useSettings.getState().token) {
           set({ busy: null })
-          await get().sync({ silent: true })
+          if (navigator.onLine) await get().sync({ silent: true })
+          else {
+            set({ pendingSync: true })
+            toast.info("You're offline — saved here; it goes out as soon as you're back online.", 'peepoSit')
+          }
         }
         return true
       } catch (e) {
@@ -1040,7 +1047,12 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       }
       const { fs } = ctx
       if (get().busy) return
-      set({ busy: 'syncing', busyDetail: null })
+      if (!navigator.onLine) {
+        set({ pendingSync: true })
+        if (!silent) toast.info("You're offline — will sync when the connection is back.", 'peepoSit')
+        return
+      }
+      set({ busy: 'syncing', busyDetail: null, pendingSync: false })
       /**
        * both sides have new commits: with no unsaved edits and no card touched by both → merge quietly
        * (returns true, nothing pushed yet); otherwise the plain-language dialog takes over (returns false)
@@ -1127,7 +1139,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
 
     autoSync: async () => {
       const ctx = syncCtx()
-      if (!ctx || get().busy || get().viewingRef || get().divergence || document.visibilityState === 'hidden') return
+      if (!ctx || get().busy || get().viewingRef || get().divergence || document.visibilityState === 'hidden' || !navigator.onLine) return
       const { fs } = ctx
       try {
         const remote = await fetchRemote(ctx)
