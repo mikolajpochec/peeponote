@@ -17,7 +17,7 @@ export function ConfirmDialog() {
   }, [current, answer])
   if (!current) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => answer(false)}>
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4" onClick={() => answer(false)}>
       <div className="w-full max-w-sm rounded-2xl border border-(--hair) bg-swamp-800 p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start gap-3">
           <Peepo name={current.peepo ?? 'monkaS'} size={44} />

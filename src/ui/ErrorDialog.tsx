@@ -9,7 +9,7 @@ export function ErrorDialog() {
   if (!open) return null
   const text = formatReport(open)
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4" onClick={close}>
+    <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 p-4" onClick={close}>
       <div className="flex max-h-full w-full max-w-2xl flex-col rounded-2xl border border-(--hair) bg-swamp-800 p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center gap-3">
           <Peepo name="PepeHands" size={40} />
