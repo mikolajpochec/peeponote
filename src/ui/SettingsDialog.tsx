@@ -317,10 +317,13 @@ function WorkspaceTab() {
   )
 }
 
+const EMPTY: string[] = []
+
 /** everyone git has seen in this repo; hide the ones that shouldn't be offered in @mentions / reviewer pickers */
 function PeopleRow({ locked }: { locked: boolean }) {
   const people = usePeople(false, true)
-  const hidden = useWorkspace((s) => s.meta?.settings?.hiddenPeople ?? [])
+  // selectors must return stored references: a fresh `[]` per render would re-render forever (React #185)
+  const hidden = useWorkspace((s) => s.meta?.settings?.hiddenPeople) ?? EMPTY
   const updateMeta = useWorkspace((s) => s.updateMeta)
   const meta = useWorkspace((s) => s.meta)
   const set = (email: string, hide: boolean) => {
