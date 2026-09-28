@@ -138,6 +138,15 @@ export function stampMessage(message: string): string {
   return `${head}\n\n${body ? `${body}\n\n` : ''}${APP_TRAILER}\n`
 }
 
+/**
+ * Commits peeponote writes by itself, without anyone pressing Save: review activity (comments, verdicts, seen)
+ * and the merge commits a sync makes. History hides them unless you ask for them.
+ */
+export function isAutoCommit(message: string): boolean {
+  const title = message.split('\n')[0].trim()
+  return title.startsWith(`${APP_TAG} Review:`) || title.startsWith(`${APP_TAG} Merge remote changes`)
+}
+
 export async function commit(fs: PeepoFS, message: string, who: GitIdentity): Promise<string> {
   return git.commit({
     ...ctx(fs),

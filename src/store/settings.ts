@@ -32,6 +32,8 @@ export interface Settings {
   identityPassword: string
   /** "Later" on the identify-yourself prompt: don't ask again before this time */
   identityPromptSnoozedUntil: number
+  /** History lists the commits peeponote makes on its own (review activity, merges) */
+  showAutoCommits: boolean
   set: (patch: Partial<Omit<Settings, 'set' | 'reset' | 'rememberRepo' | 'forgetRepo'>>) => void
   /** back to factory defaults (token gone, wizard shows again) */
   reset: () => void
@@ -52,6 +54,7 @@ const DEFAULTS: Omit<Settings, 'set' | 'reset' | 'rememberRepo' | 'forgetRepo'> 
   theme: 'dark',
   identityPassword: '',
   identityPromptSnoozedUntil: 0,
+  showAutoCommits: false,
 }
 
 export const useSettings = create<Settings>()(
