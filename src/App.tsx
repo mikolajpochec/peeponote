@@ -20,9 +20,11 @@ import { SyncDialog } from './ui/SyncDialog'
 import { ConfirmDialog } from './ui/ConfirmDialog'
 import { PropertiesDialog } from './ui/PropertiesDialog'
 import { ErrorDialog } from './ui/ErrorDialog'
+import { ChangelogDialog } from './ui/ChangelogDialog'
 import { useSettings } from './store/settings'
 import { applyTheme, resolveTheme } from './theme/themes'
 import { useIsMobile } from './canvas/touch'
+import { APP_VERSION } from './version'
 import { openLink, parseLink, reflectBoardInHash } from './nav/links'
 
 export default function App() {
@@ -47,6 +49,22 @@ export default function App() {
   useEffect(() => {
     boot()
   }, [boot])
+
+  // what's new: once per version, and from the sidebar / Settings → About whenever you like
+  const [changelog, setChangelog] = useState<null | { afterUpdate: boolean }>(null)
+  useEffect(() => {
+    const open = () => setChangelog({ afterUpdate: false })
+    window.addEventListener('peeponote:changelog', open)
+    return () => window.removeEventListener('peeponote:changelog', open)
+  }, [])
+  useEffect(() => {
+    if (status !== 'ready') return
+    const s = useSettings.getState()
+    if (s.lastSeenVersion === APP_VERSION) return
+    // a brand-new install has nothing to catch up on: remember the version and stay out of the way
+    if (showOnboarding || !s.onboarded || !s.showChangelogOnUpdate) return s.set({ lastSeenVersion: APP_VERSION })
+    setChangelog({ afterUpdate: true })
+  }, [status, showOnboarding])
 
   const themeName = useSettings((s) => s.theme)
   useEffect(() => applyTheme(resolveTheme(themeName)), [themeName])
@@ -226,6 +244,7 @@ export default function App() {
       <ThreadDialog />
       {identity && !showOnboarding && <IdentityDialog intro={identity.intro} onClose={() => setIdentity(null)} />}
       <SyncDialog />
+      {changelog && <ChangelogDialog afterUpdate={changelog.afterUpdate} onClose={() => setChangelog(null)} />}
       <ConfirmDialog />
       <PropertiesDialog />
       <ErrorDialog />

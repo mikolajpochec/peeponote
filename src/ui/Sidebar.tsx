@@ -10,6 +10,8 @@ import { countItems } from '../store/removeCards'
 import { useProperties } from './PropertiesDialog'
 import { toast } from '../store/toast'
 import { contrast } from '../canvas/styles'
+import { openChangelog } from './ChangelogDialog'
+import { APP_VERSION } from '../version'
 import { ContextMenu, sep, type MenuItem } from './ContextMenu'
 
 interface Menu {
@@ -174,9 +176,18 @@ export function Sidebar({ onOpenSettings, onNavigate, onClose }: { onOpenSetting
         ) : (
           <div>no commits yet</div>
         )}
-        <button onClick={onOpenSettings} className="mt-1 w-full rounded-md bg-swamp-700 px-2 py-1 text-left text-[12px] font-semibold text-frog-100 hover:bg-swamp-600">
-          ⚙ Settings
-        </button>
+        <div className="mt-1 flex gap-1">
+          <button onClick={onOpenSettings} className="flex-1 rounded-md bg-swamp-700 px-2 py-1 text-left text-[12px] font-semibold text-frog-100 hover:bg-swamp-600">
+            ⚙ Settings
+          </button>
+          <button
+            onClick={openChangelog}
+            title={`peeponote ${APP_VERSION} — what's new`}
+            className="rounded-md bg-swamp-700 px-2 py-1 font-mono text-[11px] font-semibold text-frog-200/70 hover:bg-swamp-600 hover:text-frog-100"
+          >
+            v{APP_VERSION}
+          </button>
+        </div>
       </div>
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems()} onClose={() => setMenu(null)} />}
     </aside>

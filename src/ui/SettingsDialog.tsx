@@ -15,18 +15,21 @@ import { ChangeRepoDialog } from './ChangeRepoDialog'
 import { useReview } from '../store/review'
 import { Avatar } from '../review/Avatar'
 import { usePeople } from '../review/people'
+import { openChangelog } from './ChangelogDialog'
+import { APP_VERSION, latestRelease } from '../version'
 
 const field = 'w-full rounded-md bg-swamp-700 px-2 py-1.5 text-[13px] outline-none focus:ring-1 focus:ring-frog-400 placeholder:text-frog-200/30'
 const btn = 'rounded-md bg-swamp-600 px-3 py-1.5 text-[13px] font-semibold hover:bg-swamp-500 disabled:opacity-40'
 const hint = 'text-[11px] leading-relaxed text-frog-200/50'
 
-type Tab = 'you' | 'sync' | 'board' | 'storage' | 'look'
+type Tab = 'you' | 'sync' | 'board' | 'storage' | 'look' | 'about'
 const TABS: { id: Tab; title: string; icon: string }[] = [
   { id: 'you', title: 'You', icon: '🙂' },
   { id: 'sync', title: 'Sync', icon: '☁️' },
   { id: 'board', title: 'Workspace', icon: '🐸' },
   { id: 'storage', title: 'Storage', icon: '💾' },
   { id: 'look', title: 'Look', icon: '🎨' },
+  { id: 'about', title: 'About', icon: '🐸' },
 ]
 
 /**
@@ -72,6 +75,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           {tab === 'board' && <WorkspaceTab />}
           {tab === 'storage' && <StorageTab />}
           {tab === 'look' && <LookTab />}
+          {tab === 'about' && <AboutTab />}
         </div>
         <div className="flex items-center justify-between gap-3 border-t border-(--hair) px-5 py-2.5">
           <span className="text-[11px] text-frog-200/50">⌘S save · ⌘Z undo · ⌘0 reset zoom · ⌘/Ctrl+wheel zoom · Space+drag pans · Del deletes</span>
@@ -486,6 +490,38 @@ function LookTab() {
         })}
       </div>
     </Row>
+  )
+}
+
+// ---------------------------------------------------------------------------------------------- about
+
+/** Which version this is, what changed in it, and whether to be told next time. */
+function AboutTab() {
+  const settings = useSettings()
+  const latest = latestRelease()
+  return (
+    <>
+      <Row title="Version" sub={`Released ${latest.date}. peeponote updates itself from GitHub Pages; the version you see here is the one running.`}>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-md bg-frog-700/50 px-2 py-1 font-mono text-[13px] font-bold text-frog-100">{APP_VERSION}</span>
+          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-frog-100/90">{latest.title}</span>
+          <button className={btn} onClick={openChangelog}>
+            What&apos;s new
+          </button>
+        </div>
+      </Row>
+      <Row title="After an update" sub="Personal — only this browser.">
+        <label className="flex cursor-pointer items-center gap-2 text-[13px]">
+          <input type="checkbox" checked={settings.showChangelogOnUpdate} onChange={(e) => settings.set({ showChangelogOnUpdate: e.target.checked })} className="accent-frog-500" />
+          Show what&apos;s new when a new version arrives
+        </label>
+      </Row>
+      <Row title="Project" sub="Boards are plain files in your git repo — nothing here needs a server.">
+        <a href="https://github.com/mikolajpochec/peeponote" target="_blank" rel="noreferrer" className="text-[13px] font-semibold text-frog-300 underline hover:text-frog-200">
+          github.com/mikolajpochec/peeponote ↗
+        </a>
+      </Row>
+    </>
   )
 }
 

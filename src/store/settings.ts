@@ -34,6 +34,10 @@ export interface Settings {
   identityPromptSnoozedUntil: number
   /** History lists the commits peeponote makes on its own (review activity, merges) */
   showAutoCommits: boolean
+  /** the app version whose changelog this browser has already seen ('' = never) */
+  lastSeenVersion: string
+  /** show "what's new" by itself the first time you open a new version */
+  showChangelogOnUpdate: boolean
   set: (patch: Partial<Omit<Settings, 'set' | 'reset' | 'rememberRepo' | 'forgetRepo'>>) => void
   /** back to factory defaults (token gone, wizard shows again) */
   reset: () => void
@@ -55,6 +59,8 @@ const DEFAULTS: Omit<Settings, 'set' | 'reset' | 'rememberRepo' | 'forgetRepo'> 
   identityPassword: '',
   identityPromptSnoozedUntil: 0,
   showAutoCommits: false,
+  lastSeenVersion: '',
+  showChangelogOnUpdate: true,
 }
 
 export const useSettings = create<Settings>()(
