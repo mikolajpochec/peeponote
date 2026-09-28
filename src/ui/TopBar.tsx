@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { Board } from '../model/types'
 import { selectBoards, selectDirty, useWorkspace } from '../store/workspace'
 import { useSettings } from '../store/settings'
@@ -8,7 +9,17 @@ import { resolveTheme } from '../theme/themes'
 import { useReview } from '../store/review'
 import { useUnseenCount } from '../review/notifications'
 import { Avatar } from '../review/Avatar'
+import { ContextMenu, sep, type MenuItem } from './ContextMenu'
 
+/**
+ * One row that has to survive any width — a phone, a split screen, or a desktop window with the sidebar and a
+ * side panel open. It gives way in this order as it narrows (measured on the header itself via `@container`,
+ * so an open panel counts, not just the viewport):
+ *   1. the path shrinks to the current board only,
+ *   2. the commit message box, the board-style group and the button labels go,
+ *   3. below ~570px Review / you / History / Settings fold into a ⋯ menu.
+ * Save, the unsaved dot and 🔔 are always there; so is 🔍 while you're reviewing, so the way out stays one tap.
+ */
 export function TopBar({
   onToggleHistory,
   historyOpen,
@@ -36,31 +47,36 @@ export function TopBar({
   for (let b = board; b; b = b.parentId ? boards[b.parentId] : undefined) crumbs.unshift(b)
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-(--hair) bg-swamp-900 px-3 max-md:gap-1 max-md:px-2">
+    <header className="@container flex h-12 shrink-0 items-center gap-2 border-b border-(--hair) bg-swamp-900 px-3 max-md:gap-1 max-md:px-2">
       {onToggleSidebar && (
         <button onClick={onToggleSidebar} title="Boards" className="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-lg hover:bg-(--hover-strong)">
           ☰
         </button>
       )}
-      {onToggleSidebar && crumbs.length > 1 && (
-        <button onClick={() => navigate(crumbs[crumbs.length - 2].id)} title="Up" className="flex h-9 w-8 shrink-0 items-center justify-center rounded-md text-lg hover:bg-(--hover-strong)">
+      {crumbs.length > 1 && (
+        <button
+          onClick={() => navigate(crumbs[crumbs.length - 2].id)}
+          title={`Up to ${crumbs[crumbs.length - 2].name || 'Untitled'}`}
+          className="flex h-9 w-8 shrink-0 items-center justify-center rounded-md text-lg hover:bg-(--hover-strong) @[52rem]:hidden"
+        >
           ‹
         </button>
       )}
-      <nav className="flex min-w-0 items-center gap-1 text-[13px]">
-        {(onToggleSidebar ? crumbs.slice(-1) : crumbs).map((b, i) => (
-          <span key={b.id} className="flex items-center gap-1">
-            {i > 0 && <span className="text-frog-200/40">/</span>}
+      <nav className="flex min-w-0 flex-1 items-center gap-1 text-[13px]">
+        {crumbs.map((b, i) => (
+          // the whole path only when there's room; otherwise just the board you're on
+          <span key={b.id} className={`flex min-w-0 items-center gap-1 ${i === crumbs.length - 1 ? '' : 'hidden @[52rem]:flex'}`}>
+            {i > 0 && <span className="hidden text-frog-200/40 @[52rem]:inline">/</span>}
             {i === crumbs.length - 1 ? (
               <input
                 readOnly={readOnly}
                 value={b.name}
                 onChange={(e) => renameBoard(b.id, e.target.value)}
-                className="min-w-0 max-w-[40vw] rounded bg-transparent px-1 font-extrabold outline-none hover:bg-(--hover) focus:bg-(--hover-strong)"
+                className="min-w-0 max-w-full rounded bg-transparent px-1 font-extrabold outline-none hover:bg-(--hover) focus:bg-(--hover-strong)"
                 style={{ width: `${Math.max(4, b.name.length + 1)}ch` }}
               />
             ) : (
-              <button onClick={() => navigate(b.id)} className="rounded px-1 text-frog-200/80 hover:bg-(--hover) hover:text-white">
+              <button onClick={() => navigate(b.id)} className="min-w-0 truncate rounded px-1 text-frog-200/80 hover:bg-(--hover) hover:text-white">
                 {b.name || 'Untitled'}
               </button>
             )}
@@ -68,14 +84,8 @@ export function TopBar({
         ))}
       </nav>
       {board && !readOnly && (
-        <div className="ml-1 flex items-center gap-0.5 rounded-lg bg-swamp-700/60 px-1 max-md:hidden" title="Board style">
-          <ColorPicker
-            title="Board background"
-            icon="◼"
-            value={board.style?.bg}
-            fallback={themeCanvas}
-            onChange={(bg) => setBoardStyle(board.id, { bg })}
-          />
+        <div className="ml-1 hidden items-center gap-0.5 rounded-lg bg-swamp-700/60 px-1 @[56rem]:flex" title="Board style">
+          <ColorPicker title="Board background" icon="◼" value={board.style?.bg} fallback={themeCanvas} onChange={(bg) => setBoardStyle(board.id, { bg })} />
           <button
             title="Toggle dot grid"
             onClick={() => setBoardStyle(board.id, { dots: board.style?.dots === false ? undefined : false })}
@@ -85,41 +95,113 @@ export function TopBar({
           </button>
         </div>
       )}
-      <div className="flex-1" />
-      {reviewOn ? <ReviewToggle compact={!!onToggleSidebar} /> : <SaveBar compact={!!onToggleSidebar} />}
-      {!reviewOn && <ReviewToggle compact={!!onToggleSidebar} />}
-      <Bell compact={!!onToggleSidebar} />
-      <Identity compact={!!onToggleSidebar} />
-      <button
-        onClick={onToggleHistory}
-        title="History"
-        className={`rounded-md px-2 py-1 text-[13px] font-semibold hover:bg-(--hover-strong) max-md:h-9 max-md:w-9 max-md:px-0 ${historyOpen ? 'bg-(--hover-strong)' : ''}`}
-      >
-        🕰<span className="max-md:hidden"> History</span>
-      </button>
-      <button onClick={onOpenSettings} title="Settings (⌘,)" className="rounded-md px-2 py-1 text-[13px] font-semibold hover:bg-(--hover-strong) max-md:h-9 max-md:w-9 max-md:px-0">
-        ⚙
-      </button>
+      <div className="flex shrink-0 items-center gap-1">
+        {reviewOn ? <ReviewToggle /> : <SaveBar />}
+        {!reviewOn && <ReviewToggle />}
+        <Bell />
+        <div className="hidden items-center gap-1 @[34rem]:flex">
+          <Identity />
+          <button
+            onClick={onToggleHistory}
+            title="History"
+            className={`rounded-md px-2 py-1 text-[13px] font-semibold hover:bg-(--hover-strong) max-md:h-9 max-md:w-9 max-md:px-0 ${historyOpen ? 'bg-(--hover-strong)' : ''}`}
+          >
+            🕰<span className="hidden @[46rem]:inline"> History</span>
+          </button>
+          <button onClick={onOpenSettings} title="Settings (⌘,)" className="rounded-md px-2 py-1 text-[13px] font-semibold hover:bg-(--hover-strong) max-md:h-9 max-md:w-9 max-md:px-0">
+            ⚙
+          </button>
+        </div>
+        <MoreMenu board={board} readOnly={readOnly} historyOpen={historyOpen} onToggleHistory={onToggleHistory} onOpenSettings={onOpenSettings} />
+      </div>
     </header>
   )
 }
 
+/** Everything that didn't fit, one tap away. Only rendered while the header is narrow. */
+function MoreMenu({
+  board,
+  readOnly,
+  historyOpen,
+  onToggleHistory,
+  onOpenSettings,
+}: {
+  board?: Board
+  readOnly: boolean
+  historyOpen: boolean
+  onToggleHistory: () => void
+  onOpenSettings: () => void
+}) {
+  const btn = useRef<HTMLButtonElement>(null)
+  const [at, setAt] = useState<{ x: number; y: number } | null>(null)
+  const identity = useReview((s) => s.identity)
+  const reviewOn = useReview((s) => s.mode.on)
+  const setMode = useReview((s) => s.setMode)
+  const setBoardStyle = useWorkspace((s) => s.setBoardStyle)
+  const dirty = useWorkspace(selectDirty)
+  const viewingRef = useWorkspace((s) => s.viewingRef)
+  const busy = useWorkspace((s) => s.busy)
+  const discardChanges = useWorkspace((s) => s.discardChanges)
+
+  const items: MenuItem[] = [
+    { kind: 'item', icon: '🔍', label: reviewOn ? 'Leave review mode' : 'Review mode', onClick: () => setMode({ on: !reviewOn }) },
+    {
+      kind: 'item',
+      icon: identity.kind === 'verified' ? '🙂' : identity.kind === 'mismatch' ? '⚠️' : '👤',
+      label: identity.kind === 'verified' ? identity.account.name : identity.kind === 'mismatch' ? 'Wrong password — fix it' : 'Guest — set a password',
+      onClick: () => window.dispatchEvent(new CustomEvent('peeponote:identify')),
+    },
+    { kind: 'item', icon: '🕰', label: historyOpen ? 'Hide history' : 'History', onClick: onToggleHistory },
+    ...(dirty && !viewingRef ? [{ kind: 'item', icon: '↺', label: 'Discard changes', danger: true, disabled: !!busy, onClick: () => void discardChanges() } as MenuItem] : []),
+    ...(board && !readOnly
+      ? [sep, { kind: 'item', icon: '⁘', label: board.style?.dots === false ? 'Show dot grid' : 'Hide dot grid', onClick: () => setBoardStyle(board.id, { dots: board.style?.dots === false ? undefined : false }) } as MenuItem]
+      : []),
+    sep,
+    { kind: 'item', icon: '⚙', label: 'Settings', shortcut: '⌘,', onClick: onOpenSettings },
+  ]
+
+  const open = () => {
+    const r = btn.current?.getBoundingClientRect()
+    setAt(r ? { x: r.right - 224, y: r.bottom + 6 } : { x: 0, y: 48 })
+  }
+
+  return (
+    <>
+      <button
+        ref={btn}
+        onClick={() => (at ? setAt(null) : open())}
+        title="More"
+        className={`relative flex h-9 w-9 items-center justify-center rounded-md text-[15px] font-bold hover:bg-(--hover-strong) @[34rem]:hidden ${at ? 'bg-(--hover-strong)' : ''}`}
+      >
+        ⋯
+        {identity.kind === 'mismatch' && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />}
+      </button>
+      {/* the header is a container (`@container`), which would anchor a fixed menu to it — so it goes to the body */}
+      {at && createPortal(<ContextMenu x={at.x} y={at.y} items={items} onClose={() => setAt(null)} />, document.body)}
+    </>
+  )
+}
+
 /** Review mode: the board is read-only, you comment. Toggles from anywhere. */
-function ReviewToggle({ compact }: { compact: boolean }) {
+function ReviewToggle() {
   const on = useReview((s) => s.mode.on)
   const setMode = useReview((s) => s.setMode)
   return (
     <button
       onClick={() => setMode({ on: !on })}
       title={on ? 'Leave review mode (back to editing)' : 'Review mode: look and comment without changing anything'}
-      className={`flex h-8 items-center gap-1.5 rounded-md px-2 py-1 text-[13px] font-bold ${on ? 'bg-amber-500 text-black hover:bg-amber-400' : 'hover:bg-(--hover-strong)'} max-md:h-9 ${compact && !on ? 'w-9 px-0' : ''}`}
+      className={`h-8 shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-[13px] font-bold max-md:h-9 ${
+        on ? 'flex bg-amber-500 text-black hover:bg-amber-400' : 'hidden @[28rem]:flex hover:bg-(--hover-strong)'
+      }`}
     >
-      🔍{(!compact || on) && <span>{on ? 'Reviewing — exit' : 'Review'}</span>}
+      🔍
+      {/* …except the way out of review mode, which earns its words sooner */}
+      <span className={on ? 'hidden @[34rem]:inline' : 'hidden @[46rem]:inline'}>{on ? 'Reviewing — exit' : 'Review'}</span>
     </button>
   )
 }
 
-function Bell({ compact }: { compact: boolean }) {
+function Bell() {
   const n = useUnseenCount()
   const open = useReview((s) => s.panelOpen)
   const setOpen = useReview((s) => s.setPanelOpen)
@@ -127,34 +209,39 @@ function Bell({ compact }: { compact: boolean }) {
     <button
       onClick={() => setOpen(!open)}
       title="Notifications: review requests, comments, mentions"
-      className={`relative rounded-md px-2 py-1 text-[13px] font-semibold hover:bg-(--hover-strong) max-md:h-9 max-md:w-9 max-md:px-0 ${open ? 'bg-(--hover-strong)' : ''}`}
+      className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[13px] font-semibold hover:bg-(--hover-strong) ${open ? 'bg-(--hover-strong)' : ''}`}
     >
       🔔
-      {n > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-center text-[10px] font-black leading-4 text-black">{n > 99 ? '99+' : n}</span>}
-      {!compact && <span className="max-md:hidden"> </span>}
+      {n > 0 && <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-amber-500 px-1 text-center text-[10px] font-black leading-4 text-black">{n > 99 ? '99+' : n}</span>}
     </button>
   )
 }
 
 /** who you are here: avatar + name when verified, "Guest" otherwise; click opens the identity dialog */
-function Identity({ compact }: { compact: boolean }) {
+function Identity() {
   const identity = useReview((s) => s.identity)
   const open = () => window.dispatchEvent(new CustomEvent('peeponote:identify'))
   if (identity.kind === 'verified')
     return (
-      <button onClick={open} title={`${identity.account.name} <${identity.account.email}> — verified on this device. Click for picture / log out.`} className="flex h-8 items-center gap-1.5 rounded-md px-1.5 hover:bg-(--hover-strong)">
+      <button
+        onClick={open}
+        title={`${identity.account.name} <${identity.account.email}> — verified on this device. Click for picture / log out.`}
+        className="flex h-8 shrink-0 items-center gap-1.5 rounded-md px-1.5 hover:bg-(--hover-strong)"
+      >
         <Avatar person={identity.account} size={24} />
-        {!compact && <span className="max-w-28 truncate text-[13px] font-semibold">{identity.account.name}</span>}
+        <span className="hidden max-w-28 truncate text-[13px] font-semibold @[46rem]:inline">{identity.account.name}</span>
       </button>
     )
   return (
     <button
       onClick={open}
       title={identity.kind === 'mismatch' ? 'Your saved password does not fit your account — fix it' : 'You are a guest: editing works, comments and reviews need a password'}
-      className={`flex h-8 items-center gap-1.5 rounded-md px-2 text-[13px] font-semibold ${identity.kind === 'mismatch' ? 'bg-red-900/50 text-red-100 hover:bg-red-900/70' : 'bg-swamp-700 text-frog-200 hover:bg-swamp-600'}`}
+      className={`flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-[13px] font-semibold ${
+        identity.kind === 'mismatch' ? 'bg-red-900/50 text-red-100 hover:bg-red-900/70' : 'bg-swamp-700 text-frog-200 hover:bg-swamp-600'
+      }`}
     >
       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-swamp-500 text-[11px]">?</span>
-      {!compact && <span>{identity.kind === 'mismatch' ? 'Wrong password' : 'Guest'}</span>}
+      <span className="hidden @[46rem]:inline">{identity.kind === 'mismatch' ? 'Wrong password' : 'Guest'}</span>
     </button>
   )
 }
@@ -174,7 +261,7 @@ function useOnline() {
   return on
 }
 
-function SaveBar({ compact }: { compact: boolean }) {
+function SaveBar() {
   const dirty = useWorkspace(selectDirty)
   const busy = useWorkspace((s) => s.busy)
   const save = useWorkspace((s) => s.save)
@@ -193,44 +280,46 @@ function SaveBar({ compact }: { compact: boolean }) {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex shrink-0 items-center gap-2">
       {!online ? (
-        <span className="flex h-7 items-center gap-1 rounded-md bg-swamp-700 px-2 text-[11px] font-bold text-frog-200" title="No connection: saves stay on this device and go out when you're back online">
-          ⚡ Offline{pendingSync ? ' · to sync' : ''}
+        <span
+          className="flex h-7 shrink-0 items-center gap-1 rounded-md bg-swamp-700 px-1.5 text-[11px] font-bold text-frog-200"
+          title={`No connection: saves stay on this device and go out when you're back online${pendingSync ? ' (something is waiting to be sent)' : ''}`}
+        >
+          ⚡<span className="hidden @[34rem]:inline">Offline{pendingSync ? ' · to sync' : ''}</span>
         </span>
       ) : (
         <span
-          className={`h-2.5 w-2.5 rounded-full ${dirty ? 'bg-amber-400 shadow-[0_0_8px_2px_rgba(251,191,36,0.5)]' : pendingSync ? 'bg-sky-400' : 'bg-frog-400'}`}
+          className={`h-2.5 w-2.5 shrink-0 rounded-full ${dirty ? 'bg-amber-400 shadow-[0_0_8px_2px_rgba(251,191,36,0.5)]' : pendingSync ? 'bg-sky-400' : 'bg-frog-400'}`}
           title={dirty ? 'Unsaved changes' : pendingSync ? 'Saved here, not yet sent' : 'All committed'}
         />
       )}
-      {!compact && (
-        <input
-          value={msg}
-          onChange={(e) => setMsg(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') doSave()
-          }}
-          placeholder={dirty ? 'commit message (optional)' : 'nothing to commit'}
-          disabled={!!viewingRef}
-          className="w-52 rounded-md bg-swamp-700 px-2 py-1 text-[13px] outline-none placeholder:text-frog-200/40 focus:ring-1 focus:ring-frog-400"
-        />
-      )}
+      <input
+        value={msg}
+        onChange={(e) => setMsg(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') doSave()
+        }}
+        placeholder={dirty ? 'commit message (optional)' : 'nothing to commit'}
+        disabled={!!viewingRef}
+        className="hidden w-52 rounded-md bg-swamp-700 px-2 py-1 text-[13px] outline-none placeholder:text-frog-200/40 focus:ring-1 focus:ring-frog-400 @[56rem]:block"
+      />
       {dirty && !viewingRef && (
         <button
           onClick={discardChanges}
           disabled={!!busy}
           title="Discard changes: throw away everything since the last save (asks first)"
-          className="flex h-8 items-center rounded-md px-2 text-[13px] font-semibold text-frog-200 hover:bg-red-900/40 hover:text-red-100 disabled:opacity-40"
+          className="hidden h-8 shrink-0 items-center rounded-md px-2 text-[13px] font-semibold text-frog-200 hover:bg-red-900/40 hover:text-red-100 disabled:opacity-40 @[28rem]:flex"
         >
-          {compact ? '↺' : 'Discard'}
+          <span className="@[46rem]:hidden">↺</span>
+          <span className="hidden @[46rem]:inline">Discard</span>
         </button>
       )}
       <button
         onClick={doSave}
         disabled={!dirty || !!busy || !!viewingRef}
         title={willPush ? `Save: commit, then bring in others' changes and push → ${remoteUrl} (⌘S)` : 'Save (⌘S)'}
-        className="flex h-8 items-center gap-1.5 rounded-md bg-frog-500 px-3 py-1 text-[13px] font-bold text-white hover:bg-frog-400 disabled:cursor-not-allowed disabled:opacity-40 max-md:px-2"
+        className="flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-frog-500 px-3 py-1 text-[13px] font-bold text-white hover:bg-frog-400 disabled:cursor-not-allowed disabled:opacity-40 max-md:px-2"
       >
         <Peepo name={willPush ? 'peepoRun' : 'peepoClap'} size={20} />
         {busy === 'saving' ? 'Saving…' : busy === 'syncing' ? 'Syncing…' : 'Save'}

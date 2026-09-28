@@ -19,6 +19,8 @@
   { channel: 'chrome', headless: true })`, against `bunx vite preview --port 5299` of a fresh `bun run build`
   (the dev server's StrictMode double-mount closes editors opened by synthetic double-clicks). A headed window pops up
   over the user's screen — don't.
+- Block the service worker in tests (`launchPersistentContext(…, { serviceWorkers: 'block' })`) — otherwise the PWA
+  cache serves the *previous* build from the persistent profile and you test stale code.
 - The stores are on `window.peeponote` (`workspace`, `review`, `settings` — zustand stores, `.getState()`), so a test
   can drive the app without importing modules. Seed `localStorage['peeponote-settings']` with a name/email and
   `onboarded: true` to skip onboarding; a killed Chrome (`pkill -9`) simulates a power cut.
