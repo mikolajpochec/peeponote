@@ -10,15 +10,16 @@ import { useReview } from '../store/review'
 import { useUnseenCount } from '../review/notifications'
 import { Avatar } from '../review/Avatar'
 import { ContextMenu, sep, type MenuItem } from './ContextMenu'
+import { SaveDialog } from './SaveDialog'
 
 /**
  * One row that has to survive any width — a phone, a split screen, or a desktop window with the sidebar and a
  * side panel open. It gives way in this order as it narrows (measured on the header itself via `@container`,
  * so an open panel counts, not just the viewport):
  *   1. the path shrinks to the current board only,
- *   2. the commit message box, the board-style group and the button labels go,
- *   3. below ~570px Review / you / History / Settings fold into a ⋯ menu.
- * Save, the unsaved dot and 🔔 are always there; so is 🔍 while you're reviewing, so the way out stays one tap.
+ *   2. the board-style group and the button labels go, and the commit message box moves into the Save button (✎),
+ *   3. below ~570px everything else — Review, 🔔, you, History, Discard, Settings — folds into one ⋯ menu.
+ * What never leaves: the board name, the unsaved dot and Save (in review mode, the amber chip that gets you out).
  */
 export function TopBar({
   onToggleHistory,
@@ -97,9 +98,10 @@ export function TopBar({
       )}
       <div className="flex shrink-0 items-center gap-1">
         {reviewOn ? <ReviewToggle /> : <SaveBar />}
-        {!reviewOn && <ReviewToggle />}
-        <Bell />
+        {/* below the fold this whole group lives in the ⋯ menu — it's all of it or none of it */}
         <div className="hidden items-center gap-1 @[34rem]:flex">
+          {!reviewOn && <ReviewToggle />}
+          <Bell />
           <Identity />
           <button
             onClick={onToggleHistory}
@@ -142,9 +144,13 @@ function MoreMenu({
   const viewingRef = useWorkspace((s) => s.viewingRef)
   const busy = useWorkspace((s) => s.busy)
   const discardChanges = useWorkspace((s) => s.discardChanges)
+  const unseen = useUnseenCount()
+  const panelOpen = useReview((s) => s.panelOpen)
+  const setPanelOpen = useReview((s) => s.setPanelOpen)
 
   const items: MenuItem[] = [
     { kind: 'item', icon: '🔍', label: reviewOn ? 'Leave review mode' : 'Review mode', onClick: () => setMode({ on: !reviewOn }) },
+    { kind: 'item', icon: '🔔', label: unseen > 0 ? `Notifications (${unseen > 99 ? '99+' : unseen} new)` : panelOpen ? 'Hide notifications' : 'Notifications', onClick: () => setPanelOpen(!panelOpen) },
     {
       kind: 'item',
       icon: identity.kind === 'verified' ? '🙂' : identity.kind === 'mismatch' ? '⚠️' : '👤',
@@ -174,7 +180,11 @@ function MoreMenu({
         className={`relative flex h-9 w-9 items-center justify-center rounded-md text-[15px] font-bold hover:bg-(--hover-strong) @[34rem]:hidden ${at ? 'bg-(--hover-strong)' : ''}`}
       >
         ⋯
-        {identity.kind === 'mismatch' && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />}
+        {unseen > 0 ? (
+          <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-amber-500 px-1 text-center text-[10px] font-black leading-4 text-black">{unseen > 99 ? '99+' : unseen}</span>
+        ) : (
+          identity.kind === 'mismatch' && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />
+        )}
       </button>
       {/* the header is a container (`@container`), which would anchor a fixed menu to it — so it goes to the body */}
       {at && createPortal(<ContextMenu x={at.x} y={at.y} items={items} onClose={() => setAt(null)} />, document.body)}
@@ -191,7 +201,7 @@ function ReviewToggle() {
       onClick={() => setMode({ on: !on })}
       title={on ? 'Leave review mode (back to editing)' : 'Review mode: look and comment without changing anything'}
       className={`h-8 shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-[13px] font-bold max-md:h-9 ${
-        on ? 'flex bg-amber-500 text-black hover:bg-amber-400' : 'hidden @[28rem]:flex hover:bg-(--hover-strong)'
+        on ? 'flex bg-amber-500 text-black hover:bg-amber-400' : 'flex hover:bg-(--hover-strong)'
       }`}
     >
       🔍
@@ -271,6 +281,7 @@ function SaveBar() {
   const token = useSettings((s) => s.token)
   const willPush = !!remoteUrl && !!token
   const [msg, setMsg] = useState('')
+  const [writing, setWriting] = useState(false)
   const online = useOnline()
   const pendingSync = useWorkspace((s) => s.pendingSync)
 
@@ -309,21 +320,33 @@ function SaveBar() {
           onClick={discardChanges}
           disabled={!!busy}
           title="Discard changes: throw away everything since the last save (asks first)"
-          className="hidden h-8 shrink-0 items-center rounded-md px-2 text-[13px] font-semibold text-frog-200 hover:bg-red-900/40 hover:text-red-100 disabled:opacity-40 @[28rem]:flex"
+          className="hidden h-8 shrink-0 items-center rounded-md px-2 text-[13px] font-semibold text-frog-200 hover:bg-red-900/40 hover:text-red-100 disabled:opacity-40 @[34rem]:flex"
         >
           <span className="@[46rem]:hidden">↺</span>
           <span className="hidden @[46rem]:inline">Discard</span>
         </button>
       )}
-      <button
-        onClick={doSave}
-        disabled={!dirty || !!busy || !!viewingRef}
-        title={willPush ? `Save: commit, then bring in others' changes and push → ${remoteUrl} (⌘S)` : 'Save (⌘S)'}
-        className="flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-frog-500 px-3 py-1 text-[13px] font-bold text-white hover:bg-frog-400 disabled:cursor-not-allowed disabled:opacity-40 max-md:px-2"
-      >
-        <Peepo name={willPush ? 'peepoRun' : 'peepoClap'} size={20} />
-        {busy === 'saving' ? 'Saving…' : busy === 'syncing' ? 'Syncing…' : 'Save'}
-      </button>
+      {/* one control: Save, plus ✎ for the message once the box above no longer fits */}
+      <div className="flex shrink-0 items-stretch overflow-hidden rounded-md">
+        <button
+          onClick={doSave}
+          disabled={!dirty || !!busy || !!viewingRef}
+          title={willPush ? `Save: commit, then bring in others' changes and push → ${remoteUrl} (⌘S)` : 'Save (⌘S)'}
+          className="flex h-8 shrink-0 items-center gap-1.5 bg-frog-500 px-3 py-1 text-[13px] font-bold text-white hover:bg-frog-400 disabled:cursor-not-allowed disabled:opacity-40 max-md:px-2"
+        >
+          <Peepo name={willPush ? 'peepoRun' : 'peepoClap'} size={20} />
+          {busy === 'saving' ? 'Saving…' : busy === 'syncing' ? 'Syncing…' : 'Save'}
+        </button>
+        <button
+          onClick={() => setWriting(true)}
+          disabled={!dirty || !!busy || !!viewingRef}
+          title="Save with a commit message"
+          className="flex h-8 w-7 shrink-0 items-center justify-center border-l border-black/20 bg-frog-500 text-[12px] font-bold text-white hover:bg-frog-400 disabled:cursor-not-allowed disabled:opacity-40 @[56rem]:hidden"
+        >
+          ✎
+        </button>
+      </div>
+      {writing && <SaveDialog onClose={() => setWriting(false)} />}
     </div>
   )
 }
