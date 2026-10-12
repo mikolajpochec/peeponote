@@ -8,6 +8,8 @@ import { autoEdit } from '../cards/autoEdit'
 import { SHAPES } from '../cards/ShapeCard'
 import { STORY_KINDS } from '../cards/story/kinds'
 import { isCoarse } from '../canvas/touch'
+import { useSettings } from '../store/settings'
+import { boardMark } from '../theme/glyphs'
 
 export const TOOL_MIME = 'application/x-peeponote-tool'
 
@@ -125,6 +127,7 @@ export function Palette({ board }: { board: Board }) {
   const fileInput = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState<ToolId | null>(null)
   const [open, setOpen] = useState<ToolId | null>(null)
+  const mascots = useSettings((s) => s.mascots)
   const root = useRef<HTMLDivElement>(null)
   const coarse = isCoarse()
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -190,7 +193,7 @@ export function Palette({ board }: { board: Board }) {
               }`}
             >
               <span className={`leading-none ${tool.id === 'title' ? 'font-serif text-[20px] font-black' : tool.id === 'text' ? 'text-[18px]' : 'text-[16px]'}`}>
-                {tool.icon}
+                {tool.id === 'board' ? boardMark(mascots) : tool.icon}
               </span>
               <span className="text-[9px] font-semibold uppercase tracking-wide opacity-70 group-hover/tool:opacity-100">{tool.label}</span>
               {tool.children && <span className="absolute right-1 top-1 text-[8px] opacity-50">▸</span>}

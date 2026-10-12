@@ -10,6 +10,8 @@ import { countItems } from '../store/removeCards'
 import { useProperties } from './PropertiesDialog'
 import { toast } from '../store/toast'
 import { contrast } from '../canvas/styles'
+import { useSettings } from '../store/settings'
+import { boardMark } from '../theme/glyphs'
 import { openChangelog } from './ChangelogDialog'
 import { APP_VERSION } from '../version'
 import { ContextMenu, sep, type MenuItem } from './ContextMenu'
@@ -33,6 +35,7 @@ export function Sidebar({ onOpenSettings, onNavigate, onClose }: { onOpenSetting
   const createBoard = useWorkspace((s) => s.createBoard)
   const removeCards = useWorkspace((s) => s.removeCards)
   const readOnly = useWorkspace((s) => !!s.viewingRef)
+  const mascots = useSettings((s) => s.mascots)
   const fs = useWorkspace((s) => s.fs)
   const head = useWorkspace((s) => s.head)
   const [collapsed, setCollapsed] = useState(false)
@@ -67,7 +70,7 @@ export function Sidebar({ onOpenSettings, onNavigate, onClose }: { onOpenSetting
     if (!menu) return []
     const b = menu.boardId ? boards[menu.boardId] : undefined
     if (!b) {
-      return [{ kind: 'item', label: 'Add board', icon: '🐸', disabled: readOnly || !root, onClick: () => root && addSubBoard(root.id) }]
+      return [{ kind: 'item', label: 'Add board', icon: boardMark(mascots), disabled: readOnly || !root, onClick: () => root && addSubBoard(root.id) }]
     }
     const isRoot = !b.parentId
     const count = countItems(b, boards)
@@ -97,7 +100,7 @@ export function Sidebar({ onOpenSettings, onNavigate, onClose }: { onOpenSetting
       { kind: 'item', label: 'Rename', icon: '✎', shortcut: 'dbl-click', disabled: readOnly, onClick: () => setRenaming(b.id) },
       { kind: 'item', label: 'Properties…', icon: 'ⓘ', onClick: () => useProperties.getState().open({ kind: 'board', boardId: b.id }) },
       sep,
-      { kind: 'item', label: 'Add sub-board', icon: '🐸', disabled: readOnly, onClick: () => addSubBoard(b.id) },
+      { kind: 'item', label: 'Add sub-board', icon: boardMark(mascots), disabled: readOnly, onClick: () => addSubBoard(b.id) },
       sep,
       {
         kind: 'item',

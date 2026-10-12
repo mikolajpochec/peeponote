@@ -28,6 +28,8 @@ export interface Settings {
   /** first-run wizard finished (or skipped) */
   onboarded: boolean
   theme: ThemeName
+  /** draw the peepo mascots; off replaces each of them with a quiet line icon */
+  mascots: boolean
   /** proves it's you on comments/reviews; stays in this browser, re-derived into keys on boot */
   identityPassword: string
   /** "Later" on the identify-yourself prompt: don't ask again before this time */
@@ -56,6 +58,7 @@ const DEFAULTS: Omit<Settings, 'set' | 'reset' | 'rememberRepo' | 'forgetRepo'> 
   autoPull: true,
   onboarded: false,
   theme: 'dark',
+  mascots: true,
   identityPassword: '',
   identityPromptSnoozedUntil: 0,
   showAutoCommits: false,

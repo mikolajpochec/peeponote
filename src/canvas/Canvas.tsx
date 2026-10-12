@@ -26,6 +26,7 @@ import { toast } from '../store/toast'
 import { removeCardsChecked } from '../store/removeCards'
 import { useProperties } from '../ui/PropertiesDialog'
 import { useSettings } from '../store/settings'
+import { boardMark } from '../theme/glyphs'
 import { useReview } from '../store/review'
 import { CommentLayer } from '../review/CommentLayer'
 import { resolveTheme } from '../theme/themes'
@@ -380,7 +381,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     if (menu.cardId && n) {
       const one = n === 1 ? selCards[0] : null
       const items: MenuItem[] = []
-      if (one?.type === 'board') items.push({ kind: 'item', label: 'Open board', icon: '🐸', shortcut: 'dbl-click', onClick: () => navigate(one.boardId) }, sep)
+      if (one?.type === 'board') items.push({ kind: 'item', label: 'Open board', icon: boardMark(useSettings.getState().mascots), shortcut: 'dbl-click', onClick: () => navigate(one.boardId) }, sep)
       if (one?.type === 'asset') items.push({ kind: 'item', label: 'Download original', icon: '⬇', onClick: () => void downloadAsset(one) }, sep)
       items.push(
         { kind: 'item', label: n > 1 ? `Ask for review of ${n} cards…` : 'Ask for review…', icon: '👀', onClick: () => useReview.getState().setRequestDialog({ boardId: board.id, targets: [...sel] }) },

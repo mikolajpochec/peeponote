@@ -9,7 +9,9 @@ import { toast } from '../store/toast'
 import { clearAssetCache } from '../cards/useAssetUrl'
 import { exportRepoZip } from '../git/exportZip'
 import { Peepo } from './Peepo'
-import { THEMES, type ThemeName } from '../theme/themes'
+import { THEME_LIST, THEMES } from '../theme/themes'
+import { Glyph } from '../theme/glyphs'
+import { peepoSrc } from '../theme/peepos'
 import { confirm } from './confirm'
 import { ChangeRepoDialog } from './ChangeRepoDialog'
 import { useReview } from '../store/review'
@@ -26,10 +28,10 @@ type Tab = 'you' | 'sync' | 'board' | 'storage' | 'look' | 'about'
 const TABS: { id: Tab; title: string; icon: string }[] = [
   { id: 'you', title: 'You', icon: '🙂' },
   { id: 'sync', title: 'Sync', icon: '☁️' },
-  { id: 'board', title: 'Workspace', icon: '🐸' },
+  { id: 'board', title: 'Workspace', icon: '🗂' },
   { id: 'storage', title: 'Storage', icon: '💾' },
   { id: 'look', title: 'Look', icon: '🎨' },
-  { id: 'about', title: 'About', icon: '🐸' },
+  { id: 'about', title: 'About', icon: 'ⓘ' },
 ]
 
 /**
@@ -462,34 +464,52 @@ function StorageTab() {
 function LookTab() {
   const settings = useSettings()
   return (
-    <Row title="Theme" sub="Personal — only this browser.">
-      <div className="flex flex-wrap items-center gap-2">
-        {(
-          [
-            ['dark', 'Dark'],
-            ['peepo', 'Peepo'],
-          ] as [ThemeName, string][]
-        ).map(([name, title]) => {
-          const t = THEMES[name]
-          return (
+    <>
+      <Row title="Theme" sub="Personal, only this browser.">
+        <div className="flex flex-wrap items-center gap-2">
+          {THEME_LIST.map(({ name, title }) => {
+            const t = THEMES[name]
+            return (
+              <button
+                key={name}
+                onClick={() => settings.set({ theme: name })}
+                className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold ring-1 ${
+                  settings.theme === name ? 'ring-frog-400 bg-frog-700/40' : 'ring-(--hair) hover:bg-(--hover)'
+                }`}
+              >
+                <span className="flex overflow-hidden rounded-md ring-1 ring-black/20">
+                  <span className="h-5 w-3" style={{ background: t.swamp[900] }} />
+                  <span className="h-5 w-3" style={{ background: t.swamp[700] }} />
+                  <span className="h-5 w-3" style={{ background: t.frog[400] }} />
+                </span>
+                {title}
+              </button>
+            )
+          })}
+        </div>
+      </Row>
+      <Row title="Mascots" sub="The frogs are decoration: turn them off and every one of them becomes a plain line icon that means the same thing.">
+        <div className="flex items-center gap-2">
+          {(
+            [
+              [true, 'Peepos'],
+              [false, 'Plain icons'],
+            ] as [boolean, string][]
+          ).map(([on, title]) => (
             <button
-              key={name}
-              onClick={() => settings.set({ theme: name })}
+              key={title}
+              onClick={() => settings.set({ mascots: on })}
               className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold ring-1 ${
-                settings.theme === name ? 'ring-frog-400 bg-frog-700/40' : 'ring-(--hair) hover:bg-(--hover)'
+                settings.mascots === on ? 'ring-frog-400 bg-frog-700/40' : 'ring-(--hair) hover:bg-(--hover)'
               }`}
             >
-              <span className="flex overflow-hidden rounded-md ring-1 ring-black/20">
-                <span className="h-5 w-3" style={{ background: t.swamp[900] }} />
-                <span className="h-5 w-3" style={{ background: t.swamp[700] }} />
-                <span className="h-5 w-3" style={{ background: t.frog[400] }} />
-              </span>
+              {on ? <img src={peepoSrc('peepoHappy')} alt="" width={22} height={22} className="object-contain" /> : <Glyph role="smile" size={22} />}
               {title}
             </button>
-          )
-        })}
-      </div>
-    </Row>
+          ))}
+        </div>
+      </Row>
+    </>
   )
 }
 

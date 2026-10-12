@@ -6,7 +6,7 @@
  * minor = a new feature, patch = fixes and polish. Every release that reaches `main` bumps this and adds
  * an entry here, in plain words, written for the person using peeponote rather than for git.
  */
-export const APP_VERSION = '1.1.0'
+export const APP_VERSION = '1.2.0'
 
 export interface Release {
   version: string
@@ -19,6 +19,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: '1.2.0',
+    date: '2026-10-12',
+    title: 'Themes, with or without frogs',
+    notes: [
+      'Three more themes in Settings → Look: Slate, Plum and Mocha, next to Dark and Peepo.',
+      'The mascots can be turned off there as well. Every peepo becomes a quiet line icon that means the same thing, and the frog disappears from the palette and the menus.',
+      'Both are personal and kept in this browser, so your boards look the same to everyone else.',
+    ],
+  },
   {
     version: '1.1.0',
     date: '2026-10-12',

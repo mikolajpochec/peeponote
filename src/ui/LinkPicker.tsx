@@ -3,10 +3,13 @@ import type { Board, Card } from '../model/types'
 import { selectBoards, useWorkspace } from '../store/workspace'
 import { cardSummary, linkTo, type LinkTarget } from '../nav/links'
 import { PEEPO_SCHEME, boardChain, boardSlug, cardSlug, resolvePeepoUrl } from '../nav/peepoUrl'
+import { useSettings } from '../store/settings'
+import { boardMark } from '../theme/glyphs'
 import { BoardIconView } from './BoardIcon'
 import { BoardPreview, CardPreview } from './CardPreview'
 
-const TYPE_ICON: Record<string, string> = { note: '📝', text: '¶', todo: '☑', link: '🔗', board: '🐸', asset: '📎', shape: '◇', story: '📖' }
+const TYPE_ICON: Record<string, string> = { note: '📝', text: '¶', todo: '☑', link: '🔗', asset: '📎', shape: '◇', story: '📖' }
+const typeIcon = (type: string) => TYPE_ICON[type] ?? (type === 'board' ? boardMark(useSettings.getState().mascots) : '▫')
 
 interface Hit {
   target: LinkTarget
@@ -76,7 +79,7 @@ export function LinkPicker({ onPick, onClose, initial = '' }: { onPick: (url: st
             const s = cardSlug(c)
             const t = cardSummary(c)
             if (!needle || s.toLowerCase().includes(needle) || t.toLowerCase().includes(needle))
-              out.push({ target: { kind: 'card', boardId: here.id, cardId: c.id }, title: t, path: `${pathOf(here, boards)}/${s}`, icon: <span className="text-[14px]">{TYPE_ICON[c.type] ?? '▫'}</span>, card: c, board: here, sub: c.type })
+              out.push({ target: { kind: 'card', boardId: here.id, cardId: c.id }, title: t, path: `${pathOf(here, boards)}/${s}`, icon: <span className="text-[14px]">{typeIcon(c.type)}</span>, card: c, board: here, sub: c.type })
           }
         }
       }
@@ -95,7 +98,7 @@ export function LinkPicker({ onPick, onClose, initial = '' }: { onPick: (url: st
           if (c.type === 'board') continue
           const t = cardSummary(c)
           if (t.toLowerCase().includes(needle) || (c.slug && c.slug.toLowerCase().includes(needle)))
-            out.push({ target: { kind: 'card', boardId: b.id, cardId: c.id }, title: t, path: `${path}/${cardSlug(c)}`, icon: <span className="text-[14px]">{TYPE_ICON[c.type] ?? '▫'}</span>, card: c, board: b, sub: `${c.type} on ${bt}` })
+            out.push({ target: { kind: 'card', boardId: b.id, cardId: c.id }, title: t, path: `${path}/${cardSlug(c)}`, icon: <span className="text-[14px]">{typeIcon(c.type)}</span>, card: c, board: b, sub: `${c.type} on ${bt}` })
         }
       }
     }

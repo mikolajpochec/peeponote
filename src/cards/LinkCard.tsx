@@ -3,6 +3,8 @@ import type { LinkCard as LinkCardT } from '../model/types'
 import { selectBoards, useWorkspace } from '../store/workspace'
 import type { CardProps } from './CardView'
 import { describeLink, isInternalLink, openLink, parseLink } from '../nav/links'
+import { useSettings } from '../store/settings'
+import { boardMark } from '../theme/glyphs'
 import { BoardIconView } from '../ui/BoardIcon'
 import { LinkPicker } from '../ui/LinkPicker'
 import { Popover } from '../ui/Popover'
@@ -103,11 +105,12 @@ function InternalLink({ card, boardId, readOnly, target }: CardProps<LinkCardT> 
 /** "Pick a target…" for a fresh link card: the shared link picker, floating above the card. */
 function BoardPicker({ onPick }: { onPick: (url: string) => void }) {
   const [open, setOpen] = useState(false)
+  const mascots = useSettings((s) => s.mascots)
   const btn = useRef<HTMLButtonElement>(null)
   return (
     <>
       <button ref={btn} data-nodrag onClick={() => setOpen((o) => !o)} className="rounded-md bg-black/10 px-2 py-0.5 text-[0.86em] font-semibold hover:bg-black/20">
-        🐸 Link to a board or card…
+        {boardMark(mascots)} Link to a board or card…
       </button>
       {open && (
         <Popover anchor={btn.current} onClose={() => setOpen(false)}>

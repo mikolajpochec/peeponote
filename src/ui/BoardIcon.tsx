@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PEEPOS, type PeepoName } from "../theme/peepos";
+import { useSettings } from "../store/settings";
 import { Peepo } from "./Peepo";
 
 export const DEFAULT_BOARD_ICON = "peepo:peepoGlad";
@@ -78,6 +79,8 @@ export function BoardIconPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState("");
+  // with the mascots off there is nothing to pick from in the peepo grid: emoji only
+  const mascots = useSettings((s) => s.mascots);
   const root = useRef<HTMLDivElement>(null);
   const pop = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
@@ -142,22 +145,26 @@ export function BoardIconPicker({
             className="fixed z-50 w-60 rounded-lg border border-(--hair) bg-swamp-900 p-2 text-[13px] text-frog-50 shadow-2xl select-none"
             style={pos ?? { left: 0, top: 0, visibility: "hidden" }}
           >
-            <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-frog-200/50">
-              Peepos
-            </div>
-            <div className="grid grid-cols-6 gap-1">
-              {PEEPOS.map((p) => (
-                <button
-                  key={p}
-                  title={p}
-                  onClick={() => pick(`peepo:${p}`)}
-                  className={`flex h-8 items-center justify-center rounded-md hover:bg-(--hover-strong) ${cur === `peepo:${p}` ? "bg-frog-700/60" : ""}`}
-                >
-                  <Peepo name={p} size={24} />
-                </button>
-              ))}
-            </div>
-            <div className="mb-1 mt-2 text-[10px] font-bold uppercase tracking-wider text-frog-200/50">
+            {mascots && (
+              <>
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-frog-200/50">
+                  Peepos
+                </div>
+                <div className="grid grid-cols-6 gap-1">
+                  {PEEPOS.map((p) => (
+                    <button
+                      key={p}
+                      title={p}
+                      onClick={() => pick(`peepo:${p}`)}
+                      className={`flex h-8 items-center justify-center rounded-md hover:bg-(--hover-strong) ${cur === `peepo:${p}` ? "bg-frog-700/60" : ""}`}
+                    >
+                      <Peepo name={p} size={24} />
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            <div className={`mb-1 text-[10px] font-bold uppercase tracking-wider text-frog-200/50 ${mascots ? "mt-2" : ""}`}>
               Emoji
             </div>
             <div className="grid grid-cols-8 gap-1">
