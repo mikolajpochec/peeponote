@@ -6,7 +6,7 @@
  * minor = a new feature, patch = fixes and polish. Every release that reaches `main` bumps this and adds
  * an entry here, in plain words, written for the person using peeponote rather than for git.
  */
-export const APP_VERSION = '1.2.0'
+export const APP_VERSION = '1.3.0'
 
 export interface Release {
   version: string
@@ -19,6 +19,17 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: '1.3.0',
+    date: '2026-10-12',
+    title: 'Maths in your cards',
+    notes: [
+      'Write $E = mc^2$ in a note, a text card, a to-do row, a story field or a review comment and it is drawn as maths.',
+      'For a centred formula of its own, put $$ on the line above and below it.',
+      'Prices are still prices: "it costs $5 and $10" is left alone, and a backslash before a dollar sign always keeps it literal.',
+      'The maths engine is only fetched by a board that actually holds a formula, so everything else opens as quickly as before.',
+    ],
+  },
   {
     version: '1.2.0',
     date: '2026-10-12',

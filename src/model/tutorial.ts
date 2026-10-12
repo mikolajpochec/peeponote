@@ -29,7 +29,7 @@ export function tutorialBoards(rootId: string): Board[] {
     { id: id(), type: 'text', x: 40, y: 80, w: 560, h: 60, z: 1, variant: 'body', autoSize: true, text: 'A visual board that lives in a git repo. Everything you see here is a card — drag it, resize it, right-click it. This board is yours: edit or delete anything.' },
 
     note(cPalette, 40, 170, 260, 185, '### 1 · The palette\nThe floating bar on the left. **Click** an item to drop it in the middle of the view, or **drag** it exactly where you want it.\n\nDouble-click empty canvas for a quick note.'),
-    note(cCards, 330, 170, 260, 185, '### 2 · Cards\n**Title / Text** — free-floating, size follows content.\n**Note** — markdown (double-click to edit).\n**To-do**, **Link**, **Board** (nested boards!).'),
+    note(cCards, 330, 170, 260, 185, '### 2 · Cards\n**Title / Text** — free-floating, size follows content.\n**Note** — markdown (double-click to edit).\n**To-do**, **Link**, **Board** (nested boards!).\n\nMaths anywhere you write: `$E = mc^2$`, or `$$` on its own lines for a centred block.'),
     note(cFiles, 620, 170, 280, 185, '### 3 · Any file\nDrop files anywhere. Images, spritesheets, audio, video, **3D models** (glb/obj/stl/fbx), fonts, shaders, code, JSON… Every asset gets a preview and a ⬇ download button.'),
 
     note(cArrows, 40, 390, 260, 185, '### 4 · Arrows\nHover a card → four dots appear on its edges. Drag from a dot to another card (or into empty space). Click an arrow to change direction, color, width, or delete it.'),

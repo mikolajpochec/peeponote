@@ -7,6 +7,8 @@
 - Work on a branch (`git switch -c feat/<name>`), commit there as often as you like.
 - Before merging: `bunx tsc -b`, `bun run build`, and drive the real flow in the browser (dev server: `bun run dev -- --port 5199`;
   for two-person flows use two origins, e.g. ports 5298 and 5297 — separate IndexedDB/localStorage per origin).
+- **Ask before releasing.** When the work is finished and verified, say what the release contains and which version
+  it would be, and wait for a yes. Never merge to `main` on your own initiative.
 - Merge with a short title, push once. A hotfix for a live crash is the only exception: minimal, tested, immediately.
 
 ## Versions

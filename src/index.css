@@ -218,3 +218,8 @@ input:read-only, textarea:read-only { cursor: default; }
 .cm-tooltip-autocomplete > ul > li[aria-selected] { background: color-mix(in srgb, var(--color-frog-700) 55%, transparent); color: white; }
 .cm-tooltip-autocomplete .cm-completionLabel { font-weight: 600; }
 .cm-tooltip-autocomplete .cm-completionDetail { margin-left: 8px; font-style: normal; opacity: .5; font-size: 11px; }
+
+/* maths (KaTeX): cards wrap their text with pre-wrap, which would otherwise leak into KaTeX's own spacing */
+.katex { white-space: normal; }
+.katex-display { margin: 0.45em 0; overflow-x: auto; overflow-y: hidden; }
+.katex-display > .katex { white-space: nowrap; }

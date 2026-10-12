@@ -6,6 +6,7 @@ import type { CardProps } from './CardView'
 import { autoEdit } from './autoEdit'
 import { useEditRequest } from '../canvas/editRequest'
 import { keepPeepoUrls, mdLink } from './Inline'
+import { protectCurrency, useMath } from './math'
 import { MdEditor } from '../editor'
 import { useLiveDraft } from './useLiveDraft'
 
@@ -20,6 +21,7 @@ export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
   })
   const [draft, setDraft] = useState(card.md)
   const live = useLiveDraft(editing, draft, card.md, (md, o) => updateCard(boardId, card.id, { md }, o))
+  const math = useMath(card.md)
 
   useEditRequest(() => {
     if (readOnly) return
@@ -53,8 +55,8 @@ export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
       style={{ background: card.color }}
     >
       {card.md.trim() ? (
-        <Markdown components={{ a: mdLink }} urlTransform={keepPeepoUrls}>
-          {card.md}
+        <Markdown components={{ a: mdLink }} urlTransform={keepPeepoUrls} remarkPlugins={math?.remark} rehypePlugins={math?.rehype}>
+          {protectCurrency(card.md)}
         </Markdown>
       ) : (
         <span className="opacity-40">{readOnly ? 'Empty note' : 'Double-click to write…'}</span>

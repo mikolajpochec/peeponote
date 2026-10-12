@@ -3,6 +3,14 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
+## 1.3.0 — Maths in your cards
+*2026-10-12*
+
+- Write $E = mc^2$ in a note, a text card, a to-do row, a story field or a review comment and it is drawn as maths.
+- For a centred formula of its own, put $$ on the line above and below it.
+- Prices are still prices: "it costs $5 and $10" is left alone, and a backslash before a dollar sign always keeps it literal.
+- The maths engine is only fetched by a board that actually holds a formula, so everything else opens as quickly as before.
+
 ## 1.2.0 — Themes, with or without frogs
 *2026-10-12*
 

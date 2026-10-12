@@ -1,6 +1,7 @@
 import { Fragment } from 'react'
 import Markdown, { type Components } from 'react-markdown'
 import { isInternalLink, openLink, parseLink } from '../nav/links'
+import { MATH_TAGS, protectCurrency, useMath } from './math'
 
 /** Link renderer shared by every card: internal links jump, web links open a tab. */
 export const mdLink: Components['a'] = ({ href, children }) => {
@@ -39,7 +40,7 @@ export const mdLink: Components['a'] = ({ href, children }) => {
   )
 }
 
-const INLINE = ['p', 'strong', 'em', 'del', 'code', 'a', 'br', 'text'] as string[]
+const INLINE = ['p', 'strong', 'em', 'del', 'code', 'a', 'br', 'text', ...MATH_TAGS] as string[]
 
 /** react-markdown drops unknown URL schemes by default — keep peepo:// (and the usual web ones) */
 export const keepPeepoUrls = (url: string) => (/^(peepo:\/\/|mention:|https?:\/\/|mailto:|#|\/)/i.test(url) ? url : '')
@@ -67,6 +68,7 @@ export function InlineMd({ text }: { text: string }) {
   if (!text) return null
   // one Markdown run per line, joined with <br>: newlines behave exactly like in the textarea
   // (a single markdown pass would emit newline text nodes that pre-wrap containers double up)
+  const math = useMath(text)
   const lines = text.split('\n')
   return (
     <>
@@ -74,8 +76,16 @@ export function InlineMd({ text }: { text: string }) {
         <Fragment key={i}>
           {i > 0 && <br />}
           {line && (
-            <Markdown allowedElements={INLINE} unwrapDisallowed skipHtml components={passthrough} urlTransform={keepPeepoUrls}>
-              {linkMentions(line)}
+            <Markdown
+              allowedElements={INLINE}
+              unwrapDisallowed
+              skipHtml
+              components={passthrough}
+              urlTransform={keepPeepoUrls}
+              remarkPlugins={math?.remark}
+              rehypePlugins={math?.rehype}
+            >
+              {linkMentions(protectCurrency(line))}
             </Markdown>
           )}
         </Fragment>
