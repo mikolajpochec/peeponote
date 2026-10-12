@@ -6,7 +6,7 @@
  * minor = a new feature, patch = fixes and polish. Every release that reaches `main` bumps this and adds
  * an entry here, in plain words, written for the person using peeponote rather than for git.
  */
-export const APP_VERSION = '1.0.0'
+export const APP_VERSION = '1.1.0'
 
 export interface Release {
   version: string
@@ -19,6 +19,18 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: '1.1.0',
+    date: '2026-10-12',
+    title: 'Setting up takes one paste',
+    notes: [
+      'Three screens instead of five: say hello, paste a GitHub key, pick the repo your boards live in.',
+      'The key page opens with the right box already ticked, and the key is checked the moment you paste it; your name and email come from GitHub, so there is nothing to type.',
+      'Your repos are listed for you, and a new private one can be made right there.',
+      'peeponote asks for a classic GitHub key now. Unlike the fine-grained kind, it also works with a repo a teammate shared with you.',
+      'You can still skip GitHub and keep the boards in this browser.',
+    ],
+  },
   {
     version: '1.0.0',
     date: '2026-09-28',
