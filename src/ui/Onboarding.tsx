@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { checkToken, commitEmail, createRepo, GhError, listOrgs, listPushableRepos, MAKE_TOKEN_URL, plainGhError, slug, type GhRepo, type GhUser } from '../git/ghAccount'
+import { commitEmail, createRepo, GhError, listOrgs, listPushableRepos, plainGhError, slug, type GhRepo, type GhUser } from '../git/ghAccount'
+import { KeyForm, useSignIn } from './KeyForm'
+import { useReview } from '../store/review'
 import { useSettings } from '../store/settings'
 import { useWorkspace } from '../store/workspace'
 import { Peepo } from './Peepo'
@@ -8,7 +10,6 @@ import type { PeepoName } from '../theme/peepos'
 const field = 'w-full rounded-md bg-swamp-700 px-3 py-2 text-[14px] outline-none focus:ring-1 focus:ring-frog-400 placeholder:text-frog-200/30'
 const primary = 'rounded-lg bg-frog-500 px-4 py-2 text-[14px] font-bold text-white hover:bg-frog-400 disabled:opacity-40'
 const ghost = 'rounded-lg px-4 py-2 text-[14px] font-semibold text-frog-200 hover:bg-(--hover-strong) disabled:opacity-40'
-const quiet = 'rounded-lg bg-swamp-600 px-3 py-2 text-[13px] font-semibold hover:bg-swamp-500 disabled:opacity-40'
 
 type Step = 'hello' | 'key' | 'repo' | 'local' | 'done'
 /** which of the three dots is lit on each screen */
@@ -21,8 +22,7 @@ export function Onboarding({ onFinish }: { onFinish: () => void }) {
   const [me, setMe] = useState<GhUser | null>(null)
 
   const finish = () => {
-    // the password ("prove it's you") prompt can wait a day: first runs are for playing with boards
-    settings.set({ onboarded: true, identityPromptSnoozedUntil: Date.now() + 86_400_000 })
+    settings.set({ onboarded: true })
     onFinish()
   }
 
@@ -61,9 +61,10 @@ export function Onboarding({ onFinish }: { onFinish: () => void }) {
         {step === 'key' && (
           <KeyScreen
             onBack={() => setStep('hello')}
-            onDone={(token, user) => {
-              settings.set({ token, username: user.login, authorName: user.name || user.login, authorEmail: commitEmail(user) })
+            onDone={(_token, user) => {
+              settings.set({ authorName: user.name || user.login, authorEmail: commitEmail(user) })
               setMe(user)
+              void useReview.getState().refreshIdentity()
               setStep('repo')
             }}
           />
@@ -113,70 +114,8 @@ function Problem({ children }: { children?: ReactNode }) {
 
 // ---------------------------------------------------------------------------------------- the key
 
-/** the three things to do on GitHub's page, drawn rather than described */
-function KeyPictures() {
-  const line = (w: string) => <span className="h-1.5 rounded-full bg-white/15" style={{ width: w }} />
-  return (
-    <div className="grid grid-cols-3 gap-2">
-      <Picture n={1} caption="Scroll to the bottom of the page">
-        {line('80%')}
-        {line('60%')}
-        {line('70%')}
-        <span className="mt-0.5 text-center text-[13px] text-white/70 peepo-bounce">↓</span>
-      </Picture>
-      <Picture n={2} caption={<>Press the green <b className="text-frog-100">Generate token</b></>}>
-        {line('50%')}
-        <span className="mt-1 w-fit rounded-md bg-[#238636] px-2 py-1 text-[9px] font-bold text-white ring-2 ring-[#3fb950] ring-offset-2 ring-offset-[#0d1117]">Generate token</span>
-      </Picture>
-      <Picture n={3} caption="Copy the key it shows you">
-        <span className="flex items-center gap-1 rounded-md border border-[#3fb950]/50 bg-[#3fb950]/10 px-2 py-1.5 font-mono text-[9px] text-white/80">
-          ghp_•••••••• <span className="ml-auto">⧉</span>
-        </span>
-      </Picture>
-    </div>
-  )
-}
-
-function Picture({ n, caption, children }: { n: number; caption: ReactNode; children: ReactNode }) {
-  return (
-    <figure className="flex flex-col gap-1.5">
-      <div className="flex h-20 flex-col justify-center gap-1.5 overflow-hidden rounded-lg border border-(--hair) bg-[#0d1117] p-2.5" aria-hidden>
-        {children}
-      </div>
-      <figcaption className="text-[11px] leading-snug text-frog-200/60">
-        <span className="mr-1 inline-flex size-4 items-center justify-center rounded-full bg-swamp-600 text-[9px] font-bold text-frog-100">{n}</span>
-        {caption}
-      </figcaption>
-    </figure>
-  )
-}
-
 function KeyScreen({ onDone, onBack }: { onDone: (token: string, user: GhUser) => void; onBack: () => void }) {
-  const [key, setKey] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [problem, setProblem] = useState<string>()
-
-  const check = async (value: string) => {
-    const k = value.trim()
-    setProblem(undefined)
-    if (!k) return
-    if (k.startsWith('github_pat_')) {
-      return setProblem(
-        'That is one of GitHub’s new "fine-grained" keys, which can only be pointed at your own repos. peeponote needs the classic kind, which works with every repo you have access to. Press "Open GitHub" above: it opens the right page.',
-      )
-    }
-    setBusy(true)
-    try {
-      const { user, hasRepoScope } = await checkToken(k)
-      if (!hasRepoScope) return setProblem('This key cannot open private repos. Make a new one with "Open GitHub" above; the right box is ticked for you.')
-      onDone(k, user)
-    } catch (e) {
-      setProblem(e instanceof GhError && e.status === 401 ? 'GitHub does not recognise this key. Copy it again; it starts with "ghp_".' : plainGhError(e))
-    } finally {
-      setBusy(false)
-    }
-  }
-
+  const form = useSignIn(onDone)
   return (
     <Screen
       peepo="peepoThink"
@@ -184,8 +123,8 @@ function KeyScreen({ onDone, onBack }: { onDone: (token: string, user: GhUser) =
       sub="One button, one paste. The key lets peeponote save to GitHub for you and never leaves this browser."
       footer={
         <>
-          <button className={primary} disabled={busy || !key.trim()} onClick={() => void check(key)}>
-            {busy ? 'Checking…' : 'Continue'}
+          <button className={primary} disabled={form.busy || !form.key.trim()} onClick={() => void form.check(form.key)}>
+            {form.busy ? 'Checking…' : 'Continue'}
           </button>
           <button className={ghost} onClick={onBack}>
             Back
@@ -193,34 +132,7 @@ function KeyScreen({ onDone, onBack }: { onDone: (token: string, user: GhUser) =
         </>
       }
     >
-      <a className={`${quiet} inline-block w-fit`} href={MAKE_TOKEN_URL} target="_blank" rel="noreferrer">
-        Open GitHub ↗
-      </a>
-      <KeyPictures />
-      <div>
-        <label htmlFor="gh-key" className="mb-1 block text-[12px] font-semibold text-frog-200/80">
-          Paste your key here
-        </label>
-        <input
-          id="gh-key"
-          className={`${field} font-mono`}
-          autoFocus
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="ghp_…"
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && void check(key)}
-          onPaste={(e) => {
-            const text = e.clipboardData.getData('text')
-            if (!text) return
-            e.preventDefault()
-            setKey(text.trim())
-            void check(text)
-          }}
-        />
-      </div>
-      <Problem>{problem}</Problem>
+      <KeyForm form={form} />
     </Screen>
   )
 }

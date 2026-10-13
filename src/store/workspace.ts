@@ -5,6 +5,7 @@ import {
   writeBytes, writeText, type PeepoFS,
 } from '../fs'
 import * as repo from '../git/repo'
+import { repoAccess, type Access } from '../git/permissions'
 import { chooseTransport, compare, fetchRemote, mergeBoardJson, mergeJsonShallow, mergeRemote, pushRemote, resetTo, type SyncCtx, type SyncState } from '../git/sync'
 import { NotFastForwardError, ghClone, parseGitHubUrl } from '../git/githubApi'
 import {
@@ -70,6 +71,12 @@ interface WorkspaceState {
   historyLoading: boolean
   /** append the next page of commits to `commits` (History panel scrolls) */
   loadMoreHistory: () => Promise<void>
+  /** what GitHub lets this browser do with the repo behind this workspace */
+  access: Access
+  /** boards may be changed and saved (GitHub push access, or a workspace that lives only here) */
+  canWrite: boolean
+  /** ask GitHub again who we are on this repo (after signing in, switching repo, pulling) */
+  refreshAccess: (force?: boolean) => Promise<void>
   /** when set, we're read-only viewing an old commit */
   viewingRef: string | null
   viewingBoards: Record<string, Board>
@@ -574,6 +581,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     busyDetail: null,
     divergence: null,
     remoteUrl: null,
+    access: 'write',
+    canWrite: true,
     lastCombinedWith: null,
     pendingSync: false,
     head: null,
@@ -1005,6 +1014,12 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     },
 
     save: async (message) => {
+      if (!get().canWrite) {
+        // GitHub says this account may not push here: never start a commit that could not go out
+        if (useReview.getState().identity.kind === 'github') toast.err('Read only: you are not a collaborator on this repo.', 'peepoSad')
+        else toast.action('Sign in with GitHub to save.', 'Sign in', () => window.dispatchEvent(new CustomEvent('peeponote:identify')), 'peepoShy')
+        return false
+      }
       const fs = get().fs
       if (!fs || get().viewingRef) return false
       if (!isDirty(get())) {
@@ -1278,12 +1293,19 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       set({ remoteUrl: url.trim() || null })
     },
 
+    refreshAccess: async (force) => {
+      const { remoteUrl } = get()
+      const access = await repoAccess(remoteUrl, useSettings.getState().token, force)
+      set({ access, canWrite: access === 'write' })
+    },
+
     refreshGit: async () => {
       const fs = get().fs
       if (!fs) return
       // first page only; the History panel asks for more as you scroll (a long log would stall the UI otherwise)
       const [commits, remoteUrl] = await Promise.all([repo.log(fs, HISTORY_PAGE), repo.getRemoteUrl(fs)])
       set({ commits, head: commits[0] ?? null, remoteUrl, historyDone: commits.length < HISTORY_PAGE })
+      await get().refreshAccess()
       // review files change with commits we didn't make here (a pull, or another tab on the same storage) → re-read
       const rv = useReview.getState()
       if (rv.loaded && rv.loadedHead !== (commits[0]?.oid ?? null)) await rv.load(fs)

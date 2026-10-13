@@ -8,8 +8,9 @@ import { SettingsDialog } from './ui/SettingsDialog'
 import { Toasts } from './ui/Toasts'
 import { Peepo } from './ui/Peepo'
 import { BootScreen } from './ui/BootScreen'
+import { LockedScreen } from './ui/LockedScreen'
 import { Onboarding } from './ui/Onboarding'
-import { IdentityDialog, shouldPromptIdentity } from './review/IdentityDialog'
+import { SignInDialog } from './review/SignInDialog'
 import { useReview } from './store/review'
 import { toast } from './store/toast'
 import { NotificationsPanel } from './review/NotificationsPanel'
@@ -22,6 +23,8 @@ import { PropertiesDialog } from './ui/PropertiesDialog'
 import { ErrorDialog } from './ui/ErrorDialog'
 import { ChangelogDialog, type ChangelogMode } from './ui/ChangelogDialog'
 import { useSettings } from './store/settings'
+import { checkToken } from './git/ghAccount'
+import { identityOf } from './ui/KeyForm'
 import { toggleViewOnly, useReadOnly } from './store/viewOnly'
 import { applyTheme, resolveTheme } from './theme/themes'
 import { useIsMobile } from './canvas/touch'
@@ -70,26 +73,36 @@ export default function App() {
   const themeName = useSettings((s) => s.theme)
   useEffect(() => applyTheme(resolveTheme(themeName)), [themeName])
 
-  // identity: "Set password" buttons anywhere open the dialog; existing users without a password get asked once
-  // the review files are loaded (plain-language prompt, snoozable for a week)
-  const [identity, setIdentity] = useState<null | { intro: boolean }>(null)
-  const reviewLoaded = useReview((s) => s.loaded)
+  // "Sign in" anywhere opens the GitHub dialog; nothing nags by itself, the top bar says enough
+  const [signIn, setSignIn] = useState(false)
   const reviewOn = useReview((s) => s.mode.on)
   const readOnly = useReadOnly()
+  const access = useWorkspace((s) => s.access)
   const notifOpen = useReview((s) => s.panelOpen)
   const setNotifOpen = useReview((s) => s.setPanelOpen)
   useEffect(() => {
     if (notifOpen) setShowHistory(false)
   }, [notifOpen])
-  const identityKind = useReview((s) => s.identity.kind)
+  // a token saved before 1.7 doesn't know whose it is: ask GitHub once, then everything else follows
   useEffect(() => {
-    const open = () => setIdentity({ intro: false })
+    const s = useSettings.getState()
+    if (!s.token || s.github) return
+    void checkToken(s.token)
+      .then(({ user }) => {
+        useSettings.getState().set({ github: identityOf(user), username: user.login })
+        void useReview.getState().refreshIdentity()
+        void useWorkspace.getState().refreshAccess(true)
+      })
+      .catch(() => {
+        /* offline, or the key died: stays a guest until it works */
+      })
+  }, [])
+
+  useEffect(() => {
+    const open = () => setSignIn(true)
     window.addEventListener('peeponote:identify', open)
     return () => window.removeEventListener('peeponote:identify', open)
   }, [])
-  useEffect(() => {
-    if (status === 'ready' && reviewLoaded && !showOnboarding && shouldPromptIdentity()) setIdentity({ intro: true })
-  }, [status, reviewLoaded, showOnboarding, identityKind])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -198,6 +211,17 @@ export default function App() {
       </>
     )
 
+  if (access === 'locked')
+    return (
+      <>
+        <LockedScreen onOpenSettings={() => setShowSettings(true)} />
+        {signIn && <SignInDialog onClose={() => setSignIn(false)} />}
+        {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
+        <ErrorDialog />
+        <Toasts />
+      </>
+    )
+
   return (
     <div className="flex h-full w-full">
       {mobile ? (
@@ -249,7 +273,7 @@ export default function App() {
       {showOnboarding && <Onboarding onFinish={() => setShowOnboarding(false)} />}
       <RequestReviewDialog />
       <ThreadDialog />
-      {identity && !showOnboarding && <IdentityDialog intro={identity.intro} onClose={() => setIdentity(null)} />}
+      {signIn && !showOnboarding && <SignInDialog onClose={() => setSignIn(false)} />}
       <SyncDialog />
       {changelog && <ChangelogDialog mode={changelog.mode} onClose={() => setChangelog(null)} />}
       <ConfirmDialog />

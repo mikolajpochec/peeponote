@@ -23,7 +23,6 @@ export function ThreadDialog() {
   const open = useReview((s) => s.openThread)
   const close = () => useReview.getState().setOpenThread(null)
   const comments = useReview((s) => s.comments)
-  const verified = useReview((s) => s.verified)
   const states = useReview((s) => s.states)
   const identity = useReview((s) => s.identity)
   const addComment = useReview((s) => s.addComment)
@@ -66,7 +65,8 @@ export function ThreadDialog() {
   const card = anchor && isCardAnchor(anchor) ? board.cards.find((c) => c.id === anchor.cardId) : undefined
   const muted = new Set(me ? states[userKey(me.email)]?.muted ?? [] : [])
   const canResolve = (root: Comment) => !!me && (anyoneCanClose || samePerson(root.author, me))
-  const canWrite = identity.kind === 'verified'
+  const mayWrite = useWorkspace((s) => s.canWrite)
+  const canWrite = identity.kind === 'github' && mayWrite
 
   const goTo = () => {
     if (card) openLink({ kind: 'card', boardId: board.id, cardId: card.id })
@@ -106,10 +106,10 @@ export function ThreadDialog() {
           <div className="min-h-0 flex-1 overflow-auto px-4 py-3 scrollbar-thin">
             {threads.map(({ root, replies }) => (
               <div key={root.id} className={`mb-4 rounded-xl bg-swamp-700/50 p-3 ${root.resolved ? 'opacity-70' : ''}`}>
-                <CommentView c={root} verified={verified[root.id]} me={me} editing={editing} setEditing={setEditing} onEdit={editComment} onDelete={deleteComment} />
+                <CommentView c={root} me={me} editing={editing} setEditing={setEditing} onEdit={editComment} onDelete={deleteComment} />
                 {replies.map((r) => (
                   <div key={r.id} className="ml-6 mt-2 border-l-2 border-(--hair) pl-3">
-                    <CommentView c={r} verified={verified[r.id]} me={me} editing={editing} setEditing={setEditing} onEdit={editComment} onDelete={deleteComment} />
+                    <CommentView c={r} me={me} editing={editing} setEditing={setEditing} onEdit={editComment} onDelete={deleteComment} />
                   </div>
                 ))}
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
@@ -177,7 +177,6 @@ export function ThreadDialog() {
 
 function CommentView({
   c,
-  verified,
   me,
   editing,
   setEditing,
@@ -185,7 +184,6 @@ function CommentView({
   onDelete,
 }: {
   c: Comment
-  verified: boolean | undefined
   me: { name: string; email: string } | null
   editing: { id: string; text: string } | null
   setEditing: (e: { id: string; text: string } | null) => void
@@ -200,7 +198,6 @@ function CommentView({
         <span className="text-[13px] font-bold">{c.author.name}</span>
         <span className="text-[11px] text-frog-200/50">{timeAgo(c.createdAt)}</span>
         {c.editedAt && <span className="text-[10px] text-frog-200/40">edited</span>}
-        {!verified && <span className="rounded bg-swamp-600 px-1 text-[9px] font-bold uppercase text-frog-200/60">unverified</span>}
         {own && !editing && (
           <span className="ml-auto flex gap-1 text-[11px]">
             <button onClick={() => setEditing({ id: c.id, text: c.text })} className="rounded px-1 text-frog-200/60 hover:bg-(--hover-strong) hover:text-white">

@@ -5,6 +5,16 @@ import { DEFAULT_CORS_PROXY } from '../git/repo'
 import type { ThemeName } from '../theme/themes'
 import type { TransportPref } from '../git/sync'
 
+/** the GitHub account this browser is signed in as (from the token, refreshed on boot) */
+export interface GhIdentity {
+  login: string
+  id: number
+  name: string
+  avatarUrl: string
+  /** the address git puts in commits: the public one, or GitHub's noreply address */
+  email: string
+}
+
 /** a repo you've opened before: URL + the token that worked for it, so going back is one click */
 export interface RepoEntry {
   url: string
@@ -30,10 +40,8 @@ export interface Settings {
   theme: ThemeName
   /** draw the peepo mascots; off replaces each of them with a quiet line icon */
   mascots: boolean
-  /** proves it's you on comments/reviews; stays in this browser, re-derived into keys on boot */
-  identityPassword: string
-  /** "Later" on the identify-yourself prompt: don't ask again before this time */
-  identityPromptSnoozedUntil: number
+  /** who the token belongs to: comments, reviews and notifications are signed in as this person */
+  github: GhIdentity | null
   /** History lists the commits peeponote makes on its own (review activity, merges) */
   showAutoCommits: boolean
   /** the app version whose changelog this browser has already seen ('' = never) */
@@ -61,8 +69,7 @@ const DEFAULTS: Omit<Settings, 'set' | 'reset' | 'rememberRepo' | 'forgetRepo'> 
   onboarded: false,
   theme: 'dark',
   mascots: true,
-  identityPassword: '',
-  identityPromptSnoozedUntil: 0,
+  github: null,
   showAutoCommits: false,
   lastSeenVersion: '',
   showChangelogOnUpdate: true,

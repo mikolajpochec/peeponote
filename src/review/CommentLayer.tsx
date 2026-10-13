@@ -61,7 +61,6 @@ export function CommentLayer({ board, scale }: { board: Board; scale: number }) 
   const rects = useItemRects((s) => s.byCard)
   const mode = useReview((s) => s.mode)
   const draft = useReview((s) => s.draft)
-  const verified = useReview((s) => s.verified)
   const setOpenThread = useReview((s) => s.setOpenThread)
   const resolveThread = useReview((s) => s.resolveThread)
   const authorOnly = useWorkspace((s) => !!s.meta?.settings?.review?.authorOnlyClose)
@@ -233,7 +232,6 @@ export function CommentLayer({ board, scale }: { board: Board; scale: number }) 
               key={t.key}
               thread={t}
               place={p}
-              verified={verified[t.root.id] !== false && verified[t.root.id] !== undefined}
               onSize={(h) => report(t.key, h)}
               onOpen={() => setOpenThread({ boardId: board.id, anchorKey: t.anchor })}
               onResolve={canResolve(t.root) ? () => resolveThread(t.root.id, true) : undefined}
@@ -241,7 +239,7 @@ export function CommentLayer({ board, scale }: { board: Board; scale: number }) 
           )
         })}
       {Object.entries(leaving).map(([k, v]) => (
-        <Bubble key={`leaving:${k}`} thread={v.thread} place={v.place} verified leaving onSize={() => {}} onOpen={() => {}} />
+        <Bubble key={`leaving:${k}`} thread={v.thread} place={v.place} leaving onSize={() => {}} onOpen={() => {}} />
       ))}
       {bubbles && draftHere && <DraftBubble board={board} place={shown.get('draft') ?? fallbackPlace(board, draftHere.anchor, rects)} onSize={(h) => report('draft', h)} />}
 
@@ -390,7 +388,7 @@ function useAnimatedPlacement(target: Map<string, Placement | null>): Map<string
   return cur
 }
 
-const Bubble = memo(function Bubble({ thread, place, verified, leaving = false, onSize, onOpen, onResolve }: { thread: Thread; place: Placement; verified: boolean; leaving?: boolean; onSize: (h: number) => void; onOpen: () => void; onResolve?: () => void }) {
+const Bubble = memo(function Bubble({ thread, place, leaving = false, onSize, onOpen, onResolve }: { thread: Thread; place: Placement; leaving?: boolean; onSize: (h: number) => void; onOpen: () => void; onResolve?: () => void }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = ref.current
@@ -420,7 +418,6 @@ const Bubble = memo(function Bubble({ thread, place, verified, leaving = false, 
         <Avatar person={t.root.author} size={18} />
         <span className="min-w-0 flex-1 truncate text-[12px] font-bold">{t.root.author.name}</span>
         <span className="text-[10px] text-frog-200/50">{timeAgo(t.root.createdAt)}</span>
-        {!verified && <span className="rounded bg-swamp-600 px-1 text-[8px] font-bold uppercase text-frog-200/60">unverified</span>}
         {onResolve && !t.root.resolved && (
           <button
             onClick={(e) => {

@@ -3,6 +3,14 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
+## 1.7.0 — Your GitHub account is your account
+*2026-10-14*
+
+- Signing in is GitHub and nothing else: no more peeponote password to remember, and your name, picture and email come from there.
+- GitHub decides what you may do with a workspace. A collaborator edits, comments and reviews; everyone else reads; a private repo you cannot reach stays locked.
+- Without signing in you can still read a public board and keep your own boards in this browser, but comments, reviews and saving to a shared repo need an account.
+- Old password accounts move over by themselves the first time you sign in: your comments, reviews and your picture come with you, and the password is gone for good.
+
 ## 1.6.0 — Catch up on every update at once
 *2026-10-13*
 

@@ -85,11 +85,11 @@ export function RequestReviewDialog() {
           </div>
         )}
 
-        {identity.kind !== 'verified' && (
+        {identity.kind !== 'github' && (
           <div className="mb-3 rounded-lg bg-amber-900/30 p-2 text-[12px] text-amber-100 ring-1 ring-amber-400/30">
-            You need a password to ask for reviews —{' '}
+            Asking for a review needs a GitHub account —{' '}
             <button className="underline" onClick={() => window.dispatchEvent(new CustomEvent('peeponote:identify'))}>
-              identify yourself
+              sign in
             </button>
             .
           </div>
@@ -128,7 +128,7 @@ export function RequestReviewDialog() {
               <Avatar person={p} size={22} />
               <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{p.name}</span>
               <span className="truncate text-[11px] text-frog-200/50">{p.email}</span>
-              {!p.hasAccount && <span className="text-[10px] text-frog-200/40">no password yet</span>}
+              {!p.hasAccount && <span className="text-[10px] text-frog-200/40">not here yet</span>}
             </button>
           ))}
           {!list.length && typed && (
@@ -154,7 +154,7 @@ export function RequestReviewDialog() {
             </button>
             <button
               onClick={send}
-              disabled={!chosen.length || busy || identity.kind !== 'verified'}
+              disabled={!chosen.length || busy || identity.kind !== 'github'}
               className="rounded-md bg-frog-500 px-3 py-1.5 text-[13px] font-bold text-white hover:bg-frog-400 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {busy ? 'Sending…' : `Ask ${chosen.length || ''}`.trim()}

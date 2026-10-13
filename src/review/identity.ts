@@ -1,85 +1,66 @@
 /**
- * Who wrote what — without a server.
+ * Who wrote what: your GitHub account.
  *
- * The repo is just files, so anyone could drop a comment "as Basia". Each person picks a password once; from
- * name + email + password (plus a random salt kept in their account file) we derive an Ed25519 keypair. The
- * public half is committed in `review/people/<key>.json`; the private half lives only in memory, re-derived
- * from the password stored in this browser. Every review object carries a signature over its content, and
- * readers check it against the author's public key → "verified" or "unverified". The password itself never
- * leaves the device, and the derivation is one-way.
+ * The repo is just files, so the name on a comment has to mean something. peeponote asks GitHub whose token
+ * this is (`GET /user`) and writes that account into `review/people/<login>.json`; only people GitHub lets
+ * push can put anything there in the first place, so the login on a comment is as good as the repo's own
+ * permissions. Without a token you are a guest: boards can be read, nothing can be written.
+ *
+ * Before 1.7 identity was a password-derived key pair. Those accounts are migrated to GitHub ones by email
+ * (see `migrateAccounts` in src/store/review.ts); comments from that era keep their name and are marked as
+ * written before the move.
  */
-import * as ed from '@noble/ed25519'
+import type { GhIdentity } from '../store/settings'
 
 export interface Person {
   name: string
   email: string
+  /** the GitHub account, on everything written from 1.7 on; absent on comments from before */
+  login?: string
 }
 
 export interface Account extends Person {
-  /** base64 random salt for the key derivation */
-  salt: string
-  /** base64 Ed25519 public key */
-  key: string
+  /** GitHub's own numeric id: survives a rename of the login */
+  githubId?: number
+  /** github.com avatar, used when no picture is committed next to this file */
+  avatarUrl?: string
   createdAt: string
   /** true when a profile picture sits next to the account file */
   picture?: boolean
+  /** the email of the password account this person used before 1.7, so their old comments still find them */
+  formerEmail?: string
 }
 
-export interface Keys {
-  secret: Uint8Array
-  public: Uint8Array
-  /** base64 of `public` — what the account file stores */
-  key: string
-}
-
-const enc = new TextEncoder()
-export const b64 = (u: Uint8Array) => btoa(String.fromCharCode(...u))
-export const unb64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0))
-
-/** file-name-safe id for a person: mikolaj_pochec_at_proton.me */
-export const userKey = (email: string) =>
-  email
+/** file-name-safe id for a person: their GitHub login, or (old objects) their email */
+export const userKey = (p: Person | string): string => {
+  const raw = typeof p === 'string' ? p : p.login || p.email
+  return raw
     .trim()
     .toLowerCase()
     .replace('@', '_at_')
     .replace(/[^a-z0-9._-]+/g, '_')
-
-export const samePerson = (a: Person | null | undefined, b: Person | null | undefined) => !!a && !!b && a.email.trim().toLowerCase() === b.email.trim().toLowerCase()
-
-export function newSalt(): string {
-  const s = new Uint8Array(16)
-  crypto.getRandomValues(s)
-  return b64(s)
 }
 
-/** name + email + password + salt → keypair (PBKDF2-SHA256, 200k rounds, then Ed25519 from the 32-byte seed) */
-export async function deriveKeys(name: string, email: string, password: string, salt: string): Promise<Keys> {
-  const material = await crypto.subtle.importKey('raw', enc.encode(`${name.trim()}\n${email.trim().toLowerCase()}\n${password}`), 'PBKDF2', false, ['deriveBits'])
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: unb64(salt), iterations: 200_000 }, material, 256)
-  const secret = new Uint8Array(bits)
-  const pub = await ed.getPublicKeyAsync(secret)
-  return { secret, public: pub, key: b64(pub) }
+/** the same human: by GitHub login when both have one, by email otherwise */
+export function samePerson(a: Person | null | undefined, b: Person | null | undefined): boolean {
+  if (!a || !b) return false
+  if (a.login && b.login) return a.login.toLowerCase() === b.login.toLowerCase()
+  const ae = a.email?.trim().toLowerCase()
+  const be = b.email?.trim().toLowerCase()
+  return !!ae && ae === be
 }
 
-/** the bytes a signature covers: stable JSON of the given fields, so key order can't change the outcome */
-export function canonical(fields: Record<string, unknown>): Uint8Array {
-  const sorted = Object.keys(fields)
-    .sort()
-    .filter((k) => fields[k] !== undefined)
-    .map((k) => [k, fields[k]])
-  return enc.encode(JSON.stringify(sorted))
-}
+/** the person to put on everything I write */
+export const personOf = (gh: GhIdentity): Person => ({ name: gh.name || gh.login, email: gh.email, login: gh.login })
 
-export async function sign(keys: Keys, fields: Record<string, unknown>): Promise<string> {
-  return b64(await ed.signAsync(canonical(fields), keys.secret))
-}
-
-export async function verify(publicKey: string, sig: string | undefined, fields: Record<string, unknown>): Promise<boolean> {
-  if (!sig) return false
-  try {
-    return await ed.verifyAsync(unb64(sig), canonical(fields), unb64(publicKey))
-  } catch {
-    return false
+export function accountOf(gh: GhIdentity, before?: Account): Account {
+  return {
+    ...personOf(gh),
+    githubId: gh.id,
+    avatarUrl: gh.avatarUrl,
+    createdAt: before?.createdAt ?? new Date().toISOString(),
+    picture: before?.picture,
+    formerEmail: before?.formerEmail,
   }
 }
 
@@ -89,8 +70,11 @@ export function initials(name: string): string {
   if (!parts.length) return '?'
   return (parts.length === 1 ? parts[0].slice(0, 2) : parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
-export function personColor(email: string): string {
+export function personColor(key: string): string {
   let h = 0
-  for (const ch of email.toLowerCase()) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  for (const ch of key.toLowerCase()) h = (h * 31 + ch.charCodeAt(0)) >>> 0
   return `hsl(${h % 360} 45% 45%)`
 }
+
+/** the author to write into a file, from a committed account */
+export const personOfAccount = (a: Account): Person => ({ name: a.name, email: a.email, login: a.login })

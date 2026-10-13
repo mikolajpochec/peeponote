@@ -4,7 +4,7 @@ import { useWorkspace } from '../store/workspace'
 import { samePerson, userKey, type Person } from './identity'
 
 export interface KnownPerson extends Person {
-  /** has committed an account (password) → can be verified */
+  /** has a GitHub account committed in this workspace (they have opened it at least once) */
   hasAccount: boolean
 }
 

@@ -86,11 +86,11 @@ export function NotificationsPanel({ onClose, mobile }: { onClose: () => void; m
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
-        {identity.kind !== 'verified' && (
+        {identity.kind !== 'github' && (
           <div className="m-3 rounded-lg bg-amber-900/30 p-2 text-[12px] text-amber-100 ring-1 ring-amber-400/30">
             Notifications are personal —{' '}
             <button className="underline" onClick={() => window.dispatchEvent(new CustomEvent('peeponote:identify'))}>
-              identify yourself
+              sign in with GitHub
             </button>{' '}
             to see who asked you for reviews and who replied.
           </div>
@@ -98,7 +98,7 @@ export function NotificationsPanel({ onClose, mobile }: { onClose: () => void; m
         {askedOfMe.length > 0 && (
           <Section title="Asked of you">
             {askedOfMe.map((r) => (
-              <ReviewRow key={r.id} r={r} role="reviewer" onOpen={() => open({ id: r.id, kind: 'review-request', at: r.createdAt, who: r.requester, boardId: r.boardId, reviewId: r.id, what: '', unseen: false, verified: true })} />
+              <ReviewRow key={r.id} r={r} role="reviewer" onOpen={() => open({ id: r.id, kind: 'review-request', at: r.createdAt, who: r.requester, boardId: r.boardId, reviewId: r.id, what: '', unseen: false })} />
             ))}
           </Section>
         )}
@@ -272,7 +272,6 @@ function Row({ n, picked, onPick, onOpen, onToggleSeen }: { n: Notification; pic
           <div className="text-[13px] leading-snug">
             {n.who.email && <b>{n.who.name} </b>}
             {n.what}
-            {!n.verified && <span className="ml-1 rounded bg-swamp-600 px-1 text-[9px] font-bold uppercase text-frog-200/60">unverified</span>}
           </div>
           {n.excerpt && <div className="truncate text-[12px] text-frog-200/70">{n.excerpt}</div>}
           <div className="text-[11px] text-frog-200/50">{timeAgo(n.at)}</div>

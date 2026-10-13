@@ -164,8 +164,8 @@ function MoreMenu({
     { kind: 'item', icon: '🔔', label: unseen > 0 ? `Notifications (${unseen > 99 ? '99+' : unseen} new)` : panelOpen ? 'Hide notifications' : 'Notifications', onClick: () => setPanelOpen(!panelOpen) },
     {
       kind: 'item',
-      icon: identity.kind === 'verified' ? '🙂' : identity.kind === 'mismatch' ? '⚠️' : '👤',
-      label: identity.kind === 'verified' ? identity.account.name : identity.kind === 'mismatch' ? 'Wrong password — fix it' : 'Guest — set a password',
+      icon: identity.kind === 'github' ? '🙂' : '👤',
+      label: identity.kind === 'github' ? identity.account.name : 'Sign in with GitHub',
       onClick: () => window.dispatchEvent(new CustomEvent('peeponote:identify')),
     },
     { kind: 'item', icon: '🕰', label: historyOpen ? 'Hide history' : 'History', onClick: onToggleHistory },
@@ -194,7 +194,7 @@ function MoreMenu({
         {unseen > 0 ? (
           <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-amber-500 px-1 text-center text-[10px] font-black leading-4 text-black">{unseen > 99 ? '99+' : unseen}</span>
         ) : (
-          identity.kind === 'mismatch' && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />
+          identity.kind !== 'github' && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-500" />
         )}
       </button>
       {/* the header is a container (`@container`), which would anchor a fixed menu to it — so it goes to the body */}
@@ -256,15 +256,15 @@ function Bell() {
   )
 }
 
-/** who you are here: avatar + name when verified, "Guest" otherwise; click opens the identity dialog */
+/** who you are here: GitHub avatar + name when signed in, "Sign in" otherwise */
 function Identity() {
   const identity = useReview((s) => s.identity)
   const open = () => window.dispatchEvent(new CustomEvent('peeponote:identify'))
-  if (identity.kind === 'verified')
+  if (identity.kind === 'github')
     return (
       <button
         onClick={open}
-        title={`${identity.account.name} <${identity.account.email}> — verified on this device. Click for picture / log out.`}
+        title={`@${identity.account.login} on GitHub. Click for your picture or to sign out.`}
         className="flex h-8 shrink-0 items-center gap-1.5 rounded-md px-1.5 hover:bg-(--hover-strong)"
       >
         <Avatar person={identity.account} size={24} />
@@ -274,13 +274,11 @@ function Identity() {
   return (
     <button
       onClick={open}
-      title={identity.kind === 'mismatch' ? 'Your saved password does not fit your account — fix it' : 'You are a guest: editing works, comments and reviews need a password'}
-      className={`flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-[13px] font-semibold ${
-        identity.kind === 'mismatch' ? 'bg-red-900/50 text-red-100 hover:bg-red-900/70' : 'bg-swamp-700 text-frog-200 hover:bg-swamp-600'
-      }`}
+      title="Guest: boards can be read. Sign in with GitHub to edit, comment and review."
+      className="flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-swamp-700 px-2 text-[13px] font-semibold text-frog-200 hover:bg-swamp-600"
     >
       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-swamp-500 text-[11px]">?</span>
-      <span className="hidden @[46rem]:inline">{identity.kind === 'mismatch' ? 'Wrong password' : 'Guest'}</span>
+      <span className="hidden @[46rem]:inline">Sign in</span>
     </button>
   )
 }
@@ -300,8 +298,24 @@ function useOnline() {
   return on
 }
 
+/** no push access: Save makes no sense, so the bar says what would help instead */
+function ReadOnlyChip() {
+  const identity = useReview((s) => s.identity)
+  const signedIn = identity.kind === 'github'
+  return (
+    <button
+      onClick={() => !signedIn && window.dispatchEvent(new CustomEvent('peeponote:identify'))}
+      title={signedIn ? 'GitHub gives this account read access to the repo: ask the owner to add you as a collaborator' : 'Boards can be read. Sign in with GitHub to edit them.'}
+      className={`flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-bold ${signedIn ? 'bg-swamp-700 text-frog-200' : 'bg-frog-500 text-white hover:bg-frog-400'}`}
+    >
+      🔒<span className="hidden @[34rem]:inline">{signedIn ? 'Read only' : 'Sign in to edit'}</span>
+    </button>
+  )
+}
+
 function SaveBar() {
   const dirty = useWorkspace(selectDirty)
+  const canWrite = useWorkspace((s) => s.canWrite)
   const busy = useWorkspace((s) => s.busy)
   const save = useWorkspace((s) => s.save)
   const discardChanges = useWorkspace((s) => s.discardChanges)
@@ -318,6 +332,8 @@ function SaveBar() {
     const ok = await save(msg)
     if (ok) setMsg('')
   }
+
+  if (!canWrite) return <ReadOnlyChip />
 
   return (
     <div className="flex shrink-0 items-center gap-2">

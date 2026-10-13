@@ -27,6 +27,19 @@ it in the feature's own commit — version + a new entry at the top of `CHANGELO
 two unrelated features ready at once are two releases. Source-only work (this file, tests, invisible refactors) does
 not bump anything — it rides along with the next release.
 
+## Who may do what
+Identity is the **GitHub account behind the token** (`settings.github`, from `GET /user`): there is no peeponote
+password any more and no second layer of roles. `src/git/permissions.ts` asks GitHub what this token may do with the
+repo and the answer drives everything: `write` (collaborator) edits, saves, comments and reviews; `read` shows the
+boards and nothing else; `locked` (private repo, no access) shows `LockedScreen` instead of the app. A workspace with
+no remote, or one on another host, is always writable: that host enforces its own rules on push. The answer is
+remembered per repo so going offline never locks anyone out.
+
+Accounts live in `review/people/<login>.json`, written by their owner. Accounts from before 1.7 (password-derived
+keys, named after an email) migrate the first time that person signs in: `adoptPasswordAccount` in
+`src/store/review.ts` rewrites their own objects to carry the login and deletes the old files. Keep that path working
+whenever the review model changes.
+
 ## Commits
 - Title line only, plain words. No AI attribution trailers.
 - The app's own commits are stamped `[peeponote] …` — don't imitate that in source commits.

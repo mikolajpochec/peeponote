@@ -128,7 +128,7 @@ export function ReviewBar({ board, onHeight }: { board: Board; onHeight?: (h: nu
           )}
         </>
       )}
-      {review && (amRequester || anyoneCanClose) && identity.kind === 'verified' && (
+      {review && (amRequester || anyoneCanClose) && identity.kind === 'github' && (
         <>
           <button onClick={() => closeReview(review.id)} className="rounded-md px-2.5 py-1 text-[12px] font-semibold text-frog-100 hover:bg-(--hover-strong)">
             {review.status === 'open' ? 'Close review' : 'Reopen'}

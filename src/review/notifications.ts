@@ -25,7 +25,6 @@ export interface Notification {
   /** excerpt (comment text, message) */
   excerpt?: string
   unseen: boolean
-  verified: boolean
 }
 
 /** the review's shown state, from its verdicts + comments */
@@ -68,7 +67,7 @@ const excerpt = (s: string, n = 90) => {
 }
 
 export function deriveNotifications(
-  s: { reviews: Record<string, ReviewRequest>; verdicts: Record<string, Verdict>; comments: Record<string, Comment>; states: Record<string, { seen: Record<string, string>; muted: string[]; hidden?: string[] }>; verified: Record<string, boolean> },
+  s: { reviews: Record<string, ReviewRequest>; verdicts: Record<string, Verdict>; comments: Record<string, Comment>; states: Record<string, { seen: Record<string, string>; muted: string[]; hidden?: string[] }> },
   boards: Record<string, Board>,
   me: Person | null,
 ): Notification[] {
@@ -97,7 +96,6 @@ export function deriveNotifications(
       what: `asked you to review ${n ? `${n} card${n === 1 ? '' : 's'} on` : ''} ${boardName(r.boardId)}${r.status === 'closed' ? ' (closed)' : ''}`,
       excerpt: r.message ? excerpt(r.message) : undefined,
       unseen: !seen[r.id],
-      verified: !!s.verified[r.id],
     })
   }
   // verdicts on my requests
@@ -116,7 +114,6 @@ export function deriveNotifications(
       what: `${v.verdict === 'approved' ? 'approved' : 'requested changes on'} your review of ${boardName(r.boardId)}`,
       excerpt: v.note ? excerpt(v.note) : undefined,
       unseen: !seen[id],
-      verified: !!s.verified[id],
     })
   }
   // comments by others
@@ -142,12 +139,11 @@ export function deriveNotifications(
       what: mentioned ? `mentioned you on ${boardName(c.boardId)}` : kind === 'reply' ? 'replied to you' : `commented on ${target ? `"${target}"` : 'a spot'}${inMyReview ? ' in your review' : ''} · ${boardName(c.boardId)}`,
       excerpt: excerpt(c.text),
       unseen: !seen[c.id],
-      verified: !!s.verified[c.id],
     })
     // someone resolved my thread
     if (c.resolved && samePerson(root.author, me) && !samePerson(c.resolved.by, me) && root.id === c.id) {
       const id = `resolved:${c.id}:${c.resolved.at}`
-      out.push({ id, kind: 'resolved', at: c.resolved.at, who: c.resolved.by, boardId: c.boardId, cardId, rootId: c.id, what: 'resolved your thread', unseen: !seen[id], verified: true })
+      out.push({ id, kind: 'resolved', at: c.resolved.at, who: c.resolved.by, boardId: c.boardId, cardId, rootId: c.id, what: 'resolved your thread', unseen: !seen[id] })
     }
   }
   // @mentions written on the boards themselves
@@ -155,7 +151,7 @@ export function deriveNotifications(
     for (const c of b.cards) {
       if (!mentions(textOfCard(c), me)) continue
       const id = `mention:${c.id}`
-      out.push({ id, kind: 'mention', at: seen[id] ?? '', who: { name: 'Someone', email: '' }, boardId: b.id, cardId: c.id, what: `you're mentioned in "${excerpt(textOfCard(c), 40)}" on ${b.name}`, unseen: !seen[id], verified: true })
+      out.push({ id, kind: 'mention', at: seen[id] ?? '', who: { name: 'Someone', email: '' }, boardId: b.id, cardId: c.id, what: `you're mentioned in "${excerpt(textOfCard(c), 40)}" on ${b.name}`, unseen: !seen[id] })
     }
   }
   return out.filter((n) => !hidden.has(n.id)).sort((a, b) => (a.unseen === b.unseen ? (b.at || '').localeCompare(a.at || '') : a.unseen ? -1 : 1))
@@ -166,10 +162,9 @@ export function useNotifications(): Notification[] {
   const verdicts = useReview((s) => s.verdicts)
   const comments = useReview((s) => s.comments)
   const states = useReview((s) => s.states)
-  const verified = useReview((s) => s.verified)
   const me = useMe()
   const boards = useWorkspace((s) => s.boards)
-  return useMemo(() => deriveNotifications({ reviews, verdicts, comments, states, verified }, boards, me), [reviews, verdicts, comments, states, verified, boards, me])
+  return useMemo(() => deriveNotifications({ reviews, verdicts, comments, states }, boards, me), [reviews, verdicts, comments, states, boards, me])
 }
 
 export const useUnseenCount = () => useNotifications().filter((n) => n.unseen).length

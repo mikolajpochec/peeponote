@@ -6,7 +6,7 @@
  * minor = a new feature, patch = fixes and polish. Every release that reaches `main` bumps this and adds
  * an entry here, in plain words, written for the person using peeponote rather than for git.
  */
-export const APP_VERSION = '1.6.0'
+export const APP_VERSION = '1.7.0'
 
 export interface Release {
   version: string
@@ -19,6 +19,17 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: '1.7.0',
+    date: '2026-10-14',
+    title: 'Your GitHub account is your account',
+    notes: [
+      'Signing in is GitHub and nothing else: no more peeponote password to remember, and your name, picture and email come from there.',
+      'GitHub decides what you may do with a workspace. A collaborator edits, comments and reviews; everyone else reads; a private repo you cannot reach stays locked.',
+      'Without signing in you can still read a public board and keep your own boards in this browser, but comments, reviews and saving to a shared repo need an account.',
+      'Old password accounts move over by themselves the first time you sign in: your comments, reviews and your picture come with you, and the password is gone for good.',
+    ],
+  },
   {
     version: '1.6.0',
     date: '2026-10-13',

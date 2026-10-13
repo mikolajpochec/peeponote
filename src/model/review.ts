@@ -2,15 +2,15 @@
  * Review & comments live as files under `<workspace>/review/`. One file per object, one writer per file, so
  * two people never edit the same file and merges stay trivial:
  *
- *   review/people/<userKey>.json           Account (name, email, salt, public key)      — its owner
- *   review/people/<userKey>.webp           profile picture, 256×256                     — its owner
+ *   review/people/<login>.json             Account (GitHub login, name, email, avatar)  — its owner
+ *   review/people/<login>.webp             profile picture, 256×256                     — its owner
  *   review/reviews/<reviewId>.json         ReviewRequest                                — the requester
  *   review/verdicts/<reviewId>.<userKey>.json  Verdict                                  — that reviewer
  *   review/comments/<commentId>.json       Comment                                      — its author
  *   review/state/<userKey>.json            UserState (seen / muted)                     — that user
  *
- * Every object is signed by its author (see src/review/identity.ts); readers show "unverified" when the
- * signature is missing or doesn't match the author's account.
+ * The author of every object is a GitHub account (see src/review/identity.ts). Only people GitHub lets push can
+ * add a file here at all, so the login on a comment carries the repo's own permissions.
  */
 import { z } from 'zod'
 import type { Person } from '../review/identity'
@@ -23,16 +23,21 @@ export const VERDICTS_DIR = `${REVIEW_DIR}/verdicts`
 export const COMMENTS_DIR = `${REVIEW_DIR}/comments`
 export const STATE_DIR = `${REVIEW_DIR}/state`
 
-const person = z.object({ name: z.string(), email: z.string() })
+const person = z.object({ name: z.string(), email: z.string(), login: z.string().optional() })
 
 export const accountSchema = z
   .object({
     name: z.string(),
     email: z.string(),
-    salt: z.string(),
-    key: z.string(),
+    login: z.string().optional(),
+    githubId: z.number().optional(),
+    avatarUrl: z.string().optional(),
     createdAt: z.string(),
     picture: z.boolean().optional(),
+    formerEmail: z.string().optional(),
+    /** password accounts from before 1.7 still carry these; they are read, never written */
+    salt: z.string().optional(),
+    key: z.string().optional(),
   })
   .passthrough()
 
@@ -98,13 +103,5 @@ export const userStateSchema = z
   })
   .passthrough()
 export type UserState = z.infer<typeof userStateSchema>
-
-/** the fields a signature covers, per object type (everything except `sig` and things others may touch) */
-export const signedFields = {
-  review: (r: ReviewRequest) => ({ id: r.id, boardId: r.boardId, targets: r.targets, requester: r.requester, reviewers: r.reviewers, message: r.message, status: r.status, createdAt: r.createdAt, updatedAt: r.updatedAt, closedAt: r.closedAt, closedBy: r.closedBy }),
-  verdict: (v: Verdict) => ({ reviewId: v.reviewId, reviewer: v.reviewer, verdict: v.verdict, note: v.note, at: v.at }),
-  comment: (c: Comment) => ({ id: c.id, boardId: c.boardId, anchor: c.anchor, reviewId: c.reviewId, parentId: c.parentId, author: c.author, text: c.text, createdAt: c.createdAt, editedAt: c.editedAt, resolved: c.resolved }),
-  state: (s: UserState) => ({ me: s.me, seen: s.seen, muted: s.muted, hidden: s.hidden, updatedAt: s.updatedAt }),
-}
 
 export const isCardAnchor = (a: CommentAnchor): a is { cardId: string; itemId?: string } => 'cardId' in a

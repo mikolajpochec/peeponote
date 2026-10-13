@@ -218,40 +218,48 @@ function SyncTab() {
 function YouTab() {
   const settings = useSettings()
   const identity = useReview((s) => s.identity)
+  const access = useWorkspace((s) => s.access)
+  const remoteUrl = useWorkspace((s) => s.remoteUrl)
   const open = () => window.dispatchEvent(new CustomEvent('peeponote:identify'))
-  if (identity.kind === 'verified') {
+  if (identity.kind === 'github') {
     return (
       <>
-        <p className={`mb-4 ${hint}`}>Who you are in this workspace: the author of your saves, and a verified voice in comments and reviews.</p>
-        <Row title="Identity" sub="Name and email are part of your identity key, so they're fixed now. Use the dialog to change the picture or log out on this device.">
-        <div className="flex items-center gap-3 rounded-lg bg-swamp-800/60 p-2">
-          <Avatar person={identity.account} size={36} />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[13px] font-bold">{identity.account.name}</div>
-            <div className="truncate text-[11px] text-frog-200/60">{identity.account.email}</div>
+        <p className={`mb-4 ${hint}`}>Who you are here: your GitHub account. It signs your saves, your comments and your reviews.</p>
+        <Row title="Signed in" sub="Name, email and picture come from GitHub. What you may do with a repo comes from GitHub too.">
+          <div className="flex items-center gap-3 rounded-lg bg-swamp-800/60 p-2">
+            <Avatar person={identity.account} size={36} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[13px] font-bold">{identity.account.name}</div>
+              <div className="truncate text-[11px] text-frog-200/60">@{identity.account.login}</div>
+            </div>
+            <button className={btn} onClick={open}>
+              Manage…
+            </button>
           </div>
-          <span className="text-[11px] text-frog-300">✓ verified</span>
-          <button className={btn} onClick={open}>
-            Manage…
-          </button>
-        </div>
         </Row>
+        {remoteUrl && (
+          <Row title="On this repo" sub="GitHub decides: collaborators with write access edit and comment, everyone else reads.">
+            <div className="text-[13px] font-semibold">
+              {access === 'write' ? '✎ You can edit and comment here' : access === 'read' ? '🔒 Read only: you are not a collaborator on this repo' : '🔒 No access to this repo'}
+            </div>
+          </Row>
+        )}
       </>
     )
   }
   return (
     <>
-      <p className={`mb-4 ${hint}`}>Who you are in this workspace: the author of your saves, and — with a password — a verified voice in comments and reviews.</p>
-      <Row title="Your name on commits" sub="Shown to others as the author of your saves.">
-      <div className="grid grid-cols-2 gap-2">
-        <input className={field} placeholder="Name" value={settings.authorName} onChange={(e) => settings.set({ authorName: e.target.value })} />
-        <input className={field} placeholder="email@example.com" value={settings.authorEmail} onChange={(e) => settings.set({ authorEmail: e.target.value })} />
-      </div>
-      </Row>
-      <Row title="Password" sub={identity.kind === 'mismatch' ? "The password saved in this browser doesn't fit the account committed for your email." : 'Guest right now: you can edit boards, but not comment, review or get notifications.'}>
+      <p className={`mb-4 ${hint}`}>You are a guest: boards can be read, nothing can be written. Everything else needs a GitHub account.</p>
+      <Row title="Sign in" sub="Your GitHub account is your identity: saves are yours, comments carry your login, and the repo's own permissions decide what you may change.">
         <button className={`${btn} bg-frog-700/60 hover:bg-frog-600`} onClick={open}>
-          🔑 {identity.kind === 'mismatch' ? 'Fix my password…' : 'Set a password…'}
+          Sign in with GitHub
         </button>
+      </Row>
+      <Row title="Your name on commits" sub="Used for saves made while signed out (a workspace that lives only in this browser).">
+        <div className="grid grid-cols-2 gap-2">
+          <input className={field} placeholder="Name" value={settings.authorName} onChange={(e) => settings.set({ authorName: e.target.value })} />
+          <input className={field} placeholder="email@example.com" value={settings.authorEmail} onChange={(e) => settings.set({ authorEmail: e.target.value })} />
+        </div>
       </Row>
     </>
   )
