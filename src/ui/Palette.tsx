@@ -7,7 +7,7 @@ import { useViewport } from '../canvas/viewport'
 import { autoEdit } from '../cards/autoEdit'
 import { SHAPES } from '../cards/ShapeCard'
 import { STORY_KINDS } from '../cards/story/kinds'
-import { isCoarse } from '../canvas/touch'
+import { isCoarse, useIsMobile } from '../canvas/touch'
 import { useSettings } from '../store/settings'
 import { boardMark } from '../theme/glyphs'
 
@@ -130,6 +130,8 @@ export function Palette({ board }: { board: Board }) {
   const mascots = useSettings((s) => s.mascots)
   const root = useRef<HTMLDivElement>(null)
   const coarse = isCoarse()
+  const mobile = useIsMobile()
+  const openTool = TOOLS.find((t) => t.id === open)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // tap outside closes a flyout (touch has no hover-out)
@@ -175,9 +177,31 @@ export function Palette({ board }: { board: Board }) {
           onDragEnd: () => setDragging(null),
         }
 
+  // a tool's variants; on phones it sits above the bar, outside the bar's sideways scroller, which would clip it
+  const flyout = (tool: Tool, at: string) =>
+    tool.children && (
+      <div
+        className={`absolute z-30 grid gap-0.5 rounded-2xl border border-(--hair) bg-swamp-900/95 p-1.5 shadow-2xl shadow-black/50 backdrop-blur ${at}`}
+        style={{ gridTemplateColumns: `repeat(${tool.children.length > 6 ? 3 : 2}, 3.6rem)` }}
+      >
+        {tool.children.map((c) => (
+          <button
+            key={c.id}
+            {...dragProps(c)}
+            title={`${c.label} — ${c.hint}\nClick to add, or drag onto the board`}
+            onClick={() => activate(c)}
+            className={`flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-frog-100 hover:bg-frog-700 hover:text-white active:scale-95 ${dragging === c.id ? 'bg-frog-700' : ''}`}
+          >
+            <span className="text-[17px] leading-none">{c.icon}</span>
+            <span className="max-w-full truncate text-[9px] font-semibold uppercase tracking-wide opacity-70">{c.label}</span>
+          </button>
+        ))}
+      </div>
+    )
+
   return (
-    <div ref={root} className="pointer-events-none absolute inset-y-0 left-4 flex items-center max-md:inset-x-2 max-md:inset-y-auto max-md:bottom-3 max-md:justify-center">
-      <div className="pointer-events-auto flex flex-col gap-0.5 rounded-2xl border border-(--hair) bg-swamp-900/90 p-1.5 shadow-2xl shadow-black/50 backdrop-blur max-md:max-w-full max-md:flex-row max-md:overflow-x-auto">
+    <div ref={root} className="pointer-events-none absolute inset-y-0 left-4 flex items-center compact:inset-x-2 compact:inset-y-auto compact:bottom-3 compact:justify-center">
+      <div className="pointer-events-auto flex flex-col gap-0.5 rounded-2xl border border-(--hair) bg-swamp-900/90 p-1.5 shadow-2xl shadow-black/50 backdrop-blur no-scrollbar compact:max-w-full compact:flex-row compact:overflow-x-auto">
         {TOOLS.map((tool) => (
           <div key={tool.id} className="relative" onPointerEnter={() => hoverOpen(tool)} onPointerLeave={hoverClose}>
             <button
@@ -198,25 +222,7 @@ export function Palette({ board }: { board: Board }) {
               <span className="text-[9px] font-semibold uppercase tracking-wide opacity-70 group-hover/tool:opacity-100">{tool.label}</span>
               {tool.children && <span className="absolute right-1 top-1 text-[8px] opacity-50">▸</span>}
             </button>
-            {tool.children && open === tool.id && (
-              <div
-                className="absolute left-full top-0 z-30 ml-2 grid gap-0.5 rounded-2xl border border-(--hair) bg-swamp-900/95 p-1.5 shadow-2xl shadow-black/50 backdrop-blur max-md:bottom-full max-md:left-1/2 max-md:top-auto max-md:mb-2 max-md:ml-0 max-md:-translate-x-1/2"
-                style={{ gridTemplateColumns: `repeat(${tool.children.length > 6 ? 3 : 2}, 3.6rem)` }}
-              >
-                {tool.children.map((c) => (
-                  <button
-                    key={c.id}
-                    {...dragProps(c)}
-                    title={`${c.label} — ${c.hint}\nClick to add, or drag onto the board`}
-                    onClick={() => activate(c)}
-                    className={`flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-frog-100 hover:bg-frog-700 hover:text-white active:scale-95 ${dragging === c.id ? 'bg-frog-700' : ''}`}
-                  >
-                    <span className="text-[17px] leading-none">{c.icon}</span>
-                    <span className="max-w-full truncate text-[9px] font-semibold uppercase tracking-wide opacity-70">{c.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+            {!mobile && open === tool.id && flyout(tool, 'left-full top-0 ml-2')}
           </div>
         ))}
         <input
@@ -231,6 +237,7 @@ export function Palette({ board }: { board: Board }) {
           }}
         />
       </div>
+      {mobile && openTool && flyout(openTool, 'bottom-full left-1/2 mb-2 -translate-x-1/2')}
     </div>
   )
 }

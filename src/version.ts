@@ -6,7 +6,7 @@
  * minor = a new feature, patch = fixes and polish. Every release that reaches `main` bumps this and adds
  * an entry here, in plain words, written for the person using peeponote rather than for git.
  */
-export const APP_VERSION = '1.4.0'
+export const APP_VERSION = '1.5.0'
 
 export interface Release {
   version: string
@@ -19,6 +19,18 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: '1.5.0',
+    date: '2026-10-13',
+    title: 'Better on phones',
+    notes: [
+      'A board you open for the first time on a phone is zoomed so its cards fit the screen width, instead of running off the right edge.',
+      'Shape and Story in the bottom toolbar open their list of variants again on phones.',
+      'Turn your phone sideways and you keep the phone layout: toolbar at the bottom, boards in a drawer.',
+      'While you type in a card, the toolbar steps aside so the keyboard has room.',
+      'Settings fits a phone: the tabs scroll sideways and desktop keyboard shortcuts are no longer listed on touch screens.',
+    ],
+  },
   {
     version: '1.4.0',
     date: '2026-10-13',

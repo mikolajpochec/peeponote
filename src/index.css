@@ -1,5 +1,11 @@
 @import 'tailwindcss';
 
+/* phone layout: narrow screens, and phones on their side (short, touch); keep in sync with MOBILE_QUERY in canvas/touch.ts */
+@custom-variant compact {
+  @media (max-width: 767px) { @slot; }
+  @media (max-height: 500px) and (pointer: coarse) { @slot; }
+}
+
 @theme {
   --color-frog-50: #f1f3f5;
   --color-frog-100: #d5d9de;
@@ -76,6 +82,10 @@ input, textarea, [contenteditable="true"], pre, code, .selectable { user-select:
 .prose-note a { color: var(--color-frog-600); text-decoration: underline; }
 .prose-note blockquote { border-left: 3px solid var(--color-frog-300); padding-left: 0.6em; opacity: 0.85; margin: 0.3em 0; }
 .prose-note hr { border: 0; border-top: 1px solid rgba(0,0,0,0.15); margin: 0.5em 0; }
+
+/* rows that scroll sideways on phones (tab strips) without a scrollbar eating their height */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 
 /* thin scrollbars that reveal themselves on hover (overlay scrollbars on macOS would otherwise stay hidden) */
 .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -173,7 +183,7 @@ input:read-only, textarea:read-only { cursor: default; }
   html, body, #root { height: 100dvh; }
 }
 /* dialogs must be scrollable on small screens */
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 500px) {
   .fixed.inset-0 > .rounded-2xl { max-height: 100%; overflow: auto; }
 }
 

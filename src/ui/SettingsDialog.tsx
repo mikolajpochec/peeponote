@@ -55,16 +55,16 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         <div className="flex items-center gap-3 px-5 pt-4">
           <Peepo name="peepoShy" size={36} />
           <div className="flex-1 text-xl font-black">Settings</div>
-          <button onClick={onClose} className="text-frog-200/60 hover:text-white">
+          <button onClick={onClose} className="text-frog-200/60 hover:text-white max-md:-mr-2 max-md:h-9 max-md:w-9">
             ✕
           </button>
         </div>
-        <div className="flex gap-1 px-5 pt-3">
+        <div className="no-scrollbar flex gap-1 overflow-x-auto px-5 pt-3">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 rounded-t-lg px-3 py-1.5 text-[13px] font-bold ${tab === t.id ? 'bg-swamp-700 text-white' : 'text-frog-200/70 hover:bg-swamp-700/50 hover:text-white'}`}
+              className={`flex shrink-0 items-center gap-1.5 rounded-t-lg px-3 py-1.5 text-[13px] font-bold ${tab === t.id ? 'bg-swamp-700 text-white' : 'text-frog-200/70 hover:bg-swamp-700/50 hover:text-white'}`}
             >
               <span className="text-[13px]">{t.icon}</span>
               {t.title}
@@ -79,8 +79,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           {tab === 'look' && <LookTab />}
           {tab === 'about' && <AboutTab />}
         </div>
-        <div className="flex items-center justify-between gap-3 border-t border-(--hair) px-5 py-2.5">
-          <span className="text-[11px] text-frog-200/50">⌘S save · ⌘Z undo · ⌘0 reset zoom · ⌘/Ctrl+wheel zoom · Space+drag pans · Del deletes</span>
+        <div className="flex items-center justify-end gap-3 border-t border-(--hair) px-5 py-2.5">
+          <span className="mr-auto text-[11px] text-frog-200/50 pointer-coarse:hidden">⌘S save · ⌘Z undo · ⌘0 reset zoom · ⌘/Ctrl+wheel zoom · Space+drag pans · Del deletes</span>
           <ClearSettingsButton onDone={onClose} />
         </div>
       </div>

@@ -3,6 +3,15 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
+## 1.5.0 — Better on phones
+*2026-10-13*
+
+- A board you open for the first time on a phone is zoomed so its cards fit the screen width, instead of running off the right edge.
+- Shape and Story in the bottom toolbar open their list of variants again on phones.
+- Turn your phone sideways and you keep the phone layout: toolbar at the bottom, boards in a drawer.
+- While you type in a card, the toolbar steps aside so the keyboard has room.
+- Settings fits a phone: the tabs scroll sideways and desktop keyboard shortcuts are no longer listed on touch screens.
+
 ## 1.4.0 — View only, for looking without touching
 *2026-10-13*
 

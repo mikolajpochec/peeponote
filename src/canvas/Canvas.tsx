@@ -31,7 +31,7 @@ import { boardMark } from '../theme/glyphs'
 import { useReview } from '../store/review'
 import { CommentLayer } from '../review/CommentLayer'
 import { resolveTheme } from '../theme/themes'
-import { LONG_PRESS_MS, LONG_PRESS_SLOP, activeTouches, isDuplicateDblClick, markLongPress, registerTap, shouldSwallowContextMenu, useIsMobile } from './touch'
+import { LONG_PRESS_MS, LONG_PRESS_SLOP, activeTouches, isDuplicateDblClick, markLongPress, MOBILE_QUERY, registerTap, shouldSwallowContextMenu, useIsMobile } from './touch'
 
 interface Marquee {
   x0: number
@@ -283,6 +283,22 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.min((w - pad * 2) / Math.max(b.w, 1), (h - pad * 2) / Math.max(b.h, 1), 1.5)))
     setVp(board.id, { scale, x: w / 2 - (b.x + b.w / 2) * scale, y: h / 2 - (b.y + b.h / 2) * scale })
   }
+
+  // phones: a board seen for the first time opens zoomed so its cards fit the width, top-left first,
+  // instead of the desktop view that leaves most of it off the right edge
+  useEffect(() => {
+    const el = ref.current
+    if (!el || !matchMedia(MOBILE_QUERY).matches || useViewport.getState().byBoard[board.id]) return
+    const b = bbox(board.cards)
+    if (!b) return
+    const pad = 16
+    const w = el.clientWidth
+    if (80 + b.x >= 0 && 80 + b.x + b.w <= w) return // already fits the default view
+    const scale = Math.max(0.3, Math.min(1, (w - pad * 2) / Math.max(b.w, 1)))
+    setVp(board.id, { scale, x: pad - b.x * scale, y: pad - b.y * scale })
+    // only on arrival: once the board has a viewport, pans and zooms are the user's
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board.id])
 
   /** board coords at the middle of the visible canvas */
   const viewCenter = () => {
@@ -781,8 +797,10 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
           <div className="px-6 text-center text-sm">{mobile ? 'Double-tap to write a note · long-press for the menu · use the toolbar below' : 'Double-click to write a note · drop files anywhere · use the toolbar'}</div>
         </div>
       )}
-      {!readOnly && <Palette board={board} />}
-      {backTo && (
+      {/* phones: while a card is being typed in, the keyboard needs the room the toolbar takes */}
+      {!readOnly && !(mobile && editingCardId) && <Palette board={board} />}
+      {/* phones: the top bar's ‹ already goes up to the parent, so the pill would only cover the board */}
+      {backTo && !(mobile && backTo.id === board.parentId) && (
         <button
           onClick={goBack}
           title={`Back to ${backTo.name || 'Untitled'}`}
@@ -811,13 +829,13 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         </div>
       )}
       <div
-        className="absolute bottom-2 right-3 flex items-center gap-0.5 rounded-lg p-0.5 text-[11px] max-md:bottom-20"
+        className={`absolute bottom-2 right-3 flex items-center gap-0.5 rounded-lg p-0.5 text-[11px] compact:bottom-20 ${mobile && editingCardId ? 'hidden' : ''}`}
         style={{ color: 'var(--board-fg-muted)', background: 'color-mix(in srgb, var(--board-fg) 8%, transparent)' }}
       >
-        <button onClick={centerView} title="Center on the board origin (⌘0)" className="h-7 w-7 rounded-md text-[15px] hover:bg-(--hover-strong)" style={{ color: 'var(--board-fg)' }}>
+        <button onClick={centerView} title="Center on the board origin (⌘0)" className="h-7 w-7 rounded-md compact:h-9 compact:w-9 text-[15px] hover:bg-(--hover-strong)" style={{ color: 'var(--board-fg)' }}>
           ⌖
         </button>
-        <button onClick={fitView} title="Fit everything (⇧F)" className="h-7 w-7 rounded-md text-[13px] hover:bg-(--hover-strong)" style={{ color: 'var(--board-fg)' }}>
+        <button onClick={fitView} title="Fit everything (⇧F)" className="h-7 w-7 rounded-md compact:h-9 compact:w-9 text-[13px] hover:bg-(--hover-strong)" style={{ color: 'var(--board-fg)' }}>
           ⤢
         </button>
         <span className="px-1.5 tabular-nums max-md:hidden">{Math.round(vp.scale * 100)}%</span>

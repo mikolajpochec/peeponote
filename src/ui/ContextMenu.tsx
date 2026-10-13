@@ -98,7 +98,7 @@ export function ContextMenu({ x, y, items, onClose }: { x: number; y: number; it
           >
             <span className="w-4 text-center text-[12px] opacity-80">{it.icon ?? ''}</span>
             <span className="flex-1">{it.label}</span>
-            {it.shortcut && <span className="text-[11px] opacity-50">{it.shortcut}</span>}
+            {it.shortcut && <span className="text-[11px] opacity-50 pointer-coarse:hidden">{it.shortcut}</span>}
           </button>
         ),
       )}

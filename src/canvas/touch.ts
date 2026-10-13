@@ -16,7 +16,8 @@ export function useMediaQuery(q: string): boolean {
   return m
 }
 
-export const MOBILE_QUERY = '(max-width: 767px)'
+/** phone layout: narrow screens, and phones held sideways (short + touch); same as the `compact:` CSS variant */
+export const MOBILE_QUERY = '(max-width: 767px), (max-height: 500px) and (pointer: coarse)'
 export const useIsMobile = () => useMediaQuery(MOBILE_QUERY)
 
 // ---- active touch tracking -------------------------------------------------
