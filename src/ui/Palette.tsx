@@ -201,9 +201,9 @@ export function Palette({ board }: { board: Board }) {
 
   return (
     <div ref={root} className="pointer-events-none absolute inset-y-0 left-4 flex items-center compact:inset-x-2 compact:inset-y-auto compact:bottom-3 compact:justify-center">
-      <div className="pointer-events-auto flex flex-col gap-0.5 rounded-2xl border border-(--hair) bg-swamp-900/90 p-1.5 shadow-2xl shadow-black/50 backdrop-blur no-scrollbar compact:max-w-full compact:flex-row compact:overflow-x-auto">
+      <div className="pointer-events-auto flex flex-col gap-0.5 rounded-2xl border border-(--hair) bg-swamp-900/90 p-1.5 shadow-2xl shadow-black/50 backdrop-blur no-scrollbar compact:w-full compact:max-w-md compact:flex-row compact:overflow-x-auto">
         {TOOLS.map((tool) => (
-          <div key={tool.id} className="relative" onPointerEnter={() => hoverOpen(tool)} onPointerLeave={hoverClose}>
+          <div key={tool.id} className="relative compact:min-w-0 compact:flex-1" onPointerEnter={() => hoverOpen(tool)} onPointerLeave={hoverClose}>
             <button
               {...dragProps(tool)}
               title={`${tool.label} — ${tool.hint}${tool.children ? '' : '\nClick to add, or drag onto the board'}`}
@@ -212,14 +212,14 @@ export function Palette({ board }: { board: Board }) {
                 if (tool.children && (coarse || !tool.defaultChild)) setOpen((o) => (o === tool.id ? null : tool.id))
                 else activate(tool)
               }}
-              className={`group/tool relative flex h-11 w-11 flex-col items-center justify-center gap-0.5 rounded-xl text-frog-100 transition hover:bg-frog-700 hover:text-white active:scale-95 ${
+              className={`group/tool relative flex h-11 w-11 flex-col compact:w-full items-center justify-center gap-0.5 rounded-xl text-frog-100 transition hover:bg-frog-700 hover:text-white active:scale-95 ${
                 dragging === tool.id || open === tool.id ? 'bg-frog-700 text-white' : ''
               }`}
             >
               <span className={`leading-none ${tool.id === 'title' ? 'font-serif text-[20px] font-black' : tool.id === 'text' ? 'text-[18px]' : 'text-[16px]'}`}>
                 {tool.id === 'board' ? boardMark(mascots) : tool.icon}
               </span>
-              <span className="text-[9px] font-semibold uppercase tracking-wide opacity-70 group-hover/tool:opacity-100">{tool.label}</span>
+              <span className="text-[9px] font-semibold uppercase tracking-wide opacity-70 group-hover/tool:opacity-100 compact:max-w-full compact:truncate compact:text-[8px] compact:tracking-normal">{tool.label}</span>
               {tool.children && <span className="absolute right-1 top-1 text-[8px] opacity-50">▸</span>}
             </button>
             {!mobile && open === tool.id && flyout(tool, 'left-full top-0 ml-2')}

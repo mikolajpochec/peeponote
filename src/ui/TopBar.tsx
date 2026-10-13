@@ -70,13 +70,18 @@ export function TopBar({
           <span key={b.id} className={`flex min-w-0 items-center gap-1 ${i === crumbs.length - 1 ? '' : 'hidden @[52rem]:flex'}`}>
             {i > 0 && <span className="hidden text-frog-200/40 @[52rem]:inline">/</span>}
             {i === crumbs.length - 1 ? (
-              <input
-                readOnly={readOnly}
-                value={b.name}
-                onChange={(e) => renameBoard(b.id, e.target.value)}
-                className="min-w-0 max-w-full rounded bg-transparent px-1 font-extrabold outline-none hover:bg-(--hover) focus:bg-(--hover-strong)"
-                style={{ width: `${Math.max(4, b.name.length + 1)}ch` }}
-              />
+              // sized by a hidden copy of the name: a width in `ch` cut short bold names like "Home"
+              <span className="grid min-w-0 grid-cols-[minmax(0,auto)]">
+                <span aria-hidden className="invisible col-start-1 row-start-1 min-w-[4ch] overflow-hidden whitespace-pre px-1 pr-2 font-extrabold">
+                  {b.name}
+                </span>
+                <input
+                  readOnly={readOnly}
+                  value={b.name}
+                  onChange={(e) => renameBoard(b.id, e.target.value)}
+                  className="col-start-1 row-start-1 w-full min-w-0 text-ellipsis rounded bg-transparent px-1 font-extrabold outline-none hover:bg-(--hover) focus:bg-(--hover-strong)"
+                />
+              </span>
             ) : (
               <button onClick={() => navigate(b.id)} className="min-w-0 truncate rounded px-1 text-frog-200/80 hover:bg-(--hover) hover:text-white">
                 {b.name || 'Untitled'}

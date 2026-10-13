@@ -16,7 +16,7 @@ interface PropsState {
 }
 export const useProperties = create<PropsState>((set) => ({ subject: null, open: (subject) => set({ subject }), close: () => set({ subject: null }) }))
 
-const row = 'grid grid-cols-[110px_1fr] items-center gap-3 text-[13px]'
+const row = 'grid grid-cols-[110px_1fr] items-center gap-3 text-[13px] max-sm:grid-cols-1 max-sm:gap-1'
 const label = 'text-[11px] font-bold uppercase tracking-wider text-frog-200/50'
 const field = 'w-full rounded-md bg-swamp-700 px-2 py-1 font-mono text-[12px] outline-none focus:ring-1 focus:ring-frog-400 disabled:opacity-60'
 const btn = 'rounded-md bg-swamp-700 px-2 py-1 text-[12px] font-semibold hover:bg-swamp-600'

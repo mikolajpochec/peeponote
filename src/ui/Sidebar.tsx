@@ -130,7 +130,7 @@ export function Sidebar({ onOpenSettings, onNavigate, onClose }: { onOpenSetting
 
   return (
     <aside
-      className="flex h-full w-60 shrink-0 flex-col border-r border-(--hair) bg-swamp-900"
+      className="flex h-full w-60 shrink-0 flex-col compact:w-[min(20rem,85vw)] border-r border-(--hair) bg-swamp-900"
       onContextMenu={(e) => {
         const t = e.target as HTMLElement
         if (t.closest('input')) return

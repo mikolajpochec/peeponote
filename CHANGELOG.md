@@ -3,6 +3,14 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
+## 1.5.1 — Tidier on phones
+*2026-10-13*
+
+- The bottom toolbar fits the screen with every tool in view, File included, so it no longer slides sideways.
+- The style and formatting bars wrap onto two rows instead of running off both edges of the screen.
+- Settings shows all its tabs at once, the boards drawer is wider so names fit, and short board names like "Home" are no longer clipped in the top bar.
+- Card properties stack their labels above the values on small phones.
+
 ## 1.5.0 — Better on phones
 *2026-10-13*
 

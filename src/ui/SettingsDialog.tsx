@@ -59,12 +59,12 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             ✕
           </button>
         </div>
-        <div className="no-scrollbar flex gap-1 overflow-x-auto px-5 pt-3">
+        <div className="no-scrollbar flex shrink-0 gap-1 overflow-x-auto px-3 pt-3 max-md:grid max-md:grid-cols-3 max-md:pb-2">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex shrink-0 items-center gap-1.5 rounded-t-lg px-3 py-1.5 text-[13px] font-bold ${tab === t.id ? 'bg-swamp-700 text-white' : 'text-frog-200/70 hover:bg-swamp-700/50 hover:text-white'}`}
+              className={`flex shrink-0 items-center gap-1.5 rounded-t-lg px-3 py-1.5 max-md:justify-center max-md:rounded-lg max-md:px-1 text-[13px] font-bold ${tab === t.id ? 'bg-swamp-700 text-white' : 'text-frog-200/70 hover:bg-swamp-700/50 hover:text-white'}`}
             >
               <span className="text-[13px]">{t.icon}</span>
               {t.title}
@@ -136,7 +136,7 @@ function SyncTab() {
       </p>
       <Row title="Repository" sub="Where the boards are shared. Everyone on the team uses the same URL.">
         <div className="mb-2 flex items-center gap-2">
-          <button className={`${btn} bg-frog-700/60 hover:bg-frog-600`} onClick={() => setChanging(true)}>
+          <button className={`${btn} shrink-0 whitespace-nowrap bg-frog-700/60 hover:bg-frog-600`} onClick={() => setChanging(true)}>
             ⇄ Change repo…
           </button>
           <span className={hint}>{repos.length > 1 ? `${repos.length - 1} other repo${repos.length === 2 ? '' : 's'} remembered` : 'Open another shared repo, or go back to a previous one.'}</span>

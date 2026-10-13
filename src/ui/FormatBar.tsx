@@ -48,7 +48,7 @@ export function FormatBar() {
 
   return (
     <div className="relative" data-nodrag onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
-      <div ref={bar} className="flex items-center gap-0.5 rounded-xl border border-(--hair) bg-swamp-900/95 p-1 shadow-2xl shadow-black/50 backdrop-blur">
+      <div ref={bar} className="flex flex-wrap items-center justify-center gap-0.5 rounded-xl border border-(--hair) bg-swamp-900/95 p-1 shadow-2xl shadow-black/50 backdrop-blur">
         <button className={btn} title="Bold (⌘B)" onPointerDown={keep} onClick={() => handle.wrap('**')}>
           B
         </button>

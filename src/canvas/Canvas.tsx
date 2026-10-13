@@ -814,13 +814,16 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems()} onClose={() => setMenu(null)} />}
       {styleBarPos && (
         <div
-          className="absolute z-30"
+          className="absolute z-30 w-max"
           style={{
             left: (() => {
               const cw = ref.current?.clientWidth ?? 800
+              // a phone is too narrow to follow the card: the bar sits centred and wraps instead of running off the edges
+              if (mobile) return cw / 2
               const half = Math.min(180, cw / 2 - 8)
               return Math.max(half, Math.min(styleBarPos.x, cw - half))
             })(),
+            maxWidth: (ref.current?.clientWidth ?? 800) - 16,
             top: styleBarPos.y,
             transform: styleBarPos.below ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
           }}
