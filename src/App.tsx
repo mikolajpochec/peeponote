@@ -20,7 +20,7 @@ import { SyncDialog } from './ui/SyncDialog'
 import { ConfirmDialog } from './ui/ConfirmDialog'
 import { PropertiesDialog } from './ui/PropertiesDialog'
 import { ErrorDialog } from './ui/ErrorDialog'
-import { ChangelogDialog } from './ui/ChangelogDialog'
+import { ChangelogDialog, type ChangelogMode } from './ui/ChangelogDialog'
 import { useSettings } from './store/settings'
 import { toggleViewOnly, useReadOnly } from './store/viewOnly'
 import { applyTheme, resolveTheme } from './theme/themes'
@@ -52,9 +52,9 @@ export default function App() {
   }, [boot])
 
   // what's new: once per version, and from the sidebar / Settings → About whenever you like
-  const [changelog, setChangelog] = useState<null | { afterUpdate: boolean }>(null)
+  const [changelog, setChangelog] = useState<null | { mode: ChangelogMode }>(null)
   useEffect(() => {
-    const open = () => setChangelog({ afterUpdate: false })
+    const open = (e: Event) => setChangelog({ mode: (e as CustomEvent<{ incoming?: boolean } | null>).detail?.incoming ? 'incoming' : 'browse' })
     window.addEventListener('peeponote:changelog', open)
     return () => window.removeEventListener('peeponote:changelog', open)
   }, [])
@@ -64,7 +64,7 @@ export default function App() {
     if (s.lastSeenVersion === APP_VERSION) return
     // a brand-new install has nothing to catch up on: remember the version and stay out of the way
     if (showOnboarding || !s.onboarded || !s.showChangelogOnUpdate) return s.set({ lastSeenVersion: APP_VERSION })
-    setChangelog({ afterUpdate: true })
+    setChangelog({ mode: 'afterUpdate' })
   }, [status, showOnboarding])
 
   const themeName = useSettings((s) => s.theme)
@@ -251,7 +251,7 @@ export default function App() {
       <ThreadDialog />
       {identity && !showOnboarding && <IdentityDialog intro={identity.intro} onClose={() => setIdentity(null)} />}
       <SyncDialog />
-      {changelog && <ChangelogDialog afterUpdate={changelog.afterUpdate} onClose={() => setChangelog(null)} />}
+      {changelog && <ChangelogDialog mode={changelog.mode} onClose={() => setChangelog(null)} />}
       <ConfirmDialog />
       <PropertiesDialog />
       <ErrorDialog />

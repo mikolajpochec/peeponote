@@ -1,13 +1,27 @@
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
+import { APP_VERSION, CHANGELOG } from './src/version.ts'
+
+/**
+ * version.json next to index.html: the version this build is and its changelog. A running (older) app reads it
+ * when the service worker finds an update, so it can say what the update brings before switching to it.
+ */
+const versionManifest = (): Plugin => ({
+  name: 'peeponote-version-json',
+  apply: 'build',
+  generateBundle() {
+    this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ version: APP_VERSION, changelog: CHANGELOG }) })
+  },
+})
 
 export default defineConfig({
   base: './',
   plugins: [
     react(),
     tailwindcss(),
+    versionManifest(),
     VitePWA({
       registerType: 'prompt',
       includeAssets: ['peepo/*.webp', 'favicon.webp'],

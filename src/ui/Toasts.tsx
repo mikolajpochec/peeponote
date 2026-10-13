@@ -20,6 +20,18 @@ export function Toasts() {
         >
           <Peepo name={t.peepo} size={26} />
           <span className="text-left">{t.text}</span>
+          {t.secondary && (
+            <span
+              role="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                t.secondary!.onClick()
+              }}
+              className="ml-1 shrink-0 rounded-md px-2 py-0.5 text-[12px] font-bold text-frog-200 ring-1 ring-(--hair) hover:text-white"
+            >
+              {t.secondary.label}
+            </span>
+          )}
           {t.action && (
             <span
               role="button"
@@ -28,7 +40,7 @@ export function Toasts() {
                 t.action!.onClick()
                 dismiss(t.id)
               }}
-              className="ml-1 rounded-md bg-frog-500 px-2 py-0.5 text-[12px] font-bold text-white hover:bg-frog-400"
+              className="ml-1 shrink-0 rounded-md bg-frog-500 px-2 py-0.5 text-[12px] font-bold text-white hover:bg-frog-400"
             >
               {t.action.label}
             </span>

@@ -1,23 +1,39 @@
 import { useEffect, useState } from 'react'
+import { useUpdate } from '../pwa/updates'
 import { useSettings } from '../store/settings'
-import { APP_VERSION, CHANGELOG, releasesSince, type Release } from '../version'
+import { APP_VERSION, CHANGELOG, compareVersions, releasesSince, type Release } from '../version'
 import { Peepo } from './Peepo'
 
 /**
- * What's new. Opens by itself once after an update (Settings → About turns that off) and any time from the
- * version in the sidebar. The releases you haven't seen come first, the rest are one click away.
+ * browse = opened from the sidebar version / Settings → About; afterUpdate = opened by itself after an update;
+ * incoming = what a downloaded-but-waiting update brings, with a button to switch to it.
  */
-export function ChangelogDialog({ onClose, afterUpdate }: { onClose: () => void; afterUpdate?: boolean }) {
+export type ChangelogMode = 'browse' | 'afterUpdate' | 'incoming'
+
+/**
+ * What's new. Opens by itself once after an update (Settings → About turns that off) and any time from the
+ * version in the sidebar. An update can skip several versions at once, so every release you haven't seen comes
+ * first, newest on top; the rest are one click away.
+ */
+export function ChangelogDialog({ onClose, mode }: { onClose: () => void; mode: ChangelogMode }) {
   const seen = useSettings((s) => s.lastSeenVersion)
   const set = useSettings((s) => s.set)
   const showOnUpdate = useSettings((s) => s.showChangelogOnUpdate)
-  const [fresh] = useState(() => (afterUpdate ? releasesSince(seen) : [CHANGELOG[0]]))
-  const older = CHANGELOG.filter((r) => !fresh.includes(r))
+  const update = useUpdate()
+  const [from] = useState(seen)
+  const [fresh] = useState(() => (mode === 'afterUpdate' ? releasesSince(seen) : mode === 'incoming' ? update.releases : [CHANGELOG[0]]))
+  const older = mode === 'incoming' ? CHANGELOG.filter((r) => compareVersions(r.version, APP_VERSION) <= 0) : CHANGELOG.filter((r) => !fresh.includes(r))
   const [showOlder, setShowOlder] = useState(false)
 
   const close = () => {
     set({ lastSeenVersion: APP_VERSION })
     onClose()
+  }
+  const updateNow = () => {
+    // they have just read what it brings: don't show the same notes again after the reload
+    set({ lastSeenVersion: update.version || APP_VERSION })
+    onClose()
+    update.apply()
   }
 
   useEffect(() => {
@@ -26,14 +42,23 @@ export function ChangelogDialog({ onClose, afterUpdate }: { onClose: () => void;
     return () => window.removeEventListener('keydown', k)
   })
 
+  const title = mode === 'afterUpdate' ? 'peeponote just updated' : mode === 'incoming' ? 'An update is ready' : "What's new"
+  const many = fresh.length > 1 ? ` · ${fresh.length} new versions` : ''
+  const subtitle =
+    mode === 'incoming'
+      ? `${APP_VERSION} → ${update.version}${many}`
+      : mode === 'afterUpdate' && from && from !== APP_VERSION && fresh.length > 1
+        ? `${from} → ${APP_VERSION}${many}`
+        : `You're on ${APP_VERSION}`
+
   return (
     <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/60 p-4" onClick={close}>
       <div className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl border border-(--hair) bg-swamp-800 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-5 pt-4">
-          <Peepo name="peepoClap" size={36} />
+          <Peepo name={mode === 'incoming' ? 'peepoThink' : 'peepoClap'} size={36} />
           <div className="min-w-0 flex-1">
-            <div className="text-xl font-black tracking-tight">{afterUpdate ? 'peeponote just updated' : "What's new"}</div>
-            <div className="text-[11px] text-frog-200/50">You're on {APP_VERSION}</div>
+            <div className="text-xl font-black tracking-tight">{title}</div>
+            <div className="text-[11px] text-frog-200/50">{subtitle}</div>
           </div>
           <button onClick={close} className="text-frog-200/60 hover:text-white">
             ✕
@@ -46,7 +71,7 @@ export function ChangelogDialog({ onClose, afterUpdate }: { onClose: () => void;
           {older.length > 0 && (
             <div className="mt-2 border-t border-(--hair) pt-2">
               <button onClick={() => setShowOlder((o) => !o)} className="text-[12px] font-semibold text-frog-200/70 hover:text-white">
-                {showOlder ? '▾' : '▸'} Older versions ({older.length})
+                {showOlder ? '▾' : '▸'} {mode === 'incoming' ? 'Versions you already have' : 'Older versions'} ({older.length})
               </button>
               {showOlder && <div className="mt-3">{older.map((r) => <ReleaseNotes key={r.version} release={r} muted />)}</div>}
             </div>
@@ -57,9 +82,20 @@ export function ChangelogDialog({ onClose, afterUpdate }: { onClose: () => void;
             <input type="checkbox" checked={showOnUpdate} onChange={(e) => set({ showChangelogOnUpdate: e.target.checked })} className="accent-frog-500" />
             Show this after an update
           </label>
-          <button onClick={close} className="rounded-md bg-frog-500 px-3 py-1.5 text-[13px] font-bold text-white hover:bg-frog-400">
-            Got it
-          </button>
+          {mode === 'incoming' ? (
+            <div className="flex gap-2">
+              <button onClick={close} className="rounded-md px-3 py-1.5 text-[13px] font-semibold text-frog-200/70 hover:text-white">
+                Later
+              </button>
+              <button onClick={updateNow} className="rounded-md bg-frog-500 px-3 py-1.5 text-[13px] font-bold text-white hover:bg-frog-400">
+                Update now
+              </button>
+            </div>
+          ) : (
+            <button onClick={close} className="rounded-md bg-frog-500 px-3 py-1.5 text-[13px] font-bold text-white hover:bg-frog-400">
+              Got it
+            </button>
+          )}
         </div>
       </div>
     </div>

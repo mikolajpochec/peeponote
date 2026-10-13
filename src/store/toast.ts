@@ -8,6 +8,8 @@ export interface Toast {
   peepo: PeepoName
   kind: 'ok' | 'err' | 'info'
   action?: { label: string; onClick: () => void }
+  /** a quieter second button that leaves the toast up (e.g. "What's new" next to "Reload now") */
+  secondary?: { label: string; onClick: () => void }
   /** stays until dismissed or its action runs */
   sticky?: boolean
 }

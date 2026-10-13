@@ -6,7 +6,7 @@
  * minor = a new feature, patch = fixes and polish. Every release that reaches `main` bumps this and adds
  * an entry here, in plain words, written for the person using peeponote rather than for git.
  */
-export const APP_VERSION = '1.5.1'
+export const APP_VERSION = '1.6.0'
 
 export interface Release {
   version: string
@@ -19,6 +19,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: '1.6.0',
+    date: '2026-10-13',
+    title: 'Catch up on every update at once',
+    notes: [
+      'Away for a while? peeponote jumps straight to the newest version and then shows the notes of every version you missed, newest first, with where you came from and where you are now.',
+      'When an update is waiting for you to save, its message says which version it is and how many it brings, and "What\'s new" lists them before you switch.',
+      'Versions are now compared properly, so 1.10 counts as newer than 1.9.',
+    ],
+  },
   {
     version: '1.5.1',
     date: '2026-10-13',
@@ -94,9 +104,28 @@ export const CHANGELOG: Release[] = [
 ]
 
 export const latestRelease = () => CHANGELOG[0]
-/** releases newer than the one this browser last saw ('' = never seen any) */
+/** -1, 0 or 1, comparing MAJOR.MINOR.PATCH numerically (so 1.10.0 is newer than 1.9.0) */
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split('.').map(Number)
+  const pb = b.split('.').map(Number)
+  for (let i = 0; i < 3; i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0)
+    if (d) return d < 0 ? -1 : 1
+  }
+  return 0
+}
+
+/**
+ * Releases in `list` newer than `from` and no newer than `to`, newest first. Every version skipped in between
+ * is included, so someone who jumps from 1.2.0 straight to 1.6.0 reads the notes of 1.3, 1.4, 1.5 and 1.6.
+ */
+export function releasesBetween(from: string, to: string, list: Release[] = CHANGELOG): Release[] {
+  return list.filter((r) => compareVersions(r.version, from) > 0 && compareVersions(r.version, to) <= 0)
+}
+
+/** releases newer than the one this browser last saw ('' = never seen any: just the latest) */
 export function releasesSince(seen: string): Release[] {
   if (!seen) return [latestRelease()]
-  const i = CHANGELOG.findIndex((r) => r.version === seen)
-  return i === -1 ? [latestRelease()] : CHANGELOG.slice(0, i)
+  const fresh = releasesBetween(seen, APP_VERSION)
+  return fresh.length ? fresh : [latestRelease()]
 }

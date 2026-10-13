@@ -3,6 +3,13 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
+## 1.6.0 — Catch up on every update at once
+*2026-10-13*
+
+- Away for a while? peeponote jumps straight to the newest version and then shows the notes of every version you missed, newest first, with where you came from and where you are now.
+- When an update is waiting for you to save, its message says which version it is and how many it brings, and "What's new" lists them before you switch.
+- Versions are now compared properly, so 1.10 counts as newer than 1.9.
+
 ## 1.5.1 — Tidier on phones
 *2026-10-13*
 
