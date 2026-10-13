@@ -12,6 +12,7 @@ import { useUnseenCount } from '../review/notifications'
 import { Avatar } from '../review/Avatar'
 import { ContextMenu, sep, type MenuItem } from './ContextMenu'
 import { SaveDialog } from './SaveDialog'
+import { kbd } from './keys'
 
 /**
  * One row that has to survive any width — a phone, a split screen, or a desktop window with the sidebar and a
@@ -119,7 +120,7 @@ export function TopBar({
           >
             🕰<span className="hidden @[46rem]:inline"> History</span>
           </button>
-          <button onClick={onOpenSettings} title="Settings (⌘,)" className="rounded-md px-2 py-1 text-[13px] font-semibold hover:bg-(--hover-strong) max-md:h-9 max-md:w-9 max-md:px-0">
+          <button onClick={onOpenSettings} title={`Settings (${kbd('⌘,')})`} className="rounded-md px-2 py-1 text-[13px] font-semibold hover:bg-(--hover-strong) max-md:h-9 max-md:w-9 max-md:px-0">
             ⚙
           </button>
         </div>
@@ -159,7 +160,7 @@ function MoreMenu({
   const viewOnly = useSettings((s) => s.viewOnly)
 
   const items: MenuItem[] = [
-    { kind: 'item', icon: viewOnly ? '✎' : '🔒', label: viewOnly ? 'Back to editing' : 'View only', shortcut: '⇧⌘E', onClick: toggleViewOnly },
+    { kind: 'item', icon: viewOnly ? '✎' : '🔒', label: viewOnly ? 'Back to editing' : 'View only', shortcut: kbd('⇧⌘E'), onClick: toggleViewOnly },
     { kind: 'item', icon: '🔍', label: reviewOn ? 'Leave review mode' : 'Review mode', onClick: () => setMode({ on: !reviewOn }) },
     { kind: 'item', icon: '🔔', label: unseen > 0 ? `Notifications (${unseen > 99 ? '99+' : unseen} new)` : panelOpen ? 'Hide notifications' : 'Notifications', onClick: () => setPanelOpen(!panelOpen) },
     {
@@ -174,7 +175,7 @@ function MoreMenu({
       ? [sep, { kind: 'item', icon: '⁘', label: board.style?.dots === false ? 'Show dot grid' : 'Hide dot grid', onClick: () => setBoardStyle(board.id, { dots: board.style?.dots === false ? undefined : false }) } as MenuItem]
       : []),
     sep,
-    { kind: 'item', icon: '⚙', label: 'Settings', shortcut: '⌘,', onClick: onOpenSettings },
+    { kind: 'item', icon: '⚙', label: 'Settings', shortcut: kbd('⌘,'), onClick: onOpenSettings },
   ]
 
   const open = () => {
@@ -209,7 +210,7 @@ function ViewOnlyToggle() {
   return (
     <button
       onClick={toggleViewOnly}
-      title={on ? 'View only is on: click to edit again (⇧⌘E)' : 'View only: scroll and look without changing anything by accident (⇧⌘E)'}
+      title={on ? `View only is on: click to edit again (${kbd('⇧⌘E')})` : `View only: scroll and look without changing anything by accident (${kbd('⇧⌘E')})`}
       aria-pressed={on}
       className={`h-8 shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-[13px] font-bold max-md:h-9 ${
         on ? 'flex bg-sky-500 text-black hover:bg-sky-400' : 'flex hover:bg-(--hover-strong)'
@@ -376,7 +377,7 @@ function SaveBar() {
         <button
           onClick={doSave}
           disabled={!dirty || !!busy || !!viewingRef}
-          title={willPush ? `Save: commit, then bring in others' changes and push → ${remoteUrl} (⌘S)` : 'Save (⌘S)'}
+          title={willPush ? `Save: commit, then bring in others' changes and push → ${remoteUrl} (${kbd('⌘S')})` : `Save (${kbd('⌘S')})`}
           className="flex h-8 shrink-0 items-center gap-1.5 bg-frog-500 px-3 py-1 text-[13px] font-bold text-white hover:bg-frog-400 disabled:cursor-not-allowed disabled:opacity-40 max-md:px-2"
         >
           <Peepo name={willPush ? 'peepoRun' : 'peepoClap'} size={20} />

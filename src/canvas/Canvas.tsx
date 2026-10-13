@@ -28,6 +28,7 @@ import { useProperties } from '../ui/PropertiesDialog'
 import { useSettings } from '../store/settings'
 import { hintViewOnly } from '../store/viewOnly'
 import { boardMark } from '../theme/glyphs'
+import { kbd } from '../ui/keys'
 import { useReview } from '../store/review'
 import { CommentLayer } from '../review/CommentLayer'
 import { resolveTheme } from '../theme/themes'
@@ -380,7 +381,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       kind: 'item',
       label: 'Paste here',
       icon: '📋',
-      shortcut: '⌘V',
+      shortcut: kbd('⌘V'),
       disabled: readOnly || !hasClipboard(),
       onClick: () => {
         const p = readPayload()
@@ -405,7 +406,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         { kind: 'item', label: n > 1 ? `Ask for review of ${n} cards…` : 'Ask for review…', icon: '👀', onClick: () => useReview.getState().setRequestDialog({ boardId: board.id, targets: [...sel] }) },
         { kind: 'item', label: 'Comments…', icon: '💬', onClick: () => useReview.getState().setOpenThread({ boardId: board.id, anchorKey: `card:${[...sel][0]}` }) },
         sep,
-        { kind: 'item', label: n > 1 ? `Copy ${n} items` : 'Copy', icon: '⧉', shortcut: '⌘C', onClick: () => copySelection(live, sel) },
+        { kind: 'item', label: n > 1 ? `Copy ${n} items` : 'Copy', icon: '⧉', shortcut: kbd('⌘C'), onClick: () => copySelection(live, sel) },
         ...(one
           ? [
               {
@@ -423,13 +424,13 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
           kind: 'item',
           label: 'Cut',
           icon: '✂',
-          shortcut: '⌘X',
+          shortcut: kbd('⌘X'),
           disabled: readOnly,
           onClick: async () => {
             if (await removeCardsChecked(board.id, ids)) copySelection(live, sel)
           },
         },
-        { kind: 'item', label: 'Duplicate', icon: '⊕', shortcut: '⌘D', disabled: readOnly, onClick: () => duplicateSelection(live, sel) },
+        { kind: 'item', label: 'Duplicate', icon: '⊕', shortcut: kbd('⌘D'), disabled: readOnly, onClick: () => duplicateSelection(live, sel) },
         paste,
         sep,
         {
@@ -445,10 +446,10 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         { kind: 'item', label: 'Send to back', icon: '⤓', disabled: readOnly, onClick: () => sendToBack(board.id, ids) },
         sep,
         ...(selCards.some((c) => c.groupId)
-          ? [{ kind: 'item', label: 'Ungroup', icon: '⧉', shortcut: '⌘⇧G', disabled: readOnly, onClick: () => ungroupCards(board.id, ids) } as MenuItem]
+          ? [{ kind: 'item', label: 'Ungroup', icon: '⧉', shortcut: kbd('⌘⇧G'), disabled: readOnly, onClick: () => ungroupCards(board.id, ids) } as MenuItem]
           : []),
         ...(n > 1 && !(selCards.every((c) => c.groupId) && new Set(selCards.map((c) => c.groupId)).size === 1)
-          ? [{ kind: 'item', label: `Group ${n} items`, icon: '⧉', shortcut: '⌘G', disabled: readOnly, onClick: () => groupCards(board.id, ids) } as MenuItem]
+          ? [{ kind: 'item', label: `Group ${n} items`, icon: '⧉', shortcut: kbd('⌘G'), disabled: readOnly, onClick: () => groupCards(board.id, ids) } as MenuItem]
           : []),
         ...(n > 1 || selCards.some((c) => c.groupId) ? [sep] : []),
         ...(selCards.some((c) => c.type === 'text' && c.autoSize === false)
@@ -461,8 +462,8 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     }
     // empty canvas
     return [
-      { kind: 'item', label: 'Undo', icon: '↶', shortcut: '⌘Z', disabled: readOnly, onClick: () => void useWorkspace.getState().undo() },
-      { kind: 'item', label: 'Redo', icon: '↷', shortcut: '⇧⌘Z', disabled: readOnly, onClick: () => void useWorkspace.getState().redo() },
+      { kind: 'item', label: 'Undo', icon: '↶', shortcut: kbd('⌘Z'), disabled: readOnly, onClick: () => void useWorkspace.getState().undo() },
+      { kind: 'item', label: 'Redo', icon: '↷', shortcut: kbd('⇧⌘Z'), disabled: readOnly, onClick: () => void useWorkspace.getState().redo() },
       sep,
       paste,
       {
@@ -494,8 +495,8 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
             },
       ),
       sep,
-      { kind: 'item', label: 'Select all', icon: '▣', shortcut: '⌘A', onClick: () => select(live.cards.map((c) => c.id)) },
-      { kind: 'item', label: 'Center view', icon: '⌖', shortcut: '⌘0', onClick: centerView },
+      { kind: 'item', label: 'Select all', icon: '▣', shortcut: kbd('⌘A'), onClick: () => select(live.cards.map((c) => c.id)) },
+      { kind: 'item', label: 'Center view', icon: '⌖', shortcut: kbd('⌘0'), onClick: centerView },
       { kind: 'item', label: 'Fit everything', icon: '⤢', shortcut: '⇧F', onClick: fitView },
     ]
   }
@@ -835,7 +836,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         className={`absolute bottom-2 right-3 flex items-center gap-0.5 rounded-lg p-0.5 text-[11px] compact:bottom-20 ${mobile && editingCardId ? 'hidden' : ''}`}
         style={{ color: 'var(--board-fg-muted)', background: 'color-mix(in srgb, var(--board-fg) 8%, transparent)' }}
       >
-        <button onClick={centerView} title="Center on the board origin (⌘0)" className="h-7 w-7 rounded-md compact:h-9 compact:w-9 text-[15px] hover:bg-(--hover-strong)" style={{ color: 'var(--board-fg)' }}>
+        <button onClick={centerView} title={`Center on the board origin (${kbd('⌘0')})`} className="h-7 w-7 rounded-md compact:h-9 compact:w-9 text-[15px] hover:bg-(--hover-strong)" style={{ color: 'var(--board-fg)' }}>
           ⌖
         </button>
         <button onClick={fitView} title="Fit everything (⇧F)" className="h-7 w-7 rounded-md compact:h-9 compact:w-9 text-[13px] hover:bg-(--hover-strong)" style={{ color: 'var(--board-fg)' }}>

@@ -6,7 +6,7 @@
  * minor = a new feature, patch = fixes and polish. Every release that reaches `main` bumps this and adds
  * an entry here, in plain words, written for the person using peeponote rather than for git.
  */
-export const APP_VERSION = '1.7.0'
+export const APP_VERSION = '1.7.1'
 
 export interface Release {
   version: string
@@ -19,6 +19,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: '1.7.1',
+    date: '2026-10-14',
+    title: 'Shortcuts speak Windows and Linux',
+    notes: [
+      'Every shortcut peeponote shows now matches the keyboard in front of you: Ctrl+S on Windows and Linux, ⌘S on a Mac. The keys always worked, only the labels were written for Macs.',
+      'Menus, button tips, the guide board and the "deleted, press to undo" message all say the right thing now.',
+    ],
+  },
   {
     version: '1.7.0',
     date: '2026-10-14',
@@ -68,7 +77,7 @@ export const CHANGELOG: Release[] = [
     date: '2026-10-13',
     title: 'View only, for looking without touching',
     notes: [
-      'Tap 🔒 in the top bar (or ⋯ → View only, or ⇧⌘E) and your boards can be scrolled, zoomed and opened but not changed: a stray tap, drag or key press edits nothing.',
+      'Tap 🔒 in the top bar (or ⋯ → View only, or ⇧⌘E / Ctrl+Shift+E) and your boards can be scrolled, zoomed and opened but not changed: a stray tap, drag or key press edits nothing.',
       'The blue View only button stays in the top bar while it is on; tap it again to go back to editing.',
       'It is kept in this browser, so a phone you only read on can stay locked.',
     ],

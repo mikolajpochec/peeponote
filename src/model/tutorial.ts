@@ -1,4 +1,5 @@
 import type { Board, Card, Connector } from './types'
+import { kbd, MOD } from '../ui/keys'
 import { newId } from './types'
 
 /** Boards seeded into a fresh workspace: Home + a "How to use peeponote" walkthrough. */
@@ -36,7 +37,7 @@ export function tutorialBoards(rootId: string): Board[] {
     note(cStyle, 330, 390, 260, 185, '### 5 · Style anything\nSelect a card and a style bar appears: fill, text color, font, size, border, radius, opacity. Works on multi-select. 🎨 in the top bar styles the board itself.', {
       style: { bg: '#ddd6fe', radius: 24 },
     }),
-    note(cGit, 620, 390, 280, 185, '### 6 · It\'s all git\nEdits are written to the working tree as you go — a refresh never loses anything. **Save (⌘S)** makes a commit. History (top right) lets you peek at and restore any version.'),
+    note(cGit, 620, 390, 280, 185, `### 6 · It's all git\nEdits are written to the working tree as you go — a refresh never loses anything. **Save (${kbd('⌘S')})** makes a commit. History (top right) lets you peek at and restore any version.`),
 
     note(cSave, 40, 610, 260, 170, '### 7 · Save & share\nConnect a GitHub repo in ⚙ Settings (paste a token). From then on Save does everything: brings in what others saved, combines it with yours, and pushes. It only asks when you both edited the same card.', {
       style: { bg: '#c8f2d4' },
@@ -56,12 +57,12 @@ export function tutorialBoards(rootId: string): Board[] {
         { id: id(), text: 'Double-click a note and edit it', done: false },
         { id: id(), text: 'Drop an image onto the board', done: false },
         { id: id(), text: 'Draw an arrow between two cards', done: false },
-        { id: id(), text: 'Press ⌘S to commit', done: false },
+        { id: id(), text: `Press ${kbd('⌘S')} to commit`, done: false },
       ],
     },
     { id: id(), type: 'link', x: 40, y: 820, w: 260, h: 90, z: 1, url: 'https://github.com/isomorphic-git/isomorphic-git', title: 'Powered by isomorphic-git' },
     { id: cSandbox, type: 'board', x: 330, y: 820, w: 260, h: 110, z: 1, boardId: sandboxId, style: { bg: '#fff3b0' } },
-    { id: id(), type: 'text', x: 40, y: 960, w: 560, h: 40, z: 1, variant: 'body', autoSize: true, text: 'Shortcuts: ⌘S save · ⌘C/⌘X/⌘V/⌘D clipboard · ⌘A select all · ⌘0 reset zoom · Space+drag pans · ⌘+wheel zooms · Del deletes · right-click for more.' },
+    { id: id(), type: 'text', x: 40, y: 960, w: 560, h: 40, z: 1, variant: 'body', autoSize: true, text: `Shortcuts: ${kbd('⌘S')} save · ${MOD}+C/X/V/D clipboard · ${kbd('⌘A')} select all · ${kbd('⌘0')} reset zoom · Space+drag pans · ${MOD}+wheel zooms · Del deletes · right-click for more.` },
   ]
 
   const arrow = (from: string, to: string, extra: Partial<Connector> = {}): Connector =>
