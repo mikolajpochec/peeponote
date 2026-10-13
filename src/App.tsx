@@ -22,6 +22,7 @@ import { PropertiesDialog } from './ui/PropertiesDialog'
 import { ErrorDialog } from './ui/ErrorDialog'
 import { ChangelogDialog } from './ui/ChangelogDialog'
 import { useSettings } from './store/settings'
+import { toggleViewOnly, useReadOnly } from './store/viewOnly'
 import { applyTheme, resolveTheme } from './theme/themes'
 import { useIsMobile } from './canvas/touch'
 import { APP_VERSION } from './version'
@@ -74,6 +75,7 @@ export default function App() {
   const [identity, setIdentity] = useState<null | { intro: boolean }>(null)
   const reviewLoaded = useReview((s) => s.loaded)
   const reviewOn = useReview((s) => s.mode.on)
+  const readOnly = useReadOnly()
   const notifOpen = useReview((s) => s.panelOpen)
   const setNotifOpen = useReview((s) => s.setPanelOpen)
   useEffect(() => {
@@ -94,6 +96,11 @@ export default function App() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
         e.preventDefault()
         save()
+      }
+      // ⇧⌘E: view only on / off
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'e') {
+        e.preventDefault()
+        toggleViewOnly()
       }
       if ((e.metaKey || e.ctrlKey) && e.key === ',') {
         e.preventDefault()
@@ -220,7 +227,7 @@ export default function App() {
         <div className="relative flex min-h-0 flex-1">
           <div className="relative min-w-0 flex-1">
             {board && currentBoardId ? (
-              <Canvas key={`${board.id}:${viewingRef ?? 'live'}`} board={board} readOnly={!!viewingRef || reviewOn} />
+              <Canvas key={`${board.id}:${viewingRef ?? 'live'}`} board={board} readOnly={readOnly} />
             ) : (
               <div className="flex h-full items-center justify-center text-frog-200/60">Board not found</div>
             )}

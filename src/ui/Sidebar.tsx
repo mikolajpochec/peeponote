@@ -11,6 +11,7 @@ import { useProperties } from './PropertiesDialog'
 import { toast } from '../store/toast'
 import { contrast } from '../canvas/styles'
 import { useSettings } from '../store/settings'
+import { useReadOnly } from '../store/viewOnly'
 import { boardMark } from '../theme/glyphs'
 import { openChangelog } from './ChangelogDialog'
 import { APP_VERSION } from '../version'
@@ -34,7 +35,7 @@ export function Sidebar({ onOpenSettings, onNavigate, onClose }: { onOpenSetting
   }
   const createBoard = useWorkspace((s) => s.createBoard)
   const removeCards = useWorkspace((s) => s.removeCards)
-  const readOnly = useWorkspace((s) => !!s.viewingRef)
+  const readOnly = useReadOnly()
   const mascots = useSettings((s) => s.mascots)
   const fs = useWorkspace((s) => s.fs)
   const head = useWorkspace((s) => s.head)

@@ -6,7 +6,7 @@
  * minor = a new feature, patch = fixes and polish. Every release that reaches `main` bumps this and adds
  * an entry here, in plain words, written for the person using peeponote rather than for git.
  */
-export const APP_VERSION = '1.3.0'
+export const APP_VERSION = '1.4.0'
 
 export interface Release {
   version: string
@@ -19,6 +19,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: '1.4.0',
+    date: '2026-10-13',
+    title: 'View only, for looking without touching',
+    notes: [
+      'Tap 🔒 in the top bar (or ⋯ → View only, or ⇧⌘E) and your boards can be scrolled, zoomed and opened but not changed: a stray tap, drag or key press edits nothing.',
+      'The blue View only button stays in the top bar while it is on; tap it again to go back to editing.',
+      'It is kept in this browser, so a phone you only read on can stay locked.',
+    ],
+  },
   {
     version: '1.3.0',
     date: '2026-10-12',

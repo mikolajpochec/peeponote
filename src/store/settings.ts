@@ -40,6 +40,8 @@ export interface Settings {
   lastSeenVersion: string
   /** show "what's new" by itself the first time you open a new version */
   showChangelogOnUpdate: boolean
+  /** view only: boards scroll and zoom but can't be changed, so a stray tap or drag edits nothing */
+  viewOnly: boolean
   set: (patch: Partial<Omit<Settings, 'set' | 'reset' | 'rememberRepo' | 'forgetRepo'>>) => void
   /** back to factory defaults (token gone, wizard shows again) */
   reset: () => void
@@ -64,6 +66,7 @@ const DEFAULTS: Omit<Settings, 'set' | 'reset' | 'rememberRepo' | 'forgetRepo'> 
   showAutoCommits: false,
   lastSeenVersion: '',
   showChangelogOnUpdate: true,
+  viewOnly: false,
 }
 
 export const useSettings = create<Settings>()(

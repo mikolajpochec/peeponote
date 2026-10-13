@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import type { Board } from '../model/types'
 import { selectBoards, selectDirty, useWorkspace } from '../store/workspace'
 import { useSettings } from '../store/settings'
+import { toggleViewOnly, useReadOnly } from '../store/viewOnly'
 import { Peepo } from './Peepo'
 import { ColorPicker } from './ColorPicker'
 import { resolveTheme } from '../theme/themes'
@@ -38,11 +39,11 @@ export function TopBar({
   const navigate = useWorkspace((s) => s.navigate)
   const renameBoard = useWorkspace((s) => s.renameBoard)
   const setBoardStyle = useWorkspace((s) => s.setBoardStyle)
-  const viewingRef = useWorkspace((s) => s.viewingRef)
   const themeCanvas = useSettings((s) => resolveTheme(s.theme).canvas)
   const board = currentId ? boards[currentId] : undefined
   const reviewOn = useReview((s) => s.mode.on)
-  const readOnly = !!viewingRef || reviewOn
+  const readOnly = useReadOnly()
+  const viewOnly = useSettings((s) => s.viewOnly)
 
   const crumbs: Board[] = []
   for (let b = board; b; b = b.parentId ? boards[b.parentId] : undefined) crumbs.unshift(b)
@@ -97,9 +98,12 @@ export function TopBar({
         </div>
       )}
       <div className="flex shrink-0 items-center gap-1">
+        {/* once on, the way out of view only stays in sight at every width */}
+        {viewOnly && <ViewOnlyToggle />}
         {reviewOn ? <ReviewToggle /> : <SaveBar />}
         {/* below the fold this whole group lives in the ⋯ menu — it's all of it or none of it */}
         <div className="hidden items-center gap-1 @[34rem]:flex">
+          {!viewOnly && <ViewOnlyToggle />}
           {!reviewOn && <ReviewToggle />}
           <Bell />
           <Identity />
@@ -147,8 +151,10 @@ function MoreMenu({
   const unseen = useUnseenCount()
   const panelOpen = useReview((s) => s.panelOpen)
   const setPanelOpen = useReview((s) => s.setPanelOpen)
+  const viewOnly = useSettings((s) => s.viewOnly)
 
   const items: MenuItem[] = [
+    { kind: 'item', icon: viewOnly ? '✎' : '🔒', label: viewOnly ? 'Back to editing' : 'View only', shortcut: '⇧⌘E', onClick: toggleViewOnly },
     { kind: 'item', icon: '🔍', label: reviewOn ? 'Leave review mode' : 'Review mode', onClick: () => setMode({ on: !reviewOn }) },
     { kind: 'item', icon: '🔔', label: unseen > 0 ? `Notifications (${unseen > 99 ? '99+' : unseen} new)` : panelOpen ? 'Hide notifications' : 'Notifications', onClick: () => setPanelOpen(!panelOpen) },
     {
@@ -189,6 +195,24 @@ function MoreMenu({
       {/* the header is a container (`@container`), which would anchor a fixed menu to it — so it goes to the body */}
       {at && createPortal(<ContextMenu x={at.x} y={at.y} items={items} onClose={() => setAt(null)} />, document.body)}
     </>
+  )
+}
+
+/** View only: look around without changing anything by accident. Unlike review mode, no comments either. */
+function ViewOnlyToggle() {
+  const on = useSettings((s) => s.viewOnly)
+  return (
+    <button
+      onClick={toggleViewOnly}
+      title={on ? 'View only is on: click to edit again (⇧⌘E)' : 'View only: scroll and look without changing anything by accident (⇧⌘E)'}
+      aria-pressed={on}
+      className={`h-8 shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-[13px] font-bold max-md:h-9 ${
+        on ? 'flex bg-sky-500 text-black hover:bg-sky-400' : 'flex hover:bg-(--hover-strong)'
+      }`}
+    >
+      🔒
+      <span className={on ? 'hidden @[34rem]:inline' : 'hidden @[46rem]:inline'}>{on ? 'View only' : 'Lock'}</span>
+    </button>
   )
 }
 

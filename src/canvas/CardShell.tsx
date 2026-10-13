@@ -8,6 +8,7 @@ import { cardStyles } from './styles'
 import { useArrivals } from './arrivals'
 import { pictureAspect } from './pictureAspect'
 import { removeCardsChecked } from '../store/removeCards'
+import { hintViewOnly } from '../store/viewOnly'
 
 export const GRID = 20
 export const MIN_W = 120
@@ -136,6 +137,7 @@ export const CardShell = memo(function CardShell({ card, boardId, selected, read
         e.stopPropagation()
         if (onOpen) onOpen()
         else if (!readOnly && !locked) setEditTick((t) => t + 1)
+        else if (readOnly) hintViewOnly()
       }}
     >
       <EditRequestContext.Provider value={editTick}>

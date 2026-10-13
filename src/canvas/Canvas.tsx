@@ -26,6 +26,7 @@ import { toast } from '../store/toast'
 import { removeCardsChecked } from '../store/removeCards'
 import { useProperties } from '../ui/PropertiesDialog'
 import { useSettings } from '../store/settings'
+import { hintViewOnly } from '../store/viewOnly'
 import { boardMark } from '../theme/glyphs'
 import { useReview } from '../store/review'
 import { CommentLayer } from '../review/CommentLayer'
@@ -153,6 +154,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
         e.preventDefault()
       }
       if (isTyping()) return
+      if ((e.key === 'Delete' || e.key === 'Backspace') && readOnly && useWorkspace.getState().selection.size) hintViewOnly()
       if ((e.key === 'Delete' || e.key === 'Backspace') && !readOnly) {
         const sel = useWorkspace.getState().selection
         if (sel.size) {
@@ -615,13 +617,14 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
   const onDoubleClick = (e: React.MouseEvent) => {
     if (e.target !== e.currentTarget && !(e.target as HTMLElement).dataset.layer) return
     if (isDuplicateDblClick()) return
+    if (readOnly) return hintViewOnly()
     openNoteAt(e.clientX, e.clientY)
   }
 
   const onDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     setDragOver(false)
-    if (readOnly) return
+    if (readOnly) return hintViewOnly()
     const rect = ref.current!.getBoundingClientRect()
     const p = screenToBoard(vp, e.clientX, e.clientY, rect)
     const toolId = e.dataTransfer.getData(TOOL_MIME)
@@ -673,7 +676,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
   return (
     <div
       ref={ref}
-      className={`canvas-bg relative h-full w-full overflow-hidden touch-none ${reviewOn ? 'review-mode' : ''} ${dragOver ? 'outline outline-4 -outline-offset-4 outline-frog-300/60' : ''}`}
+      className={`canvas-bg relative h-full w-full overflow-hidden touch-none ${reviewOn ? 'review-mode' : ''} ${dragOver && !readOnly ? 'outline outline-4 -outline-offset-4 outline-frog-300/60' : ''}`}
       style={{
         ...boardVars(board, theme.canvas),
         backgroundColor: 'var(--board-bg)',

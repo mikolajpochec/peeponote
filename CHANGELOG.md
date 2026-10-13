@@ -3,6 +3,13 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
+## 1.4.0 — View only, for looking without touching
+*2026-10-13*
+
+- Tap 🔒 in the top bar (or ⋯ → View only, or ⇧⌘E) and your boards can be scrolled, zoomed and opened but not changed: a stray tap, drag or key press edits nothing.
+- The blue View only button stays in the top bar while it is on; tap it again to go back to editing.
+- It is kept in this browser, so a phone you only read on can stay locked.
+
 ## 1.3.0 — Maths in your cards
 *2026-10-12*
 
