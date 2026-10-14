@@ -1,10 +1,11 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Anchor, ArrowStyle, Board, Card, Connector, Side } from '../model/types'
 import { SIDES } from '../model/types'
 import { useWorkspace } from '../store/workspace'
 import { anchorPoint, bezierMid, connectorPath, itemPoint, sidePoint, type Pt } from './connectors'
 import { useItemRects } from './itemRects'
 import { ColorPicker } from '../ui/ColorPicker'
+import { usePlugin } from '../plugins'
 
 export interface DraftConnector {
   /** the end that stays put */
@@ -117,6 +118,36 @@ export function ConnectorLayer({ board, scale, readOnly, selection, hoveredCard,
           </>
         )}
       </svg>
+
+      {/* line labels, centred on the curve */}
+      {resolved.map(({ k, a, b }) => {
+        if (!k.label || draft?.editing?.id === k.id) return null
+        const m = bezierMid(a.pt, a.side, b.pt, b.side)
+        return (
+          <div
+            key={`label-${k.id}`}
+            data-connector={k.id}
+            onPointerDown={(e) => {
+              if (readOnly) return
+              e.stopPropagation()
+              onSelect(k.id, e.shiftKey)
+            }}
+            className="absolute whitespace-nowrap rounded-md px-1.5 py-px font-mono text-[12px] font-semibold"
+            style={{
+              left: m.x,
+              top: m.y,
+              transform: 'translate(-50%, -50%)',
+              background: 'var(--board-bg)',
+              color: k.style?.color ?? 'var(--board-fg)',
+              boxShadow: `0 0 0 1px ${k.style?.color ?? 'var(--board-line)'}`,
+              zIndex: 0,
+              cursor: readOnly ? undefined : 'pointer',
+            }}
+          >
+            {k.label}
+          </div>
+        )
+      })}
 
       {/* drop-target outline while dragging a connector */}
       {targetCard && (
@@ -245,6 +276,10 @@ function ConnectorToolbar({ boardId, connectors, at, inv }: { boardId: string; c
   const ids = connectors.map((k) => k.id)
   const st = connector.style ?? {}
   const width = st.width ?? 2
+  const codeOn = usePlugin('code')
+  const [label, setLabel] = useState(connector.label ?? '')
+  useEffect(() => setLabel(connector.label ?? ''), [connector.id, connector.label])
+  const setLabels = (text: string) => ids.forEach((id) => updateConnector(boardId, id, { label: text.trim() || undefined }))
   const opts: { v: ArrowStyle; label: string; title: string }[] = [
     { v: 'end', label: '→', title: 'Arrow at end' },
     { v: 'start', label: '←', title: 'Arrow at start' },
@@ -285,6 +320,31 @@ function ConnectorToolbar({ boardId, connectors, at, inv }: { boardId: string; c
       >
         ┄
       </button>
+      <span className="mx-0.5 h-4 w-px bg-(--hover-strong)" />
+      <input
+        value={label}
+        placeholder="label"
+        title="Text on the line"
+        onChange={(e) => setLabel(e.target.value)}
+        onBlur={() => label !== (connector.label ?? '') && setLabels(label)}
+        onKeyDown={(e) => {
+          e.stopPropagation()
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+          if (e.key === 'Escape') setLabel(connector.label ?? '')
+        }}
+        className="h-6 w-16 rounded bg-swamp-700 px-1.5 font-mono text-[12px] text-frog-50 outline-none placeholder:text-frog-200/40 focus:ring-1 focus:ring-frog-400"
+      />
+      {codeOn &&
+        ['yes', 'no'].map((w) => (
+          <button
+            key={w}
+            title={`Label this line "${w}"`}
+            onClick={() => setLabels(connectors.every((k) => k.label === w) ? '' : w)}
+            className={`h-6 rounded px-1 font-mono text-[11px] font-bold ${connectors.every((k) => k.label === w) ? 'bg-frog-600 text-white' : 'text-frog-100 hover:bg-(--hover-strong)'}`}
+          >
+            {w}
+          </button>
+        ))}
       <span className="mx-0.5 h-4 w-px bg-(--hover-strong)" />
       <button title="Delete (Del)" onClick={() => removeConnectors(boardId, ids)} className="h-6 w-6 rounded text-[12px] text-frog-200 hover:bg-red-700 hover:text-white">
         ✕

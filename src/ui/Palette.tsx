@@ -10,11 +10,12 @@ import { STORY_KINDS } from '../cards/story/kinds'
 import { isCoarse, useIsMobile } from '../canvas/touch'
 import { useSettings } from '../store/settings'
 import { boardMark } from '../theme/glyphs'
+import { pluginOn, type PluginId } from '../plugins'
 
 export const TOOL_MIME = 'application/x-peeponote-tool'
 
-/** top-level tools, plus `shape:<kind>` and `story:<kind>` children */
-export type ToolId = 'title' | 'text' | 'note' | 'todo' | 'link' | 'shape' | 'story' | 'board' | 'file' | `shape:${ShapeKind}` | `story:${StoryKind}`
+/** top-level tools, plus `shape:<kind>`, `story:<kind>` and `flow:<block>` children */
+export type ToolId = 'title' | 'text' | 'note' | 'todo' | 'link' | 'shape' | 'story' | 'code' | 'board' | 'file' | `shape:${ShapeKind}` | `story:${StoryKind}` | `flow:${string}`
 
 export interface Tool {
   id: ToolId
@@ -30,6 +31,8 @@ export interface Tool {
   children?: Tool[]
   /** which child stands in for the parent when clicked directly */
   defaultChild?: () => ToolId
+  /** offered only while this plugin is on */
+  plugin?: PluginId
 }
 
 const shapeTools: Tool[] = SHAPES.map((s) => ({
@@ -52,6 +55,30 @@ const storyTools: Tool[] = STORY_KINDS.map((k) => ({
   make: (b) => ({ ...b, type: 'story', kind: k.kind, title: '', fields: {}, ...(k.kind === 'dialogue' ? { lines: [] } : {}) }),
 }))
 
+/** flowchart blocks (Code plugin): shapes with a monospace label, sized for a line or two of code */
+const FLOW_BLOCKS: { id: string; label: string; icon: string; hint: string; shape: ShapeKind; w: number; h: number; text?: string; radius?: number }[] = [
+  { id: 'start', label: 'Start', icon: '⬭', hint: 'Where the program starts or ends', shape: 'terminal', w: 150, h: 56, text: 'Start' },
+  { id: 'step', label: 'Step', icon: '▭', hint: 'One instruction or a few: x = x + 1', shape: 'rect', w: 180, h: 72, radius: 0 },
+  { id: 'decision', label: 'Decision', icon: '◇', hint: 'A condition with two ways out: yes and no', shape: 'diamond', w: 180, h: 110 },
+  { id: 'io', label: 'In / out', icon: '▱', hint: 'Read input or print output', shape: 'parallelogram', w: 190, h: 72 },
+  { id: 'loop', label: 'Loop', icon: '⬡', hint: 'A loop header: for i in 1..n', shape: 'hexagon', w: 190, h: 72 },
+  { id: 'call', label: 'Call', icon: '⊞', hint: 'Call a subroutine defined elsewhere', shape: 'subroutine', w: 190, h: 72 },
+  { id: 'document', label: 'Doc', icon: '📄', hint: 'A file or a report', shape: 'document', w: 170, h: 90 },
+  { id: 'data', label: 'Data', icon: '⛁', hint: 'A database or any stored data', shape: 'database', w: 140, h: 100 },
+  { id: 'join', label: 'Join', icon: '○', hint: 'A connector: where flow lines meet or jump', shape: 'ellipse', w: 44, h: 44 },
+]
+
+const flowTools: Tool[] = FLOW_BLOCKS.map((f) => ({
+  id: `flow:${f.id}` as ToolId,
+  label: f.label,
+  icon: f.icon,
+  hint: f.hint,
+  w: f.w,
+  h: f.h,
+  autoEdit: f.id !== 'join' && !f.text,
+  make: (b) => ({ ...b, type: 'shape', shape: f.shape, label: f.text ?? '', style: { font: 'mono', ...(f.radius !== undefined ? { radius: f.radius } : {}) } }),
+}))
+
 export const TOOLS: Tool[] = [
   { id: 'title', label: 'Title', icon: 'T', hint: 'Big heading text', w: 320, h: 56, autoEdit: true, make: (b) => ({ ...b, type: 'text', text: '', variant: 'title' }) },
   { id: 'text', label: 'Text', icon: '¶', hint: 'Plain paragraph', w: 260, h: 80, autoEdit: true, make: (b) => ({ ...b, type: 'text', text: '', variant: 'body' }) },
@@ -66,7 +93,8 @@ export const TOOLS: Tool[] = [
     w: 160,
     h: 110,
     children: shapeTools,
-    defaultChild: () => `shape:${useLastStyle.getState().shape}` as ToolId,
+    // a flowchart outline remembered from the style bar isn't in this list: fall back to a rectangle
+    defaultChild: () => (SHAPES.some((x) => x.kind === useLastStyle.getState().shape) ? `shape:${useLastStyle.getState().shape}` : 'shape:rect') as ToolId,
   },
   {
     id: 'story',
@@ -77,10 +105,28 @@ export const TOOLS: Tool[] = [
     h: 240,
     children: storyTools,
     defaultChild: () => 'story:scene',
+    plugin: 'story',
+  },
+  {
+    id: 'code',
+    label: 'Code',
+    icon: '{}',
+    hint: 'Flowchart blocks for code: start, steps, decisions, loops',
+    w: 180,
+    h: 72,
+    children: flowTools,
+    defaultChild: () => 'flow:step',
+    plugin: 'code',
   },
   { id: 'board', label: 'Board', icon: '🐸', hint: 'Nested board', w: 200, h: 96 },
   { id: 'file', label: 'File', icon: '📎', hint: 'Upload image / audio / 3D / anything', w: 280, h: 280 },
 ]
+
+/** the palette as this browser has it: core tools plus those of the plugins that are on */
+export const useTools = () => {
+  const plugins = useSettings((s) => s.plugins)
+  return TOOLS.filter((t) => !t.plugin || pluginOn(plugins, t.plugin))
+}
 
 export function toolById(id: string): Tool | undefined {
   for (const t of TOOLS) {
@@ -131,7 +177,8 @@ export function Palette({ board }: { board: Board }) {
   const root = useRef<HTMLDivElement>(null)
   const coarse = isCoarse()
   const mobile = useIsMobile()
-  const openTool = TOOLS.find((t) => t.id === open)
+  const tools = useTools()
+  const openTool = tools.find((t) => t.id === open)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // tap outside closes a flyout (touch has no hover-out)
@@ -202,7 +249,7 @@ export function Palette({ board }: { board: Board }) {
   return (
     <div ref={root} className="pointer-events-none absolute inset-y-0 left-4 flex items-center compact:inset-x-2 compact:inset-y-auto compact:bottom-3 compact:justify-center">
       <div className="pointer-events-auto flex flex-col gap-0.5 rounded-2xl border border-(--hair) bg-swamp-900/90 p-1.5 shadow-2xl shadow-black/50 backdrop-blur no-scrollbar compact:w-full compact:max-w-md compact:flex-row compact:overflow-x-auto">
-        {TOOLS.map((tool) => (
+        {tools.map((tool) => (
           <div key={tool.id} className="relative compact:min-w-0 compact:flex-1" onPointerEnter={() => hoverOpen(tool)} onPointerLeave={hoverClose}>
             <button
               {...dragProps(tool)}

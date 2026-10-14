@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware'
 import { DEFAULT_CORS_PROXY } from '../git/repo'
 import type { ThemeName } from '../theme/themes'
 import type { TransportPref } from '../git/sync'
+import type { PluginId } from '../plugins'
 
 /** the GitHub account this browser is signed in as (from the token, refreshed on boot) */
 export interface GhIdentity {
@@ -50,6 +51,8 @@ export interface Settings {
   showChangelogOnUpdate: boolean
   /** view only: boards scroll and zoom but can't be changed, so a stray tap or drag edits nothing */
   viewOnly: boolean
+  /** plugins switched on or off by hand; absent = the plugin's default */
+  plugins: Partial<Record<PluginId, boolean>>
   set: (patch: Partial<Omit<Settings, 'set' | 'reset' | 'rememberRepo' | 'forgetRepo'>>) => void
   /** back to factory defaults (token gone, wizard shows again) */
   reset: () => void
@@ -74,6 +77,7 @@ const DEFAULTS: Omit<Settings, 'set' | 'reset' | 'rememberRepo' | 'forgetRepo'> 
   lastSeenVersion: '',
   showChangelogOnUpdate: true,
   viewOnly: false,
+  plugins: {},
 }
 
 export const useSettings = create<Settings>()(

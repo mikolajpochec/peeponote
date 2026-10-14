@@ -7,6 +7,7 @@ import type { CardProps } from './CardView'
 import { InlineMd } from './Inline'
 import { MdEditor } from '../editor'
 import { useLiveDraft } from './useLiveDraft'
+import { autoEdit } from './autoEdit'
 
 export const SHAPES: { kind: ShapeKind; label: string; icon: string }[] = [
   { kind: 'rect', label: 'Rectangle', icon: '▭' },
@@ -18,6 +19,14 @@ export const SHAPES: { kind: ShapeKind; label: string; icon: string }[] = [
   { kind: 'arrow', label: 'Arrow', icon: '⇨' },
   { kind: 'parallelogram', label: 'Parallelogram', icon: '▱' },
   { kind: 'callout', label: 'Speech bubble', icon: '💬' },
+]
+
+/** flowchart-only outlines (the Code plugin); they still switch freely with the plain shapes */
+export const FLOW_SHAPES: { kind: ShapeKind; label: string; icon: string }[] = [
+  { kind: 'terminal', label: 'Start / end', icon: '⬭' },
+  { kind: 'subroutine', label: 'Subroutine', icon: '⊞' },
+  { kind: 'document', label: 'Document', icon: '📄' },
+  { kind: 'database', label: 'Data store', icon: '⛁' },
 ]
 
 /** shapes start as an outline in the board's ink; fill is opt-in via the style bar */
@@ -65,6 +74,21 @@ export function shapePath(kind: ShapeKind, w: number, h: number, inset: number, 
       const shaft = H * 0.3
       return P([[x0, cy - shaft], [x1 - head, cy - shaft], [x1 - head, y0], [x1, cy], [x1 - head, y1], [x1 - head, cy + shaft], [x0, cy + shaft]])
     }
+    case 'terminal': {
+      const r = Math.min(W / 2, H / 2)
+      return `M${x0 + r},${y0}H${x1 - r}A${r},${r} 0 0 1 ${x1 - r},${y1}H${x0 + r}A${r},${r} 0 0 1 ${x0 + r},${y0}Z`
+    }
+    case 'subroutine':
+      return P([[x0, y0], [x1, y0], [x1, y1], [x0, y1]])
+    case 'document': {
+      // flat top, one wave along the bottom
+      const a = H * 0.08
+      return `M${x0},${y0}H${x1}V${y1 - a}C${x1 - W / 3},${y1 - 3 * a} ${x0 + W / 3},${y1 + a} ${x0},${y1 - a}Z`
+    }
+    case 'database': {
+      const ry = Math.min(H * 0.12, W / 4)
+      return `M${x0},${y0 + ry}A${W / 2},${ry} 0 0 1 ${x1},${y0 + ry}V${y1 - ry}A${W / 2},${ry} 0 0 1 ${x0},${y1 - ry}Z`
+    }
     case 'parallelogram': {
       const d = Math.min(W * 0.22, H)
       return P([[x0 + d, y0], [x1, y0], [x1 - d, y1], [x0, y1]])
@@ -81,9 +105,42 @@ export function shapePath(kind: ShapeKind, w: number, h: number, inset: number, 
   }
 }
 
+/** inner lines drawn on top of the outline, stroke only (subroutine bars, the cylinder's front rim) */
+export function shapeDetail(kind: ShapeKind, w: number, h: number, inset: number): string | null {
+  const x0 = inset
+  const y0 = inset
+  const x1 = w - inset
+  const y1 = h - inset
+  const W = x1 - x0
+  const H = y1 - y0
+  if (kind === 'subroutine') {
+    const d = Math.min(W * 0.1, 16)
+    return `M${x0 + d},${y0}V${y1}M${x1 - d},${y0}V${y1}`
+  }
+  if (kind === 'database') {
+    const ry = Math.min(H * 0.12, W / 4)
+    return `M${x0},${y0 + ry}A${W / 2},${ry} 0 0 0 ${x1},${y0 + ry}`
+  }
+  return null
+}
+
+/** room the label leaves for a shape's own lines, so text doesn't run over them */
+const LABEL_PAD: Partial<Record<ShapeKind, string>> = {
+  subroutine: '0.75rem 1.5rem',
+  database: '1.5rem 0.75rem 0.75rem',
+  document: '0.75rem 0.75rem 1.25rem',
+  terminal: '0.5rem 1.25rem',
+}
+
 export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
   const updateCard = useWorkspace((s) => s.updateCard)
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(() => {
+    if (autoEdit.id === card.id && !readOnly) {
+      autoEdit.id = null
+      return true
+    }
+    return false
+  })
   const [draft, setDraft] = useState(card.label)
   const live = useLiveDraft(editing, draft, card.label, (label, o) => updateCard(boardId, card.id, { label }, o))
   const s = card.style ?? {}
@@ -93,6 +150,7 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
   const sw = s.strokeWidth ?? DEFAULT_SHAPE_STROKE
   const inset = Math.max(sw / 2, 1)
   const d = shapePath(card.shape, card.w, card.h, inset, s.radius ?? 12)
+  const detail = sw ? shapeDetail(card.shape, card.w, card.h, inset) : null
   const ink = s.fg ?? (filled ? contrast(fill) : 'var(--board-fg)')
 
   useEditRequest(() => {
@@ -118,8 +176,9 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
           strokeLinejoin="round"
           fillRule="evenodd"
         />
+        {detail && <path d={detail} fill="none" stroke={stroke} strokeWidth={sw} strokeDasharray={s.dashed ? `${sw * 3} ${sw * 2}` : undefined} strokeLinecap="round" />}
       </svg>
-      <div className="absolute inset-0 flex items-center justify-center p-3" style={{ color: ink, textAlign: s.align ?? 'center' }}>
+      <div className="absolute inset-0 flex items-center justify-center p-3" style={{ color: ink, textAlign: s.align ?? 'center', padding: LABEL_PAD[card.shape] }}>
         {editing ? (
           <MdEditor
             value={draft}
