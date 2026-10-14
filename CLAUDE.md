@@ -26,10 +26,9 @@ to it directly: it is protected on GitHub, and a merge there is a release to rea
 `bun scripts/changelog.ts` rewrites `CHANGELOG.md` from it. The app shows the newest entry by itself after an update,
 so notes are written for the person using peeponote ("Pictures keep their shape"), never as commit titles.
 
-- **MINOR** (`0.x.0`): the usual one. A new capability, or a visible change to how something already works.
-  Bigger features live here, and so does anything a person using peeponote would notice.
-- **PATCH** (`0.0.x`): only when nothing about using peeponote changed. A fix, wording, performance, a layout
-  repair, or machinery like CI and this file.
+- **PATCH** (`0.0.x`): the usual one. A fix, wording, performance, a layout repair, machinery like CI and this file,
+  a small improvement to something that already works. Nothing new to learn.
+- **MINOR** (`0.x.0`): a bigger feature. A new capability, or a visible change to how something already works.
 - **MAJOR**: the repo format changes (files under the workspace move or change meaning and older clients would
   misread them), or the way people work changes enough to break their habits.
 
@@ -38,10 +37,10 @@ users, so there is no such thing as a free merge: a typo fix, a CI change, a ref
 out as `0.0.x`. Nothing ever rides along with "the next release"; this *is* the next release. CI enforces it: a pull
 request whose version is already tagged is refused.
 
-**Lean towards MINOR.** When the choice between patch and minor is not obvious, it is minor: features are the point of
-`0.x.0` and most work that reaches `main` is a feature. Ask one question about the release note. If it can say what
-someone can now do, or what now looks different, bump MINOR. PATCH is for the releases whose note has to admit that
-nothing changes on anyone's boards. A feature never ships as `0.0.x` just because the diff was small.
+**Default to PATCH.** When the choice between patch and minor is not obvious, it is a patch: most merges are repairs,
+polish and machinery, and the version should stay calm. `0.x.0` is reserved for a bigger feature, something you would
+announce in a sentence of its own ("Maths in your cards", "Your GitHub account is your account"). Don't inflate the
+minor digit for a small improvement to something that already works.
 
 Pick the bump **before** merging and put it in the feature's own commit: version + a new entry at the top of
 `CHANGELOG` (date = the day it ships) + the `package.json` mirror + `bun scripts/changelog.ts`. `bun scripts/release.ts`
