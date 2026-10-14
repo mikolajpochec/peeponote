@@ -188,7 +188,7 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
             cardId={card.id}
             mode="inline"
             placeholder="Label"
-            className="h-full w-full text-center"
+            className="max-h-full w-full overflow-auto text-center"
           />
         ) : (
           <div className="whitespace-pre-wrap break-words">
