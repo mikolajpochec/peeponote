@@ -3,3 +3,6 @@ dist
 dev-dist
 *.local
 .DS_Store
+
+# written by CI when it publishes a release
+release-notes.md

@@ -23,7 +23,10 @@ so notes are written for the person using peeponote ("Pictures keep their shape"
 
 Every merge into `main` is a release, because `main` deploys to real users: pick the bump **before** merging and put
 it in the feature's own commit — version + a new entry at the top of `CHANGELOG` (date = the day it ships) + the
-`package.json` mirror + `bun scripts/changelog.ts`. One release = one coherent thing you can describe in a sentence;
+`package.json` mirror + `bun scripts/changelog.ts`. `bun scripts/release.ts` says whether those four agree; CI runs it
+on every pull request and refuses the merge if they drift. Tagging and the GitHub Release are **automatic** on merge
+(`.github/workflows/release.yml`): never create a tag or a release by hand. A merge that bumps nothing (docs, tests,
+invisible refactors) is fine: the tag is already there and the workflow does nothing. One release = one coherent thing you can describe in a sentence;
 two unrelated features ready at once are two releases. Source-only work (this file, tests, invisible refactors) does
 not bump anything — it rides along with the next release.
 
