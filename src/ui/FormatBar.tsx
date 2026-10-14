@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { kbd } from './keys'
 import { useEditing } from '../store/editing'
 import { LinkPicker } from './LinkPicker'
 import { Popover } from './Popover'
@@ -9,7 +10,7 @@ const btn = 'flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 text
 
 /**
  * Formats the *selection* of whatever is being edited: **bold**, _italic_, ~~strike~~, `code`, links,
- * and block syntax for full-markdown notes. (⌘B / ⌘I / ⌘K are bound inside the editor itself.)
+ * and block syntax for full-markdown notes. (⌘B / ⌘I / ⌘K are bound inside the editor itself, Ctrl on Windows and Linux.)
  */
 export function FormatBar() {
   const handle = useEditing((s) => s.handle)
@@ -49,10 +50,10 @@ export function FormatBar() {
   return (
     <div className="relative" data-nodrag onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
       <div ref={bar} className="flex flex-wrap items-center justify-center gap-0.5 rounded-xl border border-(--hair) bg-swamp-900/95 p-1 shadow-2xl shadow-black/50 backdrop-blur">
-        <button className={btn} title="Bold (⌘B)" onPointerDown={keep} onClick={() => handle.wrap('**')}>
+        <button className={btn} title={`Bold (${kbd('⌘B')})`} onPointerDown={keep} onClick={() => handle.wrap('**')}>
           B
         </button>
-        <button className={`${btn} italic`} title="Italic (⌘I)" onPointerDown={keep} onClick={() => handle.wrap('_')}>
+        <button className={`${btn} italic`} title={`Italic (${kbd('⌘I')})`} onPointerDown={keep} onClick={() => handle.wrap('_')}>
           I
         </button>
         <button className={`${btn} line-through`} title="Strikethrough" onPointerDown={keep} onClick={() => handle.wrap('~~')}>
@@ -70,7 +71,7 @@ export function FormatBar() {
         )}
         <button
           className={`${btn} ${linkOpen || hold ? 'bg-frog-600 text-white' : ''}`}
-          title="Link (⌘K) — web URL or a place in this project"
+          title={`Link (${kbd('⌘K')}): web URL or a place in this project`}
           onPointerDown={keep}
           onClick={() => (linkOpen ? closeLink() : openLink())}
         >

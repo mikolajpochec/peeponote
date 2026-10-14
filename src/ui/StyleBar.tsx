@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { kbd } from './keys'
 import type { Card, CardStyle, FontFamily, ShapeKind } from '../model/types'
 import { useWorkspace } from '../store/workspace'
 import { FONT_LABEL, RADII, contrast, defaultBold, defaultFontSize } from '../canvas/styles'
@@ -214,12 +215,12 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
             </div>
           )}
           {oneGroup ? (
-            <button className={`${btn} ${on}`} title="Ungroup (⌘⇧G)" onClick={() => ungroupCards(boardId, ids)}>
+            <button className={`${btn} ${on}`} title={`Ungroup (${kbd('⌘⇧G')})`} onClick={() => ungroupCards(boardId, ids)}>
               ⧉
             </button>
           ) : (
             many && (
-              <button className={btn} title="Group (⌘G)" onClick={() => groupCards(boardId, ids)}>
+              <button className={btn} title={`Group (${kbd('⌘G')})`} onClick={() => groupCards(boardId, ids)}>
                 ⧉
               </button>
             )

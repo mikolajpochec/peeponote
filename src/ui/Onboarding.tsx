@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { commitEmail, createRepo, GhError, listOrgs, listPushableRepos, plainGhError, slug, type GhRepo, type GhUser } from '../git/ghAccount'
 import { KeyForm, useSignIn } from './KeyForm'
+import { kbd } from './keys'
 import { useReview } from '../store/review'
 import { useSettings } from '../store/settings'
 import { useWorkspace } from '../store/workspace'
@@ -348,7 +349,7 @@ function DoneScreen({ onDone }: { onDone: () => void }) {
           <li>· Drop any file onto the board: images, audio, 3D, code, fonts…</li>
           <li>· Drag from a card's edge dots to draw arrows</li>
           <li>
-            · <b>⌘S</b> saves = commit{remoteUrl ? ' + push' : ''}
+            · <b>{kbd('⌘S')}</b> saves = commit{remoteUrl ? ' + push' : ''}
           </li>
           <li>· Right-click for copy / paste / duplicate</li>
         </ul>

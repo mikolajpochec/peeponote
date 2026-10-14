@@ -18,6 +18,7 @@ import { tutorialBoards } from '../model/tutorial'
 import { useSettings } from './settings'
 import { toast } from './toast'
 import { confirm } from '../ui/confirm'
+import { kbd } from '../ui/keys'
 import { diffWorkspaces, formatAuthors, useArrivals } from '../canvas/arrivals'
 import { rememberedStyle, styleKeyOf, useLastStyle } from './lastStyle'
 import { boardSlug, cardSlug, validateSlug } from '../nav/peepoUrl'
@@ -786,7 +787,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       set({ boards, deletedBoards: deleted, dirtyBoards, assetsTouched, selection: new Set() })
       scheduleFlush()
       const what = nestedBoards ? `${nestedBoards === 1 ? 'Board' : `${nestedBoards} boards`} and ${removed.length - nestedBoards ? `${removed.length - nestedBoards} more ` : ''}` : removed.length === 1 ? cardSummary(removed[0]) : `${removed.length} items`
-      toast.action(`${what} deleted (⌘Z to undo)`, 'Undo', () => get().undoRemoval(), nestedBoards ? 'PepeHands' : 'peepoShy')
+      toast.action(`${what} deleted (${kbd('⌘Z')} to undo)`, 'Undo', () => get().undoRemoval(), nestedBoards ? 'PepeHands' : 'peepoShy')
     },
 
     undo: () => {

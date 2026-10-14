@@ -8,6 +8,7 @@ import { useEditRequest } from '../canvas/editRequest'
 import { keepPeepoUrls, mdLink } from './Inline'
 import { protectCurrency, useMath } from './math'
 import { MdEditor } from '../editor'
+import { kbd } from '../ui/keys'
 import { useLiveDraft } from './useLiveDraft'
 
 export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
@@ -43,7 +44,7 @@ export function NoteCard({ card, boardId, readOnly }: CardProps<NoteCardT>) {
         boardId={boardId}
         cardId={card.id}
         mode="block"
-        placeholder="Write markdown… (Esc or ⌘⏎ to finish)"
+        placeholder={`Write markdown… (Esc or ${kbd('⌘⏎')} to finish)`}
         className="h-full w-full overflow-auto p-3 leading-snug scrollbar-thin"
       />
     )

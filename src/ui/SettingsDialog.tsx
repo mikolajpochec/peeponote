@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { kbd, MOD } from './keys'
 import { revealFolder, supportsFolderAccess } from '../fs'
 import { wipeBrowserFS } from '../fs/lightning'
 import { DEFAULT_CORS_PROXY } from '../git/repo'
@@ -80,7 +81,9 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           {tab === 'about' && <AboutTab />}
         </div>
         <div className="flex items-center justify-end gap-3 border-t border-(--hair) px-5 py-2.5">
-          <span className="mr-auto text-[11px] text-frog-200/50 pointer-coarse:hidden">⌘S save · ⌘Z undo · ⌘0 reset zoom · ⌘/Ctrl+wheel zoom · Space+drag pans · Del deletes</span>
+          <span className="mr-auto text-[11px] text-frog-200/50 pointer-coarse:hidden">
+            {kbd('⌘S')} save · {kbd('⌘Z')} undo · {kbd('⌘0')} reset zoom · {MOD}+wheel zoom · Space+drag pans · Del deletes
+          </span>
           <ClearSettingsButton onDone={onClose} />
         </div>
       </div>

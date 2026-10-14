@@ -3,6 +3,12 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
+## 1.7.1 — Shortcuts speak Windows and Linux
+*2026-10-14*
+
+- Every shortcut peeponote shows now matches the keyboard in front of you: Ctrl+S on Windows and Linux, ⌘S on a Mac. The keys always worked, only the labels were written for Macs.
+- Menus, button tips, the guide board and the "deleted, press to undo" message all say the right thing now.
+
 ## 1.7.0 — Your GitHub account is your account
 *2026-10-14*
 
@@ -38,7 +44,7 @@ patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelo
 ## 1.4.0 — View only, for looking without touching
 *2026-10-13*
 
-- Tap 🔒 in the top bar (or ⋯ → View only, or ⇧⌘E) and your boards can be scrolled, zoomed and opened but not changed: a stray tap, drag or key press edits nothing.
+- Tap 🔒 in the top bar (or ⋯ → View only, or ⇧⌘E / Ctrl+Shift+E) and your boards can be scrolled, zoomed and opened but not changed: a stray tap, drag or key press edits nothing.
 - The blue View only button stays in the top bar while it is on; tap it again to go back to editing.
 - It is kept in this browser, so a phone you only read on can stay locked.
 
