@@ -6,7 +6,8 @@ import { FONT_LABEL, RADII, contrast, defaultBold, defaultFontSize } from '../ca
 import { AlignButtons } from './AlignButtons'
 import { ALIGN_LABEL, alignCards, distributeCards, type AlignMode } from '../canvas/arrange'
 import { ColorPicker } from './ColorPicker'
-import { DEFAULT_SHAPE_STROKE, SHAPES } from '../cards/ShapeCard'
+import { DEFAULT_SHAPE_STROKE, FLOW_SHAPES, SHAPES } from '../cards/ShapeCard'
+import { usePlugin } from '../plugins'
 
 const ARRANGE: [AlignMode, string][] = [
   ['left', '⇤'],
@@ -45,6 +46,8 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
   const strokeW = s.strokeWidth ?? (allShapes ? DEFAULT_SHAPE_STROKE : 2)
   const lockCards = useWorkspace((s) => s.lockCards)
   const allLocked = cards.every((c) => c.locked)
+  const codeOn = usePlugin('code')
+  const shapeKinds = codeOn || shapes.some((c) => FLOW_SHAPES.some((f) => f.kind === (c as Extract<Card, { type: 'shape' }>).shape)) ? [...SHAPES, ...FLOW_SHAPES] : SHAPES
   const setShape = (kind: ShapeKind) => {
     for (const c of shapes) updateCard(boardId, c.id, { shape: kind } as Partial<Card>)
   }
@@ -82,12 +85,12 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
         <>
           <div className="relative">
             <button className={btn} title="Shape" onClick={() => setMenu(menu === 'shape' ? null : 'shape')}>
-              {SHAPES.find((x) => x.kind === (shapes[0] as Extract<Card, { type: 'shape' }>).shape)?.icon ?? '◇'}
+              {shapeKinds.find((x) => x.kind === (shapes[0] as Extract<Card, { type: 'shape' }>).shape)?.icon ?? '◇'}
             </button>
             {menu === 'shape' && (
               <Menu>
                 <div className="grid gap-0.5" style={{ gridTemplateColumns: 'repeat(3, 2.25rem)' }}>
-                  {SHAPES.map((sh) => (
+                  {shapeKinds.map((sh) => (
                     <MenuItem
                       key={sh.kind}
                       title={sh.label}

@@ -3,6 +3,13 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
+## 1.8.0 — Flowcharts for code, and plugins
+*2026-10-14*
+
+- A new Code tool in the palette draws flowcharts: start and end, steps, decisions, input and output, loops, subroutine calls, documents and data. Blocks use a code font, so i = i + 1 reads like code.
+- Lines can carry a short label in the middle. Select a line and type one, or press yes / no for the two ways out of a decision.
+- Story and Code are now plugins: extra sets of tools you pick for the kind of work you do. peeponote asks once which ones you want (new here: during setup), and Settings → Plugins changes it any time. Cards a plugin made stay on your boards either way.
+
 ## 1.7.2 — Housekeeping
 *2026-10-14*
 

@@ -43,7 +43,7 @@ const cardSchema = z.discriminatedUnion('type', [
   z.object({
     ...base,
     type: z.literal('shape'),
-    shape: z.enum(['rect', 'ellipse', 'diamond', 'triangle', 'hexagon', 'star', 'arrow', 'parallelogram', 'callout', 'cloud']),
+    shape: z.enum(['rect', 'ellipse', 'diamond', 'triangle', 'hexagon', 'star', 'arrow', 'parallelogram', 'callout', 'cloud', 'terminal', 'subroutine', 'document', 'database']),
     label: z.string().default(''),
   }),
   z.object({
@@ -83,6 +83,7 @@ const connectorSchema = z.object({
   to: anchorSchema,
   arrows: z.enum(['end', 'start', 'both', 'none']).default('end'),
   style: z.object({ color: z.string().optional(), width: z.number().optional(), dashed: z.boolean().optional() }).optional(),
+  label: z.string().optional(),
 })
 
 export const boardSchema = z.object({

@@ -7,23 +7,25 @@ import { useSettings } from '../store/settings'
 import { useWorkspace } from '../store/workspace'
 import { Peepo } from './Peepo'
 import type { PeepoName } from '../theme/peepos'
+import { PluginPicker } from './PluginPicker'
 
 const field = 'w-full rounded-md bg-swamp-700 px-3 py-2 text-[14px] outline-none focus:ring-1 focus:ring-frog-400 placeholder:text-frog-200/30'
 const primary = 'rounded-lg bg-frog-500 px-4 py-2 text-[14px] font-bold text-white hover:bg-frog-400 disabled:opacity-40'
 const ghost = 'rounded-lg px-4 py-2 text-[14px] font-semibold text-frog-200 hover:bg-(--hover-strong) disabled:opacity-40'
 
-type Step = 'hello' | 'key' | 'repo' | 'local' | 'done'
+type Step = 'hello' | 'key' | 'repo' | 'local' | 'plugins' | 'done'
 /** which of the three dots is lit on each screen */
-const DOT: Record<Step, number> = { hello: 0, key: 1, local: 1, repo: 2, done: 3 }
+const DOT: Record<Step, number> = { hello: 0, key: 1, local: 1, repo: 2, plugins: 3, done: 4 }
 
-/** First run, in three screens: say hello, paste a GitHub key, pick where the boards live. */
+/** First run: say hello, paste a GitHub key, pick where the boards live, pick the plugins. */
 export function Onboarding({ onFinish }: { onFinish: () => void }) {
   const settings = useSettings()
   const [step, setStep] = useState<Step>('hello')
   const [me, setMe] = useState<GhUser | null>(null)
 
   const finish = () => {
-    settings.set({ onboarded: true })
+    // skipping keeps the default plugins; either way the question is answered and won't come back as a dialog
+    settings.set({ onboarded: true, pluginsChosen: true })
     onFinish()
   }
 
@@ -31,7 +33,7 @@ export function Onboarding({ onFinish }: { onFinish: () => void }) {
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4">
       <div className="flex max-h-full w-full max-w-lg flex-col overflow-auto rounded-2xl border border-(--hair) bg-swamp-800 p-6 shadow-2xl scrollbar-thin">
         <div className="mb-5 flex items-center gap-1.5">
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <span key={i} className={`h-1.5 flex-1 rounded-full ${i < DOT[step] ? 'bg-frog-400' : 'bg-swamp-600'}`} />
           ))}
         </div>
@@ -71,9 +73,29 @@ export function Onboarding({ onFinish }: { onFinish: () => void }) {
           />
         )}
 
-        {step === 'repo' && <RepoScreen me={me} onBack={() => setStep('key')} onDone={() => setStep('done')} />}
+        {step === 'repo' && <RepoScreen me={me} onBack={() => setStep('key')} onDone={() => setStep('plugins')} />}
 
-        {step === 'local' && <LocalScreen onBack={() => setStep('hello')} onDone={() => setStep('done')} />}
+        {step === 'local' && <LocalScreen onBack={() => setStep('hello')} onDone={() => setStep('plugins')} />}
+
+        {step === 'plugins' && (
+          <Screen
+            peepo="peepoGlad"
+            title="Pick your plugins"
+            sub="A plugin adds a set of tools to the palette for one kind of work. Keep the ones you'll use; you can change this any time in Settings → Plugins."
+            footer={
+              <>
+                <button className={primary} onClick={() => setStep('done')}>
+                  Continue
+                </button>
+                <button className={ghost} onClick={() => setStep(me ? 'repo' : 'local')}>
+                  Back
+                </button>
+              </>
+            }
+          >
+            <PluginPicker />
+          </Screen>
+        )}
 
         {step === 'done' && <DoneScreen onDone={finish} />}
 

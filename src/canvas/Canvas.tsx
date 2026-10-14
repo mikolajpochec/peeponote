@@ -15,7 +15,7 @@ import { StyleBar } from '../ui/StyleBar'
 import { FormatBar } from '../ui/FormatBar'
 import { useEditing } from '../store/editing'
 import { ContextMenu, sep, type MenuItem } from '../ui/ContextMenu'
-import { TOOLS } from '../ui/Palette'
+import { useTools } from '../ui/Palette'
 import { copySelection, duplicateSelection, hasClipboard, pastePayload, readPayload } from './clipboard'
 import { downloadAsset } from '../cards/AssetCard'
 import { boardVars } from './styles'
@@ -43,6 +43,7 @@ interface Marquee {
 
 export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
+  const tools = useTools()
   const vp = useViewport((s) => s.byBoard[board.id]) ?? { x: 80, y: 80, scale: 1 }
   const setVp = useViewport((s) => s.set)
   const selection = useWorkspace((s) => s.selection)
@@ -477,7 +478,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       },
       { kind: 'item', label: 'Ask for review of this board…', icon: '👀', onClick: () => useReview.getState().setRequestDialog({ boardId: board.id, targets: [] }) },
       sep,
-      ...TOOLS.filter((t) => t.id !== 'file').map<MenuItem>((t) =>
+      ...tools.filter((t) => t.id !== 'file').map<MenuItem>((t) =>
         t.children
           ? {
               kind: 'submenu',

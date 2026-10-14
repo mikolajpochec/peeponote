@@ -106,8 +106,22 @@ export interface AssetCard extends CardBase {
   view?: { pos: [number, number, number]; target: [number, number, number] }
 }
 
-/** 'cloud' is legacy (old files) and renders as a callout */
-export type ShapeKind = 'rect' | 'ellipse' | 'diamond' | 'triangle' | 'hexagon' | 'star' | 'arrow' | 'parallelogram' | 'callout' | 'cloud'
+/** 'cloud' is legacy (old files) and renders as a callout; terminal / subroutine / document / database are flowchart blocks */
+export type ShapeKind =
+  | 'rect'
+  | 'ellipse'
+  | 'diamond'
+  | 'triangle'
+  | 'hexagon'
+  | 'star'
+  | 'arrow'
+  | 'parallelogram'
+  | 'callout'
+  | 'cloud'
+  | 'terminal'
+  | 'subroutine'
+  | 'document'
+  | 'database'
 
 export interface ShapeCard extends CardBase {
   type: 'shape'
@@ -168,6 +182,8 @@ export interface Connector {
   to: Anchor
   arrows: ArrowStyle
   style?: ConnectorStyle
+  /** short text in the middle of the line ("yes" / "no" out of a decision) */
+  label?: string
 }
 
 export interface Board {

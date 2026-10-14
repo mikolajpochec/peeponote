@@ -20,18 +20,20 @@ import { Avatar } from '../review/Avatar'
 import { usePeople } from '../review/people'
 import { openChangelog } from './ChangelogDialog'
 import { APP_VERSION, latestRelease } from '../version'
+import { PluginPicker } from './PluginPicker'
 
 const field = 'w-full rounded-md bg-swamp-700 px-2 py-1.5 text-[13px] outline-none focus:ring-1 focus:ring-frog-400 placeholder:text-frog-200/30'
 const btn = 'rounded-md bg-swamp-600 px-3 py-1.5 text-[13px] font-semibold hover:bg-swamp-500 disabled:opacity-40'
 const hint = 'text-[11px] leading-relaxed text-frog-200/50'
 
-type Tab = 'you' | 'sync' | 'board' | 'storage' | 'look' | 'about'
+type Tab = 'you' | 'sync' | 'board' | 'storage' | 'look' | 'plugins' | 'about'
 const TABS: { id: Tab; title: string; icon: string }[] = [
   { id: 'you', title: 'You', icon: '🙂' },
   { id: 'sync', title: 'Sync', icon: '☁️' },
   { id: 'board', title: 'Workspace', icon: '🗂' },
   { id: 'storage', title: 'Storage', icon: '💾' },
   { id: 'look', title: 'Look', icon: '🎨' },
+  { id: 'plugins', title: 'Plugins', icon: '🧩' },
   { id: 'about', title: 'About', icon: 'ⓘ' },
 ]
 
@@ -78,6 +80,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           {tab === 'board' && <WorkspaceTab />}
           {tab === 'storage' && <StorageTab />}
           {tab === 'look' && <LookTab />}
+          {tab === 'plugins' && <PluginsTab />}
           {tab === 'about' && <AboutTab />}
         </div>
         <div className="flex items-center justify-end gap-3 border-t border-(--hair) px-5 py-2.5">
@@ -521,6 +524,17 @@ function LookTab() {
         </div>
       </Row>
     </>
+  )
+}
+
+// ---------------------------------------------------------------------------------------------- plugins
+
+/** Extra sets of tools for the palette. Off only hides the tools: cards already on a board stay as they are. */
+function PluginsTab() {
+  return (
+    <Row title="Plugins" sub="Personal, only this browser. Turning a plugin off takes its tools out of the palette; cards it made stay on your boards and keep working.">
+      <PluginPicker />
+    </Row>
   )
 }
 
