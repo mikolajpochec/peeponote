@@ -26,7 +26,7 @@ export const CHANGELOG: Release[] = [
     notes: [
       'A new Code tool in the palette draws flowcharts: start and end, steps, decisions, input and output, loops, subroutine calls, documents and data. Blocks use a code font, so i = i + 1 reads like code.',
       'Lines can carry a short label in the middle. Select a line and type one, or press yes / no for the two ways out of a decision.',
-      'Story and Code are now plugins. Both are on; Settings → Plugins turns either one off if you never use it. Cards they made stay on your boards either way.',
+      'Story and Code are now plugins: extra sets of tools you pick for the kind of work you do. peeponote asks once which ones you want (new here: during setup), and Settings → Plugins changes it any time. Cards a plugin made stay on your boards either way.',
     ],
   },
   {

@@ -22,6 +22,7 @@ import { ConfirmDialog } from './ui/ConfirmDialog'
 import { PropertiesDialog } from './ui/PropertiesDialog'
 import { ErrorDialog } from './ui/ErrorDialog'
 import { ChangelogDialog, type ChangelogMode } from './ui/ChangelogDialog'
+import { PluginsIntroDialog } from './ui/PluginPicker'
 import { useSettings } from './store/settings'
 import { checkToken } from './git/ghAccount'
 import { identityOf } from './ui/KeyForm'
@@ -69,6 +70,12 @@ export default function App() {
     if (showOnboarding || !s.onboarded || !s.showChangelogOnUpdate) return s.set({ lastSeenVersion: APP_VERSION })
     setChangelog({ mode: 'afterUpdate' })
   }, [status, showOnboarding])
+
+  // people from before plugins: ask once which ones they want, after "what's new" has had its turn
+  const pluginsChosen = useSettings((s) => s.pluginsChosen)
+  const seenThisVersion = useSettings((s) => s.lastSeenVersion === APP_VERSION)
+  const [pluginsClosed, setPluginsClosed] = useState(false)
+  const askPlugins = status === 'ready' && !showOnboarding && !pluginsChosen && !pluginsClosed && seenThisVersion && !changelog
 
   const themeName = useSettings((s) => s.theme)
   useEffect(() => applyTheme(resolveTheme(themeName)), [themeName])
@@ -276,6 +283,7 @@ export default function App() {
       {signIn && !showOnboarding && <SignInDialog onClose={() => setSignIn(false)} />}
       <SyncDialog />
       {changelog && <ChangelogDialog mode={changelog.mode} onClose={() => setChangelog(null)} />}
+      {askPlugins && <PluginsIntroDialog onClose={() => setPluginsClosed(true)} />}
       <ConfirmDialog />
       <PropertiesDialog />
       <ErrorDialog />

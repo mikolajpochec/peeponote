@@ -20,7 +20,7 @@ import { Avatar } from '../review/Avatar'
 import { usePeople } from '../review/people'
 import { openChangelog } from './ChangelogDialog'
 import { APP_VERSION, latestRelease } from '../version'
-import { PLUGINS, pluginOn } from '../plugins'
+import { PluginPicker } from './PluginPicker'
 
 const field = 'w-full rounded-md bg-swamp-700 px-2 py-1.5 text-[13px] outline-none focus:ring-1 focus:ring-frog-400 placeholder:text-frog-200/30'
 const btn = 'rounded-md bg-swamp-600 px-3 py-1.5 text-[13px] font-semibold hover:bg-swamp-500 disabled:opacity-40'
@@ -531,25 +531,9 @@ function LookTab() {
 
 /** Extra sets of tools for the palette. Off only hides the tools: cards already on a board stay as they are. */
 function PluginsTab() {
-  const plugins = useSettings((s) => s.plugins)
-  const set = useSettings((s) => s.set)
   return (
     <Row title="Plugins" sub="Personal, only this browser. Turning a plugin off takes its tools out of the palette; cards it made stay on your boards and keep working.">
-      <div className="flex flex-col gap-2">
-        {PLUGINS.map((p) => {
-          const on = pluginOn(plugins, p.id)
-          return (
-            <label key={p.id} className="flex cursor-pointer items-start gap-3 rounded-lg bg-swamp-800/60 px-3 py-2.5 ring-1 ring-(--hair) hover:bg-(--hover)">
-              <span className="text-[20px] leading-none">{p.icon}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[13px] font-bold">{p.name}</span>
-                <span className={`block ${hint}`}>{p.description}</span>
-              </span>
-              <input type="checkbox" className="mt-1 h-4 w-4 accent-frog-500" checked={on} onChange={(e) => set({ plugins: { ...plugins, [p.id]: e.target.checked } })} />
-            </label>
-          )
-        })}
-      </div>
+      <PluginPicker />
     </Row>
   )
 }

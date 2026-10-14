@@ -53,6 +53,8 @@ export interface Settings {
   viewOnly: boolean
   /** plugins switched on or off by hand; absent = the plugin's default */
   plugins: Partial<Record<PluginId, boolean>>
+  /** the plugin question was answered (onboarding, or the one-time dialog for people from before plugins) */
+  pluginsChosen: boolean
   set: (patch: Partial<Omit<Settings, 'set' | 'reset' | 'rememberRepo' | 'forgetRepo'>>) => void
   /** back to factory defaults (token gone, wizard shows again) */
   reset: () => void
@@ -78,6 +80,7 @@ const DEFAULTS: Omit<Settings, 'set' | 'reset' | 'rememberRepo' | 'forgetRepo'> 
   showChangelogOnUpdate: true,
   viewOnly: false,
   plugins: {},
+  pluginsChosen: false,
 }
 
 export const useSettings = create<Settings>()(
