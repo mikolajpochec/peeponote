@@ -31,6 +31,19 @@ jobs:
         id: rel
         run: bun scripts/release.ts
 
+      # every merge ships, so a pull request that doesn't move the version has nothing to release
+      - name: The version must be one that hasn't gone out yet
+        if: github.event_name == 'pull_request'
+        env:
+          VERSION: ${{ steps.rel.outputs.version }}
+        run: |
+          tag="v$VERSION"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "::error file=src/version.ts::$tag is already released. Bump the version (at least the patch digit) and add a CHANGELOG entry for it."
+            exit 1
+          fi
+          echo "$tag is new."
+
       # only ever from main: a pull request or a manual run on a branch just runs the check above
       - name: Tag and publish, unless this version already went out
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
