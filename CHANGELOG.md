@@ -3,6 +3,11 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
+## 1.7.2 — Housekeeping
+*2026-10-14*
+
+- Nothing changes on your boards. This one is about peeponote itself: every update now gets its own tag and release notes on GitHub, published the moment it ships.
+
 ## 1.7.1 — Shortcuts speak Windows and Linux
 *2026-10-14*
 
