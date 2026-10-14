@@ -2,14 +2,21 @@
 import { writeFileSync } from 'node:fs'
 import { CHANGELOG } from '../src/version'
 
-const md = [
-  '# Changelog',
-  '',
-  'Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,',
-  'patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.',
-  '',
-  ...CHANGELOG.flatMap((r) => [`## ${r.version} — ${r.title}`, `*${r.date}*`, '', ...r.notes.map((n) => `- ${n}`), '']),
-].join('\n')
+export const CHANGELOG_PATH = new URL('../CHANGELOG.md', import.meta.url)
 
-writeFileSync(new URL('../CHANGELOG.md', import.meta.url), md)
-console.log(`CHANGELOG.md · ${CHANGELOG.length} release${CHANGELOG.length === 1 ? '' : 's'}, newest ${CHANGELOG[0].version}`)
+/** the whole file, exactly as it should sit on disk (scripts/release.ts compares against this) */
+export function renderChangelog(): string {
+  return [
+    '# Changelog',
+    '',
+    'Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,',
+    'patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.',
+    '',
+    ...CHANGELOG.flatMap((r) => [`## ${r.version} — ${r.title}`, `*${r.date}*`, '', ...r.notes.map((n) => `- ${n}`), '']),
+  ].join('\n')
+}
+
+if (import.meta.main) {
+  writeFileSync(CHANGELOG_PATH, renderChangelog())
+  console.log(`CHANGELOG.md · ${CHANGELOG.length} release${CHANGELOG.length === 1 ? '' : 's'}, newest ${CHANGELOG[0].version}`)
+}

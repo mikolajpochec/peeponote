@@ -2,14 +2,24 @@
 
 `main` deploys straight to https://mikolajpochec.github.io/peeponote/ and **real people use it**.
 
+## Branches
+**Every** change lives on its own branch and reaches `main` through a pull request. Never commit on `main`, never push
+to it directly: it is protected on GitHub, and a merge there is a release to real people.
+
+- `git switch -c <kind>/<short-name>` first, before the first edit. `feat/` a new capability, `fix/` a bug,
+  `ci/` or `chore/` the machinery around the app, `docs/` writing.
+- Commit on the branch as often as you like; the title is the one that will show up in the history, so keep it plain.
+- One branch = one coherent thing = one release. Two unrelated fixes are two branches, even on the same afternoon.
+- A hotfix for a live crash takes the same path, just quickly: branch, minimal change, test, PR.
+
 ## Releasing
 - Push to `main` only a **complete, tested feature**. Never push half-built work or "let's see if it deploys".
-- Work on a branch (`git switch -c feat/<name>`), commit there as often as you like.
-- Before merging: `bunx tsc -b`, `bun run build`, and drive the real flow in the browser (dev server: `bun run dev -- --port 5199`;
+- Before opening the PR: `bunx tsc -b`, `bun run build`, and drive the real flow in the browser (dev server: `bun run dev -- --port 5199`;
   for two-person flows use two origins, e.g. ports 5298 and 5297 — separate IndexedDB/localStorage per origin).
+- The version bump and the changelog entry belong in that same PR (see **Versions**); CI refuses a PR where they
+  don't add up, and tags + publishes the release by itself once it is merged.
 - **Ask before releasing.** When the work is finished and verified, say what the release contains and which version
-  it would be, and wait for a yes. Never merge to `main` on your own initiative.
-- Merge with a short title, push once. A hotfix for a live crash is the only exception: minimal, tested, immediately.
+  it would be, and wait for a yes. Never merge a PR into `main` on your own initiative.
 
 ## Versions
 `MAJOR.MINOR.PATCH` (e.g. `1.12.3`) lives in `src/version.ts` — the one source of truth; `package.json` mirrors it and
@@ -23,7 +33,10 @@ so notes are written for the person using peeponote ("Pictures keep their shape"
 
 Every merge into `main` is a release, because `main` deploys to real users: pick the bump **before** merging and put
 it in the feature's own commit — version + a new entry at the top of `CHANGELOG` (date = the day it ships) + the
-`package.json` mirror + `bun scripts/changelog.ts`. One release = one coherent thing you can describe in a sentence;
+`package.json` mirror + `bun scripts/changelog.ts`. `bun scripts/release.ts` says whether those four agree; CI runs it
+on every pull request and refuses the merge if they drift. Tagging and the GitHub Release are **automatic** on merge
+(`.github/workflows/release.yml`): never create a tag or a release by hand. A merge that bumps nothing (docs, tests,
+invisible refactors) is fine: the tag is already there and the workflow does nothing. One release = one coherent thing you can describe in a sentence;
 two unrelated features ready at once are two releases. Source-only work (this file, tests, invisible refactors) does
 not bump anything — it rides along with the next release.
 

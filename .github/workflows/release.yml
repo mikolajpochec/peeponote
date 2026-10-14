@@ -1,0 +1,49 @@
+name: Tag the release
+
+# Every merge into main is a release (main is what people use). The number and the notes are a judgement
+# call and live in src/version.ts, written in the feature's own pull request; everything after that is
+# mechanical, so it happens here: check the mirrors agree, then tag and publish the release. A merge that
+# doesn't bump the version (docs, tests, refactors) finds its tag already there and quietly does nothing.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+
+      - name: version.ts, package.json and CHANGELOG.md must agree
+        id: rel
+        run: bun scripts/release.ts
+
+      - name: Tag and publish, unless this version already went out
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.rel.outputs.version }}
+          TITLE: ${{ steps.rel.outputs.title }}
+        run: |
+          tag="v$VERSION"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "$tag is already released: nothing to do."
+            exit 0
+          fi
+          git tag -a "$tag" -m "$VERSION: $TITLE"
+          git push origin "$tag"
+          gh release create "$tag" --title "$VERSION: $TITLE" --notes-file release-notes.md
+          echo "Released $tag" >> "$GITHUB_STEP_SUMMARY"
