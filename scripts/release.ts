@@ -24,7 +24,7 @@ if (problems.length) {
   process.exit(1)
 }
 
-console.log(`✓ ${APP_VERSION} — ${top.title} (${top.notes.length} note${top.notes.length === 1 ? '' : 's'})`)
+console.log(`✓ ${APP_VERSION}: ${top.title} (${top.notes.length} note${top.notes.length === 1 ? '' : 's'})`)
 
 // CI: hand the release over to the workflow
 if (process.env.GITHUB_OUTPUT) {

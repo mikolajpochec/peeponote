@@ -26,19 +26,31 @@ to it directly: it is protected on GitHub, and a merge there is a release to rea
 `bun scripts/changelog.ts` rewrites `CHANGELOG.md` from it. The app shows the newest entry by itself after an update,
 so notes are written for the person using peeponote ("Pictures keep their shape"), never as commit titles.
 
-- **PATCH** — fixes, wording, performance, a layout repair. Nothing new to learn.
-- **MINOR** — a new capability, or a visible change to how something already works.
-- **MAJOR** — the repo format changes (files under the workspace move or change meaning and older clients would
+- **PATCH** (`0.0.x`): the usual one. A fix, wording, performance, a layout repair, machinery like CI and this file,
+  a small improvement to something that already works. Nothing new to learn.
+- **MINOR** (`0.x.0`): a bigger feature. A new capability, or a visible change to how something already works.
+- **MAJOR**: the repo format changes (files under the workspace move or change meaning and older clients would
   misread them), or the way people work changes enough to break their habits.
 
-Every merge into `main` is a release, because `main` deploys to real users: pick the bump **before** merging and put
-it in the feature's own commit — version + a new entry at the top of `CHANGELOG` (date = the day it ships) + the
-`package.json` mirror + `bun scripts/changelog.ts`. `bun scripts/release.ts` says whether those four agree; CI runs it
-on every pull request and refuses the merge if they drift. Tagging and the GitHub Release are **automatic** on merge
-(`.github/workflows/release.yml`): never create a tag or a release by hand. A merge that bumps nothing (docs, tests,
-invisible refactors) is fine: the tag is already there and the workflow does nothing. One release = one coherent thing you can describe in a sentence;
-two unrelated features ready at once are two releases. Source-only work (this file, tests, invisible refactors) does
-not bump anything — it rides along with the next release.
+**Every merge into `main` bumps the version, without exception: at least the PATCH digit.** `main` deploys to real
+users, so there is no such thing as a free merge: a typo fix, a CI change, a refactor, even an edit to this file goes
+out as `0.0.x`. Nothing ever rides along with "the next release"; this *is* the next release. CI enforces it: a pull
+request whose version is already tagged is refused.
+
+**Default to PATCH.** When the choice between patch and minor is not obvious, it is a patch: most merges are repairs,
+polish and machinery, and the version should stay calm. `0.x.0` is reserved for a bigger feature, something you would
+announce in a sentence of its own ("Maths in your cards", "Your GitHub account is your account"). Don't inflate the
+minor digit for a small improvement to something that already works.
+
+Pick the bump **before** merging and put it in the feature's own commit: version + a new entry at the top of
+`CHANGELOG` (date = the day it ships) + the `package.json` mirror + `bun scripts/changelog.ts`. `bun scripts/release.ts`
+says whether those four agree, and CI runs it on every pull request. Tagging and the GitHub Release are **automatic**
+on merge (`.github/workflows/release.yml`): never create a tag or a release by hand.
+
+One release = one coherent thing you can describe in a sentence; two unrelated features ready at once are two releases,
+so two branches and two bumps. Every release carries at least one note, written for the person using peeponote: when
+the work is invisible to them, say that in one honest line ("Housekeeping: nothing changes on your boards") rather
+than describing the commit.
 
 ## Who may do what
 Identity is the **GitHub account behind the token** (`settings.github`, from `GET /user`): there is no peeponote
