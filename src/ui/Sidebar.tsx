@@ -122,7 +122,7 @@ export function Sidebar({ onOpenSettings, onNavigate, onClose }: { onOpenSetting
     return (
       <div className="flex w-12 flex-col items-center gap-3 border-r border-(--hair) bg-swamp-900 py-3">
         <button onClick={() => setCollapsed(false)} title="Expand">
-          <Peepo name="peepoHappy" size={30} />
+          <Peepo name="peepoHappy" plain="logo" size={30} />
         </button>
       </div>
     )
@@ -140,7 +140,7 @@ export function Sidebar({ onOpenSettings, onNavigate, onClose }: { onOpenSetting
       }}
     >
       <div className="flex items-center gap-2 px-3 py-3">
-        <Peepo name="peepoHappy" size={34} />
+        <Peepo name="peepoHappy" plain="logo" size={34} />
         <div className="flex-1 leading-tight">
           <div className="truncate text-lg font-black tracking-tight" title="peeponote">
             {meta?.name || 'peeponote'}

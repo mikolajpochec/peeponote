@@ -9,7 +9,7 @@ import type { PeepoName } from './peepos'
 /** how the mascot-free icons look: colour-coded badges, or monochrome icons in the text colour */
 export type IconStyle = 'colour' | 'line'
 
-export type GlyphRole = 'smile' | 'cheer' | 'ok' | 'think' | 'up' | 'down' | 'warn' | 'error' | 'ask' | 'rest' | 'smash' | 'love' | 'sad'
+export type GlyphRole = 'smile' | 'cheer' | 'ok' | 'think' | 'up' | 'down' | 'warn' | 'error' | 'ask' | 'rest' | 'smash' | 'love' | 'sad' | 'logo' | 'board'
 
 const ROLE: Record<PeepoName, GlyphRole> = {
   peepoHappy: 'smile',
@@ -63,6 +63,8 @@ const LOOK: Record<GlyphRole, Look> = {
   smash: { from: '#ffc24f', to: '#ff5a1f', fg: '#ffffff', ink: '#ffffff' },
   love: { from: '#ff9cc2', to: '#e5306e', fg: '#ffffff', ink: '#ffffff' },
   sad: { from: '#8fc3ff', to: '#3a67d8', fg: '#ffffff', ink: '#bfe0ff' },
+  logo: { from: '#8fe07a', to: '#2a9a50', fg: '#ffffff', ink: '#2a7a43' },
+  board: { from: '#7fe3c4', to: '#178f7c', fg: '#ffffff', ink: '#ffffff' },
 }
 
 const sparkle = (x: number, y: number, r: number) =>
@@ -154,6 +156,27 @@ function symbol(role: GlyphRole, { fg, ink }: Look, cut: string) {
           <circle cx="11" cy="13.2" r="5.8" fill={fg} mask={`url(#${cut})`} />
           <path d="M15.4 5.2h2.9l-2.9 3.2h2.9" fill="none" stroke={ink} strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round" />
           <path d={sparkle(18.6, 13.4, 1.2)} fill={ink} opacity=".85" />
+        </>
+      )
+    case 'logo':
+      return (
+        <>
+          <path d="M7.6 9.2h8.8a2.2 2.2 0 0 1 2.2 2.2v4.6l-3.3 3.3H7.6a2.2 2.2 0 0 1-2.2-2.2v-5.7a2.2 2.2 0 0 1 2.2-2.2z" fill={fg} />
+          <path d="M18.6 16h-2.1a1.2 1.2 0 0 0-1.2 1.2v2.1z" fill={ink} opacity=".35" />
+          <circle cx="9" cy="8.4" r="2.5" fill={fg} />
+          <circle cx="15" cy="8.4" r="2.5" fill={fg} />
+          <circle cx="9.3" cy="8.1" r="1.05" fill={ink} />
+          <circle cx="15.3" cy="8.1" r="1.05" fill={ink} />
+          <path d="M8.3 13.6h7.4M8.3 16.2h4.4" fill="none" stroke={ink} strokeWidth={1.3} strokeLinecap="round" opacity=".55" />
+        </>
+      )
+    case 'board':
+      return (
+        <>
+          <path d="M8.2 11.4v1.3a2.8 2.8 0 0 0 2.8 2.8h1.6" fill="none" stroke={fg} strokeWidth={1.5} strokeLinecap="round" />
+          <rect x="4.8" y="5.6" width="7" height="5.8" rx="1.6" fill={fg} />
+          <rect x="12.4" y="12.6" width="7" height="5.8" rx="1.6" fill={fg} />
+          <rect x="14" y="5.6" width="5.4" height="4.4" rx="1.3" fill={fg} opacity=".6" />
         </>
       )
     case 'smash':
@@ -270,6 +293,27 @@ function lineSymbol(role: GlyphRole) {
         <>
           <path d="M19.4 14.2A7.8 7.8 0 1 1 9.8 4.6a6.2 6.2 0 0 0 9.6 9.6z" {...wash} />
           <path d="M15 3.8h3.4L15 7.6h3.4" {...line} strokeWidth={1.5} />
+        </>
+      )
+    case 'logo':
+      return (
+        <>
+          <path d="M6.9 9.6h10.2a2.3 2.3 0 0 1 2.3 2.3v4.6l-3.6 3.6H6.9a2.3 2.3 0 0 1-2.3-2.3v-5.9a2.3 2.3 0 0 1 2.3-2.3z" {...wash} />
+          <path d="M19.4 16.5h-2.3a1.3 1.3 0 0 0-1.3 1.3v2.3" {...line} />
+          <circle cx="8.6" cy="6.6" r="2.3" {...wash} />
+          <circle cx="15.4" cy="6.6" r="2.3" {...wash} />
+          <circle cx="8.9" cy="6.4" r="1" {...dot} />
+          <circle cx="15.7" cy="6.4" r="1" {...dot} />
+          <path d="M8 13.9h8M8 16.6h4.6" {...line} strokeWidth={1.5} opacity=".7" />
+        </>
+      )
+    case 'board':
+      return (
+        <>
+          <path d="M8 11.6v1.2a2.8 2.8 0 0 0 2.8 2.8h1.4" {...line} />
+          <rect x="4" y="4.8" width="8" height="6.8" rx="1.8" {...wash} />
+          <rect x="12.2" y="12.4" width="8" height="6.8" rx="1.8" {...wash} />
+          <rect x="15" y="4.8" width="5.2" height="4.4" rx="1.4" {...line} opacity=".6" />
         </>
       )
     case 'smash':

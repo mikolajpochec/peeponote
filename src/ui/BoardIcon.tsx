@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PEEPOS, type PeepoName } from "../theme/peepos";
 import { useSettings } from "../store/settings";
+import { roleOf } from "../theme/glyphs";
 import { Peepo } from "./Peepo";
 
 export const DEFAULT_BOARD_ICON = "peepo:peepoGlad";
@@ -46,10 +47,12 @@ export function BoardIconView({
   const v = icon ?? DEFAULT_BOARD_ICON;
   if (!v) return null;
   if (v.startsWith("peepo:")) {
-    const name = v.slice(6) as PeepoName;
+    const raw = v.slice(6) as PeepoName;
+    const name = (PEEPOS as readonly string[]).includes(raw) ? raw : "peepoGlad";
     return (
       <Peepo
-        name={(PEEPOS as readonly string[]).includes(name) ? name : "peepoGlad"}
+        name={name}
+        plain={roleOf(name) === "smile" ? "board" : undefined}
         size={size}
         className={className}
       />

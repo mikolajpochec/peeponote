@@ -520,7 +520,7 @@ function LookTab() {
                   picked ? 'ring-frog-400 bg-frog-700/40' : 'ring-(--hair) hover:bg-(--hover)'
                 }`}
               >
-                {on ? <img src={peepoSrc('peepoHappy')} alt="" width={22} height={22} className="object-contain" /> : <Glyph role="smile" variant={style} size={22} />}
+                {on ? <img src={peepoSrc('peepoHappy')} alt="" width={22} height={22} className="object-contain" /> : <Glyph role="logo" variant={style} size={22} />}
                 {title}
               </button>
             )

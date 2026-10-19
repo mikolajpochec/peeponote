@@ -24,7 +24,8 @@ export const CHANGELOG: Release[] = [
     date: '2026-10-19',
     title: 'Two nicer icon sets without the frogs',
     notes: [
-      'Turning the mascots off (Settings → Look) now offers two new looks instead of the old thin outlines:',
+      'Turning the mascots off (Settings → Look) now offers two new looks instead of the old thin outlines. Colour icons are small colourful badges (a green tick, a red cross, a blue arrow for an upload), so the colour tells you what happened before you read anything. Plain icons are redrawn in the text colour with soft filled shapes.',
+      'Without the frogs, peeponote has a logo of its own (a note with two eyes peeking over the top), and boards show a board instead of a smiley.',
     ],
   },
   {
