@@ -10,9 +10,9 @@ import { toast } from '../store/toast'
 import { clearAssetCache } from '../cards/useAssetUrl'
 import { exportRepoZip } from '../git/exportZip'
 import { Peepo } from './Peepo'
-import { THEME_LIST, THEMES } from '../theme/themes'
-import { Glyph, type IconStyle } from '../theme/glyphs'
-import { peepoSrc } from '../theme/peepos'
+import { LOOK_LIST, LOOKS } from '../theme/themes'
+import { Glyph, type GlyphRole } from '../theme/glyphs'
+import { peepoSrc, type PeepoName } from '../theme/peepos'
 import { confirm } from './confirm'
 import { ChangeRepoDialog } from './ChangeRepoDialog'
 import { useReview } from '../store/review'
@@ -475,59 +475,60 @@ function StorageTab() {
 
 // ---------------------------------------------------------------------------------------------- Look
 
+/** the three faces each look card shows: a cheer, a thought and an upload, as peepos or as that look's icons */
+const SAMPLE: [PeepoName, GlyphRole][] = [
+  ['peepoHappy', 'smile'],
+  ['peepoThink', 'think'],
+  ['peepoClap', 'cheer'],
+]
+
+/**
+ * Colours and icons are one choice: each look is a palette drawn for its icons (green with the frogs, quiet surfaces
+ * under the bright badges, tinted surfaces for the plain icons), so nothing on screen fights anything else.
+ */
 function LookTab() {
   const settings = useSettings()
   return (
-    <>
-      <Row title="Theme" sub="Personal, only this browser.">
-        <div className="flex flex-wrap items-center gap-2">
-          {THEME_LIST.map(({ name, title }) => {
-            const t = THEMES[name]
-            return (
-              <button
-                key={name}
-                onClick={() => settings.set({ theme: name })}
-                className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold ring-1 ${
-                  settings.theme === name ? 'ring-frog-400 bg-frog-700/40' : 'ring-(--hair) hover:bg-(--hover)'
-                }`}
-              >
-                <span className="flex overflow-hidden rounded-md ring-1 ring-black/20">
-                  <span className="h-5 w-3" style={{ background: t.swamp[900] }} />
-                  <span className="h-5 w-3" style={{ background: t.swamp[700] }} />
-                  <span className="h-5 w-3" style={{ background: t.frog[400] }} />
+    <Row title="Look" sub="Personal, only this browser. The frogs are decoration: every look without them shows icons that mean the same thing.">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {LOOK_LIST.map((name) => {
+          const look = LOOKS[name]
+          const t = look.theme
+          const picked = settings.look === name
+          return (
+            <button
+              key={name}
+              onClick={() => settings.set({ look: name })}
+              aria-pressed={picked}
+              className={`flex flex-col overflow-hidden rounded-xl text-left ring-1 transition ${
+                picked ? 'ring-2 ring-frog-400' : 'ring-(--hair) hover:ring-frog-400/60'
+              }`}
+              style={{ background: t.swamp[800], color: t.frog[100] }}
+            >
+              <span className="flex items-center gap-1.5 px-2.5 pt-2.5 pb-2" style={{ background: t.swamp[900] }}>
+                {SAMPLE.map(([peepo, role]) =>
+                  look.icons === 'peepo' ? (
+                    <img key={role} src={peepoSrc(peepo)} alt="" width={24} height={24} className="h-6 w-6 object-contain" />
+                  ) : (
+                    <Glyph key={role} role={role} variant={look.icons} tint={look.badge} size={24} />
+                  ),
+                )}
+                <span className="ml-auto h-3 w-3 rounded-full" style={{ background: t.frog[400] }} />
+              </span>
+              <span className="flex flex-col gap-0.5 px-2.5 py-2">
+                <span className="text-[13px] font-bold" style={{ color: t.frog[50] }}>
+                  {look.title}
                 </span>
-                {title}
-              </button>
-            )
-          })}
-        </div>
-      </Row>
-      <Row title="Mascots" sub="The frogs are decoration: turn them off and every one of them becomes an icon that means the same thing, in colour or plain.">
-        <div className="flex flex-wrap items-center gap-2">
-          {(
-            [
-              [true, 'colour', 'Peepos'],
-              [false, 'colour', 'Colour icons'],
-              [false, 'line', 'Plain icons'],
-            ] as [boolean, IconStyle, string][]
-          ).map(([on, style, title]) => {
-            const picked = settings.mascots === on && (on || settings.iconStyle === style)
-            return (
-              <button
-                key={title}
-                onClick={() => settings.set(on ? { mascots: true } : { mascots: false, iconStyle: style })}
-                className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold ring-1 ${
-                  picked ? 'ring-frog-400 bg-frog-700/40' : 'ring-(--hair) hover:bg-(--hover)'
-                }`}
-              >
-                {on ? <img src={peepoSrc('peepoHappy')} alt="" width={22} height={22} className="object-contain" /> : <Glyph role="logo" variant={style} size={22} />}
-                {title}
-              </button>
-            )
-          })}
-        </div>
-      </Row>
-    </>
+                <span className="text-[11px] leading-tight" style={{ color: t.frog[200] }}>
+                  {look.sub}
+                </span>
+                <span className="mt-1.5 h-1 w-10 rounded-full" style={{ background: `linear-gradient(90deg, ${t.frog[500]}, ${t.frog[300]})` }} />
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </Row>
   )
 }
 

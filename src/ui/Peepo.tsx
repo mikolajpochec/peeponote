@@ -1,6 +1,7 @@
 import { useSettings } from '../store/settings'
 import { Glyph, roleOf, type GlyphRole } from '../theme/glyphs'
 import { peepoSrc, type PeepoName } from '../theme/peepos'
+import { lookOf } from '../theme/themes'
 
 /**
  * A peepo, or the colour-coded icon that means the same thing when the mascots are off (Settings → Look).
@@ -20,9 +21,9 @@ export function Peepo({
   className?: string
   title?: string
 }) {
-  const mascots = useSettings((s) => s.mascots)
-  const iconStyle = useSettings((s) => s.iconStyle)
-  if (!mascots) return <Glyph role={plain ?? roleOf(name)} variant={iconStyle} size={size} className={className} title={title} />
+  const look = lookOf(useSettings((s) => s.look))
+  if (look.icons !== 'peepo')
+    return <Glyph role={plain ?? roleOf(name)} variant={look.icons} tint={look.badge} size={size} className={className} title={title} />
   return (
     <img
       src={peepoSrc(name)}

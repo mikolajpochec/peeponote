@@ -3,6 +3,12 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
+## 1.8.2 — Colours and icons that belong together
+*2026-10-19*
+
+- Settings → Look is now one choice instead of two: each look is a colour scheme made for its icons, so a purple app no longer shows green frogs and the colour badges no longer clash with a tinted background.
+- Seven looks: Pond and Swamp with the peepos, Pop and Candy with colour badges on quiet surfaces, and Slate, Mocha and Ink with plain icons. Your current setting is carried over to the closest look.
+
 ## 1.8.1 — Two nicer icon sets without the frogs
 *2026-10-19*
 

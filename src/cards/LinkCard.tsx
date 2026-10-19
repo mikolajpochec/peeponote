@@ -4,6 +4,7 @@ import { selectBoards, useWorkspace } from '../store/workspace'
 import type { CardProps } from './CardView'
 import { describeLink, isInternalLink, openLink, parseLink } from '../nav/links'
 import { useSettings } from '../store/settings'
+import { mascotsOn } from '../theme/themes'
 import { boardMark } from '../theme/glyphs'
 import { BoardIconView } from '../ui/BoardIcon'
 import { LinkPicker } from '../ui/LinkPicker'
@@ -105,7 +106,7 @@ function InternalLink({ card, boardId, readOnly, target }: CardProps<LinkCardT> 
 /** "Pick a target…" for a fresh link card: the shared link picker, floating above the card. */
 function BoardPicker({ onPick }: { onPick: (url: string) => void }) {
   const [open, setOpen] = useState(false)
-  const mascots = useSettings((s) => s.mascots)
+  const mascots = useSettings((s) => mascotsOn(s.look))
   const btn = useRef<HTMLButtonElement>(null)
   return (
     <>

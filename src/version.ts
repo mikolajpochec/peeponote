@@ -6,7 +6,7 @@
  * minor = a new feature, patch = fixes and polish. Every release that reaches `main` bumps this and adds
  * an entry here, in plain words, written for the person using peeponote rather than for git.
  */
-export const APP_VERSION = '1.8.1'
+export const APP_VERSION = '1.8.2'
 
 export interface Release {
   version: string
@@ -19,6 +19,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: '1.8.2',
+    date: '2026-10-19',
+    title: 'Colours and icons that belong together',
+    notes: [
+      'Settings → Look is now one choice instead of two: each look is a colour scheme made for its icons, so a purple app no longer shows green frogs and the colour badges no longer clash with a tinted background.',
+      'Seven looks: Pond and Swamp with the peepos, Pop and Candy with colour badges on quiet surfaces, and Slate, Mocha and Ink with plain icons. Your current setting is carried over to the closest look.',
+    ],
+  },
   {
     version: '1.8.1',
     date: '2026-10-19',

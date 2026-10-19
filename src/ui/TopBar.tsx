@@ -40,7 +40,7 @@ export function TopBar({
   const navigate = useWorkspace((s) => s.navigate)
   const renameBoard = useWorkspace((s) => s.renameBoard)
   const setBoardStyle = useWorkspace((s) => s.setBoardStyle)
-  const themeCanvas = useSettings((s) => resolveTheme(s.theme).canvas)
+  const themeCanvas = useSettings((s) => resolveTheme(s.look).canvas)
   const board = currentId ? boards[currentId] : undefined
   const reviewOn = useReview((s) => s.mode.on)
   const readOnly = useReadOnly()

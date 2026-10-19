@@ -31,7 +31,7 @@ import { boardMark } from '../theme/glyphs'
 import { kbd } from '../ui/keys'
 import { useReview } from '../store/review'
 import { CommentLayer } from '../review/CommentLayer'
-import { resolveTheme } from '../theme/themes'
+import { mascotsOn, resolveTheme } from '../theme/themes'
 import { LONG_PRESS_MS, LONG_PRESS_SLOP, activeTouches, isDuplicateDblClick, markLongPress, MOBILE_QUERY, registerTap, shouldSwallowContextMenu, useIsMobile } from './touch'
 
 interface Marquee {
@@ -401,7 +401,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     if (menu.cardId && n) {
       const one = n === 1 ? selCards[0] : null
       const items: MenuItem[] = []
-      if (one?.type === 'board') items.push({ kind: 'item', label: 'Open board', icon: boardMark(useSettings.getState().mascots), shortcut: 'dbl-click', onClick: () => navigate(one.boardId) }, sep)
+      if (one?.type === 'board') items.push({ kind: 'item', label: 'Open board', icon: boardMark(mascotsOn(useSettings.getState().look)), shortcut: 'dbl-click', onClick: () => navigate(one.boardId) }, sep)
       if (one?.type === 'asset') items.push({ kind: 'item', label: 'Download original', icon: '⬇', onClick: () => void downloadAsset(one) }, sep)
       items.push(
         { kind: 'item', label: n > 1 ? `Ask for review of ${n} cards…` : 'Ask for review…', icon: '👀', onClick: () => useReview.getState().setRequestDialog({ boardId: board.id, targets: [...sel] }) },
@@ -663,7 +663,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
     }
   }
 
-  const theme = useSettings((s) => resolveTheme(s.theme))
+  const theme = useSettings((s) => resolveTheme(s.look))
   const mobile = useIsMobile()
 
   // dashed frame around each group that has a selected (or hovered) member
@@ -696,7 +696,7 @@ export function Canvas({ board, readOnly }: { board: Board; readOnly: boolean })
       ref={ref}
       className={`canvas-bg relative h-full w-full overflow-hidden touch-none ${reviewOn ? 'review-mode' : ''} ${dragOver && !readOnly ? 'outline outline-4 -outline-offset-4 outline-frog-300/60' : ''}`}
       style={{
-        ...boardVars(board, theme.canvas),
+        ...boardVars(board, theme),
         backgroundColor: 'var(--board-bg)',
       }}
       onPointerDown={onBackgroundPointerDown}
