@@ -77,7 +77,7 @@ export default function App() {
   const [pluginsClosed, setPluginsClosed] = useState(false)
   const askPlugins = status === 'ready' && !showOnboarding && !pluginsChosen && !pluginsClosed && seenThisVersion && !changelog
 
-  const themeName = useSettings((s) => s.theme)
+  const themeName = useSettings((s) => s.look)
   useEffect(() => applyTheme(resolveTheme(themeName)), [themeName])
 
   // "Sign in" anywhere opens the GitHub dialog; nothing nags by itself, the top bar says enough

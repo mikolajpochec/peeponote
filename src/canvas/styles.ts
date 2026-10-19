@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { Board, Card, CardStyle, FontFamily } from '../model/types'
+import type { Theme } from '../theme/themes'
 
 export const FONT_FAMILY: Record<FontFamily, string> = {
   sans: 'var(--font-sans)',
@@ -124,16 +125,30 @@ export function contrast(bg: string): string {
 
 export const DEFAULT_BOARD_BG = '#15181c'
 
-/** CSS variables that adapt canvas chrome (text, lines, dots, handles) to the board background. */
-export function boardVars(board: Board, defaultBg = DEFAULT_BOARD_BG): Record<string, string> {
-  const bg = board.style?.bg ?? defaultBg
+/**
+ * CSS variables that adapt canvas chrome (text, lines, dots, handles) to the board background. On a dark board they
+ * take the look's text tones and accent, so the grid and connectors don't stay green on a blue or berry look.
+ */
+export function boardVars(board: Board, theme?: Theme): Record<string, string> {
+  const bg = board.style?.bg ?? theme?.canvas ?? DEFAULT_BOARD_BG
   const light = isLight(bg)
+  if (light)
+    return {
+      '--board-bg': bg,
+      '--board-fg': '#1b1d1a',
+      '--board-fg-muted': 'rgba(27, 29, 26, 0.55)',
+      '--board-line': theme?.frog[600] ?? '#3d7030',
+      '--board-line-sel': '#1b1d1a',
+      '--board-dot': 'rgba(27, 29, 26, 0.18)',
+    }
+  const fg = theme?.frog[50] ?? '#eef7ec'
+  const line = theme?.frog[300] ?? '#8ac47e'
   return {
     '--board-bg': bg,
-    '--board-fg': light ? '#1b1d1a' : '#eef7ec',
-    '--board-fg-muted': light ? 'rgba(27, 29, 26, 0.55)' : 'rgba(238, 247, 236, 0.55)',
-    '--board-line': light ? '#3d7030' : '#8ac47e',
-    '--board-line-sel': light ? '#1b1d1a' : '#d6ebd1',
-    '--board-dot': light ? 'rgba(27, 29, 26, 0.18)' : 'rgba(138, 196, 126, 0.16)',
+    '--board-fg': fg,
+    '--board-fg-muted': `color-mix(in srgb, ${fg} 55%, transparent)`,
+    '--board-line': line,
+    '--board-line-sel': theme?.frog[100] ?? '#d6ebd1',
+    '--board-dot': `color-mix(in srgb, ${line} 16%, transparent)`,
   }
 }

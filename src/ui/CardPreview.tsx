@@ -8,10 +8,10 @@ import { ConnectorLayer } from '../canvas/ConnectorLayer'
 
 /** A card rendered as it looks on its board, scaled to fit a small box. Not interactive. */
 export function CardPreview({ card, board, w = 220, h = 140 }: { card: Card; board: Board; w?: number; h?: number }) {
-  const theme = useSettings((s) => resolveTheme(s.theme))
+  const theme = useSettings((s) => resolveTheme(s.look))
   const k = Math.min(1, (w - 16) / card.w, (h - 16) / card.h)
   return (
-    <div className="relative overflow-hidden rounded-lg" style={{ width: w, height: h, ...boardVars(board, theme.canvas), background: 'var(--board-bg)' }}>
+    <div className="relative overflow-hidden rounded-lg" style={{ width: w, height: h, ...boardVars(board, theme), background: 'var(--board-bg)' }}>
       <div
         data-preview
         className="pointer-events-none absolute"
@@ -25,8 +25,8 @@ export function CardPreview({ card, board, w = 220, h = 140 }: { card: Card; boa
 
 /** A whole board rendered for real (cards + connectors), scaled to fit. Not interactive. */
 export function BoardPreview({ board, w = 220, h = 140 }: { board: Board; w?: number; h?: number }) {
-  const theme = useSettings((s) => resolveTheme(s.theme))
-  const vars = boardVars(board, theme.canvas)
+  const theme = useSettings((s) => resolveTheme(s.look))
+  const vars = boardVars(board, theme)
   const bb = bbox(board.cards)
   if (!bb)
     return (

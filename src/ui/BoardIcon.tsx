@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PEEPOS, type PeepoName } from "../theme/peepos";
 import { useSettings } from "../store/settings";
+import { mascotsOn } from "../theme/themes";
 import { roleOf } from "../theme/glyphs";
 import { Peepo } from "./Peepo";
 
@@ -83,7 +84,7 @@ export function BoardIconPicker({
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState("");
   // with the mascots off there is nothing to pick from in the peepo grid: emoji only
-  const mascots = useSettings((s) => s.mascots);
+  const mascots = useSettings((s) => mascotsOn(s.look));
   const root = useRef<HTMLDivElement>(null);
   const pop = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);

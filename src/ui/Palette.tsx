@@ -9,6 +9,7 @@ import { SHAPES } from '../cards/ShapeCard'
 import { STORY_KINDS } from '../cards/story/kinds'
 import { isCoarse, useIsMobile } from '../canvas/touch'
 import { useSettings } from '../store/settings'
+import { mascotsOn } from '../theme/themes'
 import { boardMark } from '../theme/glyphs'
 import { pluginOn, type PluginId } from '../plugins'
 
@@ -173,7 +174,7 @@ export function Palette({ board }: { board: Board }) {
   const fileInput = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState<ToolId | null>(null)
   const [open, setOpen] = useState<ToolId | null>(null)
-  const mascots = useSettings((s) => s.mascots)
+  const mascots = useSettings((s) => mascotsOn(s.look))
   const root = useRef<HTMLDivElement>(null)
   const coarse = isCoarse()
   const mobile = useIsMobile()

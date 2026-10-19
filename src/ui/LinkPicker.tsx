@@ -4,12 +4,13 @@ import { selectBoards, useWorkspace } from '../store/workspace'
 import { cardSummary, linkTo, type LinkTarget } from '../nav/links'
 import { PEEPO_SCHEME, boardChain, boardSlug, cardSlug, resolvePeepoUrl } from '../nav/peepoUrl'
 import { useSettings } from '../store/settings'
+import { mascotsOn } from '../theme/themes'
 import { boardMark } from '../theme/glyphs'
 import { BoardIconView } from './BoardIcon'
 import { BoardPreview, CardPreview } from './CardPreview'
 
 const TYPE_ICON: Record<string, string> = { note: '📝', text: '¶', todo: '☑', link: '🔗', asset: '📎', shape: '◇', story: '📖' }
-const typeIcon = (type: string) => TYPE_ICON[type] ?? (type === 'board' ? boardMark(useSettings.getState().mascots) : '▫')
+const typeIcon = (type: string) => TYPE_ICON[type] ?? (type === 'board' ? boardMark(mascotsOn(useSettings.getState().look)) : '▫')
 
 interface Hit {
   target: LinkTarget

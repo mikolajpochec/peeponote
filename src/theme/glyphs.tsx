@@ -327,15 +327,18 @@ export function Glyph({
   size = 28,
   className = '',
   title,
+  tint,
 }: {
   role: GlyphRole
   variant?: IconStyle
+  /** the look's own badge colours, used by the app's marks (logo, board) so they match the accent */
+  tint?: { from: string; to: string; ink: string }
   size?: number
   className?: string
   title?: string
 }) {
   const id = `${role}${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
-  const look = LOOK[role]
+  const look = tint && (role === 'logo' || role === 'board') ? { ...LOOK[role], ...tint } : LOOK[role]
   return (
     <svg
       viewBox="0 0 24 24"
