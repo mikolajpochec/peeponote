@@ -138,7 +138,7 @@ export const resolveTheme = (name: LookName): Theme => lookOf(name).theme
 export const mascotsOn = (name: LookName) => lookOf(name).icons === 'peepo'
 
 /**
- * Before 1.9 the colours (`theme`) and the icons (`mascots`, `iconStyle`) were two separate settings; this picks the
+ * Before 1.8.2 the colours (`theme`) and the icons (`mascots`, `iconStyle`) were two separate settings; this picks the
  * look closest to what someone had, keeping their icons and the feel of their colours.
  */
 export function lookFromLegacy(theme?: string, mascots = true, iconStyle: IconStyle = 'colour'): LookName {

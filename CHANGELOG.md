@@ -3,7 +3,7 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
-## 1.9.0 — Colours and icons that belong together
+## 1.8.2 — Colours and icons that belong together
 *2026-10-19*
 
 - Settings → Look is now one choice instead of two: each look is a colour scheme made for its icons, so a purple app no longer shows green frogs and the colour badges no longer clash with a tinted background.
