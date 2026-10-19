@@ -3,6 +3,11 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
+## 1.8.1 — Nicer icons without the frogs
+*2026-10-19*
+
+- With the mascots turned off (Settings → Look), the frogs now become small colourful icons instead of thin outlines: a yellow smile, a green tick, a red cross, a blue arrow for an upload. The colour tells you what happened before you read anything.
+
 ## 1.8.0 — Flowcharts for code, and plugins
 *2026-10-14*
 

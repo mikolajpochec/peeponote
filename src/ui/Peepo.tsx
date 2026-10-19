@@ -3,7 +3,7 @@ import { Glyph, roleOf } from '../theme/glyphs'
 import { peepoSrc, type PeepoName } from '../theme/peepos'
 
 /**
- * A peepo, or the line icon that means the same thing when the mascots are off (Settings → Look).
+ * A peepo, or the colour-coded icon that means the same thing when the mascots are off (Settings → Look).
  * Every call site keeps asking for an emote by name; what gets drawn is a personal setting.
  */
 export function Peepo({ name, size = 28, className = '', title }: { name: PeepoName; size?: number; className?: string; title?: string }) {

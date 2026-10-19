@@ -502,12 +502,12 @@ function LookTab() {
           })}
         </div>
       </Row>
-      <Row title="Mascots" sub="The frogs are decoration: turn them off and every one of them becomes a plain line icon that means the same thing.">
+      <Row title="Mascots" sub="The frogs are decoration: turn them off and every one of them becomes a small colourful icon that means the same thing.">
         <div className="flex items-center gap-2">
           {(
             [
               [true, 'Peepos'],
-              [false, 'Plain icons'],
+              [false, 'Icons'],
             ] as [boolean, string][]
           ).map(([on, title]) => (
             <button

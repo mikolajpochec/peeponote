@@ -14,7 +14,7 @@ const GREEN = { 300: '#8ac47e', 400: '#5d9b4c', 500: '#4a8a3a', 600: '#3d7030', 
 /**
  * A theme is five surfaces plus one accent ramp. `peepo` is the swamp the app grew up in; the rest are plain
  * dark palettes for people who would rather not look at a frog all day (Settings → Look also turns the
- * mascots themselves into quiet line icons).
+ * mascots themselves into icons).
  */
 export const THEMES: Record<ThemeName, Theme> = {
   peepo: {
