@@ -11,7 +11,7 @@ import { clearAssetCache } from '../cards/useAssetUrl'
 import { exportRepoZip } from '../git/exportZip'
 import { Peepo } from './Peepo'
 import { THEME_LIST, THEMES } from '../theme/themes'
-import { Glyph } from '../theme/glyphs'
+import { Glyph, type IconStyle } from '../theme/glyphs'
 import { peepoSrc } from '../theme/peepos'
 import { confirm } from './confirm'
 import { ChangeRepoDialog } from './ChangeRepoDialog'
@@ -502,25 +502,29 @@ function LookTab() {
           })}
         </div>
       </Row>
-      <Row title="Mascots" sub="The frogs are decoration: turn them off and every one of them becomes a small colourful icon that means the same thing.">
-        <div className="flex items-center gap-2">
+      <Row title="Mascots" sub="The frogs are decoration: turn them off and every one of them becomes an icon that means the same thing, in colour or plain.">
+        <div className="flex flex-wrap items-center gap-2">
           {(
             [
-              [true, 'Peepos'],
-              [false, 'Icons'],
-            ] as [boolean, string][]
-          ).map(([on, title]) => (
-            <button
-              key={title}
-              onClick={() => settings.set({ mascots: on })}
-              className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold ring-1 ${
-                settings.mascots === on ? 'ring-frog-400 bg-frog-700/40' : 'ring-(--hair) hover:bg-(--hover)'
-              }`}
-            >
-              {on ? <img src={peepoSrc('peepoHappy')} alt="" width={22} height={22} className="object-contain" /> : <Glyph role="smile" size={22} />}
-              {title}
-            </button>
-          ))}
+              [true, 'colour', 'Peepos'],
+              [false, 'colour', 'Colour icons'],
+              [false, 'line', 'Plain icons'],
+            ] as [boolean, IconStyle, string][]
+          ).map(([on, style, title]) => {
+            const picked = settings.mascots === on && (on || settings.iconStyle === style)
+            return (
+              <button
+                key={title}
+                onClick={() => settings.set(on ? { mascots: true } : { mascots: false, iconStyle: style })}
+                className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold ring-1 ${
+                  picked ? 'ring-frog-400 bg-frog-700/40' : 'ring-(--hair) hover:bg-(--hover)'
+                }`}
+              >
+                {on ? <img src={peepoSrc('peepoHappy')} alt="" width={22} height={22} className="object-contain" /> : <Glyph role="smile" variant={style} size={22} />}
+                {title}
+              </button>
+            )
+          })}
         </div>
       </Row>
     </>

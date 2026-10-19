@@ -8,7 +8,8 @@ import { peepoSrc, type PeepoName } from '../theme/peepos'
  */
 export function Peepo({ name, size = 28, className = '', title }: { name: PeepoName; size?: number; className?: string; title?: string }) {
   const mascots = useSettings((s) => s.mascots)
-  if (!mascots) return <Glyph role={roleOf(name)} size={size} className={className} title={title} />
+  const iconStyle = useSettings((s) => s.iconStyle)
+  if (!mascots) return <Glyph role={roleOf(name)} variant={iconStyle} size={size} className={className} title={title} />
   return (
     <img
       src={peepoSrc(name)}

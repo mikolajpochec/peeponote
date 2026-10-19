@@ -3,10 +3,12 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
-## 1.8.1 — Nicer icons without the frogs
+## 1.8.1 — Two nicer icon sets without the frogs
 *2026-10-19*
 
-- With the mascots turned off (Settings → Look), the frogs now become small colourful icons instead of thin outlines: a yellow smile, a green tick, a red cross, a blue arrow for an upload. The colour tells you what happened before you read anything.
+- Turning the mascots off (Settings → Look) now offers two new looks. Colour icons: small colourful badges, a yellow smile, a green tick, a red cross, so the colour tells you what happened before you read anything. Plain icons: redrawn in the text colour, with soft filled shapes that sit well next to the rest of the app.
+- Colour icons: small colourful badges. A yellow smile, a green tick, a red cross, a blue arrow for an upload, so the colour tells you what happened before you read anything.
+- Plain icons: the same meanings in quiet monochrome, drawn in the text colour with a soft fill, to sit calmly with the rest of the app.
 
 ## 1.8.0 — Flowcharts for code, and plugins
 *2026-10-14*

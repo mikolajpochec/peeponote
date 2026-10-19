@@ -22,9 +22,11 @@ export const CHANGELOG: Release[] = [
   {
     version: '1.8.1',
     date: '2026-10-19',
-    title: 'Nicer icons without the frogs',
+    title: 'Two nicer icon sets without the frogs',
     notes: [
-      'With the mascots turned off (Settings → Look), the frogs now become small colourful icons instead of thin outlines: a yellow smile, a green tick, a red cross, a blue arrow for an upload. The colour tells you what happened before you read anything.',
+      'Turning the mascots off (Settings → Look) now offers two new looks. Colour icons: small colourful badges, a yellow smile, a green tick, a red cross, so the colour tells you what happened before you read anything. Plain icons: redrawn in the text colour, with soft filled shapes that sit well next to the rest of the app.',
+      'Colour icons: small colourful badges. A yellow smile, a green tick, a red cross, a blue arrow for an upload, so the colour tells you what happened before you read anything.',
+      'Plain icons: the same meanings in quiet monochrome, drawn in the text colour with a soft fill, to sit calmly with the rest of the app.',
     ],
   },
   {
