@@ -2,6 +2,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { DEFAULT_CORS_PROXY } from '../git/repo'
+import type { IconStyle } from '../theme/glyphs'
 import type { ThemeName } from '../theme/themes'
 import type { TransportPref } from '../git/sync'
 import type { PluginId } from '../plugins'
@@ -39,8 +40,10 @@ export interface Settings {
   /** first-run wizard finished (or skipped) */
   onboarded: boolean
   theme: ThemeName
-  /** draw the peepo mascots; off replaces each of them with a quiet line icon */
+  /** draw the peepo mascots; off replaces each of them with an icon in `iconStyle` */
   mascots: boolean
+  /** with the mascots off: colour-coded badges, or monochrome icons in the text colour */
+  iconStyle: IconStyle
   /** who the token belongs to: comments, reviews and notifications are signed in as this person */
   github: GhIdentity | null
   /** History lists the commits peeponote makes on its own (review activity, merges) */
@@ -74,6 +77,7 @@ const DEFAULTS: Omit<Settings, 'set' | 'reset' | 'rememberRepo' | 'forgetRepo'> 
   onboarded: false,
   theme: 'dark',
   mascots: true,
+  iconStyle: 'colour',
   github: null,
   showAutoCommits: false,
   lastSeenVersion: '',

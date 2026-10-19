@@ -3,6 +3,12 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
+## 1.8.1 — Two nicer icon sets without the frogs
+*2026-10-19*
+
+- Turning the mascots off (Settings → Look) now offers two new looks instead of the old thin outlines. Colour icons are small colourful badges (a green tick, a red cross, a blue arrow for an upload), so the colour tells you what happened before you read anything. Plain icons are redrawn in the text colour with soft filled shapes.
+- Without the frogs, peeponote has a logo of its own (a note with two eyes peeking over the top), and boards show a board instead of a smiley.
+
 ## 1.8.0 — Flowcharts for code, and plugins
 *2026-10-14*
 
