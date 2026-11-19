@@ -3,6 +3,11 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
+## 1.8.6 — Copies keep their layers
+*2026-11-19*
+
+- Copying, pasting or duplicating several cards keeps them stacked the way they were: text you put on top of a rectangle stays on top in the copy, instead of sliding underneath.
+
 ## 1.8.5 — Shapes without an outline
 *2026-11-19*
 
