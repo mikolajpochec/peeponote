@@ -51,6 +51,15 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
   const setShape = (kind: ShapeKind) => {
     for (const c of shapes) updateCard(boardId, c.id, { shape: kind } as Partial<Card>)
   }
+  // "none" means different things: a card simply has no border, but a shape without one falls back to its
+  // default outline, so a shape has to be told to draw a transparent one
+  const setBorder = (border: string | undefined) => {
+    if (border !== 'transparent') return apply({ border })
+    const shapeIds = shapes.map((c) => c.id)
+    const otherIds = cards.filter((c) => c.type !== 'shape').map((c) => c.id)
+    if (shapeIds.length) styleCards(boardId, shapeIds, { border: 'transparent' })
+    if (otherIds.length) styleCards(boardId, otherIds, { border: undefined })
+  }
   const root = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -110,7 +119,7 @@ export function StyleBar({ boardId, cards }: { boardId: string; cards: Card[] })
       {/* a new fill resets the ink so it re-derives its contrast automatically */}
       <ColorPicker title="Fill (text color adapts)" icon="◼" value={s.bg} fallback={first.type === 'text' || allShapes ? '#00000000' : '#fbf8ef'} allowNone onChange={(bg) => apply({ bg, fg: undefined })} />
       <ColorPicker title="Text color" icon="A" value={s.fg} fallback={s.bg ? contrast(s.bg) : '#1b1d1a'} onChange={(fg) => apply({ fg })} />
-      <ColorPicker title={allShapes ? 'Stroke color' : 'Border'} icon="◻" value={s.border} fallback="#00000000" allowNone onChange={(border) => apply({ border: border === 'transparent' ? undefined : border })} />
+      <ColorPicker title={allShapes ? 'Stroke color' : 'Border'} icon="◻" value={s.border} fallback="#00000000" allowNone onChange={setBorder} />
       {(allShapes || s.border) && (
         <>
           <button
