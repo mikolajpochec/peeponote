@@ -34,6 +34,8 @@ export function ThreadDialog() {
   const mode = useReview((s) => s.mode)
   const me = useMe()
   const board = useWorkspace((s) => (open ? s.boards[open.boardId] : undefined))
+  // every hook stays above the early return below: one placed after it crashes the app the moment a thread opens
+  const mayWrite = useWorkspace((s) => s.canWrite)
   const anyoneCanClose = useWorkspace((s) => !s.meta?.settings?.review?.authorOnlyClose)
   const [reply, setReply] = useState<Record<string, string>>({})
   const [fresh, setFresh] = useState('')
@@ -65,7 +67,6 @@ export function ThreadDialog() {
   const card = anchor && isCardAnchor(anchor) ? board.cards.find((c) => c.id === anchor.cardId) : undefined
   const muted = new Set(me ? states[userKey(me.email)]?.muted ?? [] : [])
   const canResolve = (root: Comment) => !!me && (anyoneCanClose || samePerson(root.author, me))
-  const mayWrite = useWorkspace((s) => s.canWrite)
   const canWrite = identity.kind === 'github' && mayWrite
 
   const goTo = () => {

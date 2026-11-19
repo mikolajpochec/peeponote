@@ -65,10 +65,11 @@ export function linkMentions(line: string): string {
  * literal text, newlines are kept (the container uses `white-space: pre-wrap`).
  */
 export function InlineMd({ text }: { text: string }) {
+  // before the early return: a hook that only runs once there is text crashes when an empty field gets its first letter
+  const math = useMath(text)
   if (!text) return null
   // one Markdown run per line, joined with <br>: newlines behave exactly like in the textarea
   // (a single markdown pass would emit newline text nodes that pre-wrap containers double up)
-  const math = useMath(text)
   const lines = text.split('\n')
   return (
     <>
