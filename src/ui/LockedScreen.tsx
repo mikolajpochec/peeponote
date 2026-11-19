@@ -8,11 +8,16 @@ const quiet = 'rounded-lg bg-swamp-600 px-4 py-2 font-bold hover:bg-swamp-500'
 /**
  * GitHub says this account cannot reach the repo behind this workspace: a private repo and no key, a key that
  * doesn't cover it, or someone who was removed from the collaborators. The boards stay shut until that changes.
+ *
+ * An expired key normally never gets here (the boards stay open and a new key is asked for). It does when the
+ * repo was already locked the last time GitHub answered: then the way out is a new key, and the screen says so.
  */
 export function LockedScreen({ onOpenSettings }: { onOpenSettings: () => void }) {
   const remoteUrl = useWorkspace((s) => s.remoteUrl)
   const refreshAccess = useWorkspace((s) => s.refreshAccess)
   const identity = useReview((s) => s.identity)
+  const keyExpired = useWorkspace((s) => s.keyExpired)
+  const askForKey = useWorkspace((s) => s.askForKey)
   const signedIn = identity.kind === 'github'
   const repo = (remoteUrl ?? '').replace(/^https?:\/\//, '').replace(/^github\.com\//, '').replace(/\.git$/, '')
 
@@ -21,7 +26,11 @@ export function LockedScreen({ onOpenSettings }: { onOpenSettings: () => void })
       <Peepo name="monkaS" size={96} />
       <h1 className="text-3xl font-black tracking-tight">Locked</h1>
       <p className="max-w-md text-frog-200/80">
-        {signedIn ? (
+        {keyExpired ? (
+          <>
+            Your GitHub key stopped working, so <b>{repo || 'this workspace'}</b> cannot be opened. Keys expire after a while: paste a new one and you are back in.
+          </>
+        ) : signedIn ? (
           <>
             GitHub doesn't let <b>@{identity.account.login}</b> open <b>{repo}</b>. Ask whoever owns it to add you as a collaborator, then try again.
           </>
@@ -32,10 +41,16 @@ export function LockedScreen({ onOpenSettings }: { onOpenSettings: () => void })
         )}
       </p>
       <div className="flex flex-wrap justify-center gap-2">
-        {!signedIn && (
-          <button className={primary} onClick={() => window.dispatchEvent(new CustomEvent('peeponote:identify'))}>
-            Sign in with GitHub
+        {keyExpired ? (
+          <button className={primary} onClick={() => askForKey(true)}>
+            Paste a new key
           </button>
+        ) : (
+          !signedIn && (
+            <button className={primary} onClick={() => window.dispatchEvent(new CustomEvent('peeponote:identify'))}>
+              Sign in with GitHub
+            </button>
+          )
         )}
         <button className={quiet} onClick={() => void refreshAccess(true)}>
           Try again
@@ -44,9 +59,9 @@ export function LockedScreen({ onOpenSettings }: { onOpenSettings: () => void })
           Open another repo
         </button>
       </div>
-      {signedIn && (
-        <button className="text-[12px] text-frog-200/50 hover:text-frog-200" onClick={() => window.dispatchEvent(new CustomEvent('peeponote:identify'))}>
-          Signed in as @{identity.account.login} — use a different account
+      {signedIn && !keyExpired && (
+        <button className="text-[12px] text-frog-200/50 hover:text-frog-200" onClick={() => askForKey(true)}>
+          Signed in as @{identity.account.login}: use a new key or a different account
         </button>
       )}
     </div>

@@ -314,6 +314,20 @@ function ReadOnlyChip() {
   )
 }
 
+/** GitHub stopped accepting the key: saves stay here until a new one is pasted, and this is where to do it */
+function KeyExpiredChip() {
+  const askForKey = useWorkspace((s) => s.askForKey)
+  return (
+    <button
+      onClick={() => askForKey(true)}
+      title="Your GitHub key stopped working. Saves stay in this browser until you paste a new one: click to do it."
+      className="flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-amber-500 px-2.5 text-[13px] font-bold text-black hover:bg-amber-400"
+    >
+      🔑<span className="hidden @[34rem]:inline">Key expired</span>
+    </button>
+  )
+}
+
 function SaveBar() {
   const dirty = useWorkspace(selectDirty)
   const canWrite = useWorkspace((s) => s.canWrite)
@@ -328,16 +342,18 @@ function SaveBar() {
   const [writing, setWriting] = useState(false)
   const online = useOnline()
   const pendingSync = useWorkspace((s) => s.pendingSync)
+  const keyExpired = useWorkspace((s) => s.keyExpired)
 
   const doSave = async () => {
     const ok = await save(msg)
     if (ok) setMsg('')
   }
 
-  if (!canWrite) return <ReadOnlyChip />
+  if (!canWrite) return keyExpired ? <KeyExpiredChip /> : <ReadOnlyChip />
 
   return (
     <div className="flex shrink-0 items-center gap-2">
+      {keyExpired && <KeyExpiredChip />}
       {!online ? (
         <span
           className="flex h-7 shrink-0 items-center gap-1 rounded-md bg-swamp-700 px-1.5 text-[11px] font-bold text-frog-200"

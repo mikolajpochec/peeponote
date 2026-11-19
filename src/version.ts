@@ -6,7 +6,7 @@
  * minor = a new feature, patch = fixes and polish. Every release that reaches `main` bumps this and adds
  * an entry here, in plain words, written for the person using peeponote rather than for git.
  */
-export const APP_VERSION = '1.8.2'
+export const APP_VERSION = '1.8.3'
 
 export interface Release {
   version: string
@@ -19,6 +19,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: '1.8.3',
+    date: '2026-11-19',
+    title: 'An expired key no longer locks you out',
+    notes: [
+      'When your GitHub key expires, your boards stay open. peeponote asks for a new key right there, and one paste puts everything back.',
+      'Until then nothing is lost: saves stay in this browser and go out by themselves the moment the new key works. The top bar shows "Key expired" as a reminder.',
+      'You can swap your key whenever you like: click your picture in the top bar, then "Use a new key". No signing out first.',
+    ],
+  },
   {
     version: '1.8.2',
     date: '2026-10-19',

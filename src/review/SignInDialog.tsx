@@ -20,6 +20,8 @@ export function SignInDialog({ onClose }: { onClose: () => void }) {
   const refreshAccess = useWorkspace((s) => s.refreshAccess)
   const access = useWorkspace((s) => s.access)
   const remoteUrl = useWorkspace((s) => s.remoteUrl)
+  const keyExpired = useWorkspace((s) => s.keyExpired)
+  const askForKey = useWorkspace((s) => s.askForKey)
   const [cropping, setCropping] = useState<File | null>(null)
   const form = useSignIn(async () => {
     await useReview.getState().refreshIdentity()
@@ -61,7 +63,12 @@ export function SignInDialog({ onClose }: { onClose: () => void }) {
                 </a>
               </div>
             </div>
-            {remoteUrl && (
+            {keyExpired && (
+              <p role="alert" className="rounded-lg bg-amber-900/30 px-3 py-2 text-[12px] leading-relaxed text-amber-100">
+                Your GitHub key stopped working. Saves stay in this browser until you paste a new one.
+              </p>
+            )}
+            {remoteUrl && !keyExpired && (
               <p className="text-[12px] text-frog-200/70">
                 {access === 'write'
                   ? 'GitHub lets you push to this repo, so you can edit the boards, comment and review here.'
@@ -80,6 +87,16 @@ export function SignInDialog({ onClose }: { onClose: () => void }) {
                   Use my GitHub picture
                 </button>
               )}
+              <button
+                className={keyExpired ? primary : btn}
+                title="Paste a new GitHub key: when the old one expired, or to switch to another account"
+                onClick={() => {
+                  onClose()
+                  askForKey(true)
+                }}
+              >
+                Use a new key
+              </button>
               <button
                 className={`${btn} ml-auto text-red-100 hover:bg-red-900/50`}
                 onClick={() => {
