@@ -39,12 +39,22 @@ export class NotFastForwardError extends Error {
   }
 }
 
-class GitHubError extends Error {
+export class GitHubError extends Error {
   status: number
   constructor(status: number, message: string) {
     super(message)
     this.status = status
   }
+}
+
+/**
+ * GitHub refused the key itself: it expired, was revoked or was mistyped. Also true for the proxy transport,
+ * where a refused login surfaces as isomorphic-git's HttpError 401 or (we cancel the retry) UserCanceledError.
+ */
+export function isBadKey(e: unknown): boolean {
+  if (e instanceof GitHubError) return e.status === 401
+  const g = e as { code?: string; data?: { statusCode?: number } } | null
+  return g?.code === 'UserCanceledError' || (g?.code === 'HttpError' && g.data?.statusCode === 401)
 }
 
 class Client {
@@ -70,7 +80,7 @@ class Client {
       } catch {
         /* no body */
       }
-      if (res.status === 401) msg = 'GitHub rejected the token (401). Check it in Settings.'
+      if (res.status === 401) msg = 'GitHub does not accept this key any more. Make a new one and paste it in.'
       if (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0') msg = 'GitHub API rate limit hit — try again later (a token raises the limit).'
       if (res.status === 404) msg = `${msg} — repo not found, or the token lacks access to ${this.owner}/${this.repo}.`
       throw new GitHubError(res.status, msg)

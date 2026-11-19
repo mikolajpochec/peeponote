@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { kbd, MOD } from './keys'
 import { revealFolder, supportsFolderAccess } from '../fs'
 import { wipeBrowserFS } from '../fs/lightning'
@@ -21,6 +21,8 @@ import { usePeople } from '../review/people'
 import { openChangelog } from './ChangelogDialog'
 import { APP_VERSION, latestRelease } from '../version'
 import { PluginPicker } from './PluginPicker'
+import { checkToken } from '../git/ghAccount'
+import { identityOf } from './KeyForm'
 
 const field = 'w-full rounded-md bg-swamp-700 px-2 py-1.5 text-[13px] outline-none focus:ring-1 focus:ring-frog-400 placeholder:text-frog-200/30'
 const btn = 'rounded-md bg-swamp-600 px-3 py-1.5 text-[13px] font-semibold hover:bg-swamp-500 disabled:opacity-40'
@@ -128,6 +130,23 @@ function SyncTab() {
   const repos = useSettings((s) => s.repos)
   useEffect(() => setRemoteDraft(remoteUrl ?? ''), [remoteUrl])
 
+  // a key typed here takes effect when you leave the field: GitHub says whose it is, and access is asked again
+  const adopted = useRef(settings.token)
+  const adoptTypedKey = async () => {
+    const token = useSettings.getState().token.trim()
+    if (token === adopted.current.trim()) return
+    adopted.current = token
+    if (token) {
+      try {
+        const { user } = await checkToken(token)
+        useSettings.getState().set({ token, username: user.login, github: identityOf(user) })
+      } catch {
+        /* not a GitHub key (another host), offline, or mistyped: the access check below says which */
+      }
+    }
+    await useWorkspace.getState().keyRenewed()
+  }
+
   const saveRemote = async () => {
     await setRemote(remote)
     toast.ok(remote ? 'Remote saved' : 'Remote removed', 'FeelsOkayMan')
@@ -169,6 +188,7 @@ function SyncTab() {
             placeholder="Personal access token"
             value={settings.token}
             onChange={(e) => settings.set({ token: e.target.value })}
+            onBlur={() => void adoptTypedKey()}
           />
           <button className={btn} onClick={() => setShowToken((v) => !v)}>
             {showToken ? 'Hide' : 'Show'}

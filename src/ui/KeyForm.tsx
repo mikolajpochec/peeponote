@@ -32,7 +32,10 @@ export function useSignIn(onDone: (token: string, user: GhUser) => void) {
     try {
       const { user, hasRepoScope } = await checkToken(k)
       if (!hasRepoScope) return setProblem('This key cannot open private repos. Make a new one with "Open GitHub" above; the right box is ticked for you.')
-      useSettings.getState().set({ token: k, username: user.login, github: identityOf(user) })
+      // one key opens every repo this account reaches, so the repos remembered with the old key move to the new one
+      const old = useSettings.getState().token
+      const repos = useSettings.getState().repos.map((r) => (old && r.token === old ? { ...r, token: k } : r))
+      useSettings.getState().set({ token: k, username: user.login, github: identityOf(user), repos })
       onDone(k, user)
     } catch (e) {
       setProblem(e instanceof GhError && e.status === 401 ? 'GitHub does not recognise this key. Copy it again; it starts with "ghp_".' : plainGhError(e))

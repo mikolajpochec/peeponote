@@ -11,6 +11,7 @@ import { BootScreen } from './ui/BootScreen'
 import { LockedScreen } from './ui/LockedScreen'
 import { Onboarding } from './ui/Onboarding'
 import { SignInDialog } from './review/SignInDialog'
+import { NewKeyDialog } from './ui/NewKeyDialog'
 import { useReview } from './store/review'
 import { toast } from './store/toast'
 import { NotificationsPanel } from './review/NotificationsPanel'
@@ -224,6 +225,7 @@ export default function App() {
         <LockedScreen onOpenSettings={() => setShowSettings(true)} />
         {signIn && <SignInDialog onClose={() => setSignIn(false)} />}
         {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
+        <NewKeyDialog />
         <ErrorDialog />
         <Toasts />
       </>
@@ -281,6 +283,7 @@ export default function App() {
       <RequestReviewDialog />
       <ThreadDialog />
       {signIn && !showOnboarding && <SignInDialog onClose={() => setSignIn(false)} />}
+      {!showOnboarding && <NewKeyDialog />}
       <SyncDialog />
       {changelog && <ChangelogDialog mode={changelog.mode} onClose={() => setChangelog(null)} />}
       {askPlugins && <PluginsIntroDialog onClose={() => setPluginsClosed(true)} />}

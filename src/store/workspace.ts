@@ -7,7 +7,7 @@ import {
 import * as repo from '../git/repo'
 import { repoAccess, type Access } from '../git/permissions'
 import { chooseTransport, compare, fetchRemote, mergeBoardJson, mergeJsonShallow, mergeRemote, pushRemote, resetTo, type SyncCtx, type SyncState } from '../git/sync'
-import { NotFastForwardError, ghClone, parseGitHubUrl } from '../git/githubApi'
+import { NotFastForwardError, ghClone, isBadKey, parseGitHubUrl } from '../git/githubApi'
 import {
   ASSETS_DIR, BOARDS_DIR, WORKSPACE_FILE, boardPath, newId,
   type Board, type BoardStyle, type Card, type CardStyle, type Connector, type ConnectorStyle, type ShapeKind, type WorkspaceMeta, type WorkspaceSettings,
@@ -78,6 +78,16 @@ interface WorkspaceState {
   canWrite: boolean
   /** ask GitHub again who we are on this repo (after signing in, switching repo, pulling) */
   refreshAccess: (force?: boolean) => Promise<void>
+  /**
+   * GitHub stopped accepting the key (expired or revoked). Nothing is locked: boards stay open, saves stay in
+   * this browser, and they go out once a new key is pasted.
+   */
+  keyExpired: boolean
+  /** the "paste a new key" dialog is up */
+  keyPrompt: boolean
+  askForKey: (open: boolean) => void
+  /** a working key was just pasted: learn who we are and what we may do again, then send what waited */
+  keyRenewed: () => Promise<void>
   /** when set, we're read-only viewing an old commit */
   viewingRef: string | null
   viewingBoards: Record<string, Board>
@@ -461,6 +471,14 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
   }
   const progress = (m: string) => set({ busyDetail: m })
 
+  /** the remote said no to the key: remember it, and ask for a new one (once by itself, again when `ask`) */
+  function keyDied(ask: boolean) {
+    const first = !get().keyExpired
+    set({ keyExpired: true, pendingSync: true, ...(first || ask ? { keyPrompt: true } : {}) })
+  }
+  /** a failed fetch or push that means "this key is dead" rather than "something broke" */
+  const diedOfBadKey = (e: unknown, ctx: SyncCtx) => !!ctx.auth.token.trim() && !!parseGitHubUrl(ctx.remoteUrl) && isBadKey(e)
+
   /** re-read boards from the working tree (after pull / merge / restore); highlights what changed */
   async function reloadBoards(fs: PeepoFS) {
     const prev = get().boards
@@ -584,6 +602,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     remoteUrl: null,
     access: 'write',
     canWrite: true,
+    keyExpired: false,
+    keyPrompt: false,
     lastCombinedWith: null,
     pendingSync: false,
     head: null,
@@ -1055,7 +1075,10 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         // a save also syncs when a remote is set up: pull others' work, merge if needed, push
         if (get().remoteUrl && useSettings.getState().token) {
           set({ busy: null })
-          if (navigator.onLine) await get().sync({ silent: true })
+          if (get().keyExpired) {
+            keyDied(true)
+            toast.info('Saved in this browser. It goes out once you paste a new GitHub key.', 'peepoSit')
+          } else if (navigator.onLine) await get().sync({ silent: true })
           else {
             set({ pendingSync: true })
             toast.info("You're offline — saved here; it goes out as soon as you're back online.", 'peepoSit')
@@ -1084,6 +1107,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         if (!silent) toast.info("You're offline — will sync when the connection is back.", 'peepoSit')
         return
       }
+      // a dead key fails every time: ask for a new one instead of trying (a new key clears this)
+      if (get().keyExpired) return keyDied(!silent)
       set({ busy: 'syncing', busyDetail: null, pendingSync: false })
       /**
        * both sides have new commits: with no unsaved edits and no card touched by both → merge quietly
@@ -1163,7 +1188,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         await get().refreshGit()
       } catch (e) {
         console.error(e)
-        toast.fail('Sync failed', e, { remote: ctx.remoteUrl, transport: ctx.transport, head: get().head?.oid, hasToken: !!ctx.auth.token, storage: fs.label })
+        if (diedOfBadKey(e, ctx)) keyDied(true)
+        else toast.fail('Sync failed', e, { remote: ctx.remoteUrl, transport: ctx.transport, head: get().head?.oid, hasToken: !!ctx.auth.token, storage: fs.label })
       } finally {
         set({ busy: null, busyDetail: null })
       }
@@ -1171,7 +1197,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
 
     autoSync: async () => {
       const ctx = syncCtx()
-      if (!ctx || get().busy || get().viewingRef || get().divergence || document.visibilityState === 'hidden' || !navigator.onLine) return
+      if (!ctx || get().busy || get().viewingRef || get().divergence || get().keyExpired || document.visibilityState === 'hidden' || !navigator.onLine) return
       const { fs } = ctx
       try {
         const remote = await fetchRemote(ctx)
@@ -1237,6 +1263,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       } catch (e) {
         // background job: log, don't toast on every flaky network tick
         console.warn('auto-sync', e)
+        if (diedOfBadKey(e, ctx)) keyDied(false)
       } finally {
         if (get().busy === 'syncing') set({ busy: null, busyDetail: null })
       }
@@ -1296,8 +1323,18 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
 
     refreshAccess: async (force) => {
       const { remoteUrl } = get()
-      const access = await repoAccess(remoteUrl, useSettings.getState().token, force)
-      set({ access, canWrite: access === 'write' })
+      const { access, badKey } = await repoAccess(remoteUrl, useSettings.getState().token, force)
+      // the dialog comes up by itself once, the moment the key is found dead; after "Later" the top bar keeps saying it
+      set({ access, canWrite: access === 'write', keyExpired: badKey, ...(badKey && !get().keyExpired ? { keyPrompt: true } : {}) })
+    },
+
+    askForKey: (open) => set({ keyPrompt: open }),
+
+    keyRenewed: async () => {
+      set({ keyPrompt: false })
+      await get().refreshAccess(true)
+      await useReview.getState().refreshIdentity()
+      if (get().status === 'ready' && get().remoteUrl && navigator.onLine && !get().keyExpired && get().access !== 'locked') await get().sync({ silent: true })
     },
 
     refreshGit: async () => {

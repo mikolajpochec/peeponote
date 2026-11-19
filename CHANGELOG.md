@@ -3,6 +3,13 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
+## 1.8.3 — An expired key no longer locks you out
+*2026-11-19*
+
+- When your GitHub key expires, your boards stay open. peeponote asks for a new key right there, and one paste puts everything back.
+- Until then nothing is lost: saves stay in this browser and go out by themselves the moment the new key works. The top bar shows "Key expired" as a reminder.
+- You can swap your key whenever you like: click your picture in the top bar, then "Use a new key". No signing out first.
+
 ## 1.8.2 — Colours and icons that belong together
 *2026-10-19*
 
