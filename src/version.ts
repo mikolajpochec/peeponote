@@ -6,7 +6,7 @@
  * minor = a new feature, patch = fixes and polish. Every release that reaches `main` bumps this and adds
  * an entry here, in plain words, written for the person using peeponote rather than for git.
  */
-export const APP_VERSION = '1.8.6'
+export const APP_VERSION = '1.8.7'
 
 export interface Release {
   version: string
@@ -19,6 +19,17 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: '1.8.7',
+    date: '2026-11-19',
+    title: 'What you type is what you get',
+    notes: [
+      'Text in a card or a shape now breaks into lines the same way while you type as it does once you are done.',
+      'A shape keeps its alignment while you write in it. Before, the editor always centred the text, even when the label was left-aligned or justified.',
+      'Bold, code and links look the same in the editor as on the board.',
+      'Text cards and labels show a line exactly as typed: a leading #, >, - or "1." stays on the board instead of vanishing or adding blank lines, and spaces at the start of a line are kept.',
+    ],
+  },
   {
     version: '1.8.6',
     date: '2026-11-19',

@@ -128,8 +128,10 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
       <div
         ref={view}
         className={`h-full whitespace-pre-wrap break-words p-2 ${cls} ${auto ? 'overflow-visible' : 'w-full overflow-hidden'}`}
-        // auto-size: natural width (wrapping at maxW) instead of the card's, so a card a couple of px too narrow can't wrap the last word
-        style={auto ? { width: 'max-content', maxWidth: maxW, minWidth: '100%' } : undefined}
+        // auto-size: natural width (wrapping at maxW) instead of the card's, so a card a couple of px too narrow can't wrap the last word.
+        // Never wider than maxW though: the card keeps 2px of slack, and text laid out across that slack breaks its
+        // lines elsewhere than the editor and the measurer do (both wrap at maxW)
+        style={auto ? { width: 'max-content', maxWidth: maxW, minWidth: `min(100%, ${maxW}px)` } : undefined}
       >
         {card.text ? <InlineMd text={card.text} /> : <span className="text-frog-200/30">{placeholder}</span>}
       </div>

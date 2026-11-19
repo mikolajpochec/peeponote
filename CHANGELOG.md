@@ -3,6 +3,14 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
+## 1.8.7 — What you type is what you get
+*2026-11-19*
+
+- Text in a card or a shape now breaks into lines the same way while you type as it does once you are done.
+- A shape keeps its alignment while you write in it. Before, the editor always centred the text, even when the label was left-aligned or justified.
+- Bold, code and links look the same in the editor as on the board.
+- Text cards and labels show a line exactly as typed: a leading #, >, - or "1." stays on the board instead of vanishing or adding blank lines, and spaces at the start of a line are kept.
+
 ## 1.8.6 — Copies keep their layers, and you can see what you type
 *2026-11-19*
 

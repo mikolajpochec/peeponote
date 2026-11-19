@@ -73,7 +73,7 @@ export function MdEditor({ value, onChange, onDone, boardId, cardId, mode, place
     const ext: Extension[] = [
       history(),
       markdown(),
-      livePreview,
+      livePreview(mode === 'inline'),
       ...mentions,
       EditorView.lineWrapping,
       cmPlaceholder(placeholder ?? ''),
@@ -139,5 +139,5 @@ export function MdEditor({ value, onChange, onDone, boardId, cardId, mode, place
     if (cur !== value) v.dispatch({ changes: { from: 0, to: cur.length, insert: value } })
   }, [value])
 
-  return <div ref={host} data-nodrag className={`md-editor ${className}`} onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()} />
+  return <div ref={host} data-nodrag className={`md-editor ${mode === 'inline' ? 'md-inline' : ''} ${className}`} onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()} />
 }

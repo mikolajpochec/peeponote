@@ -214,7 +214,8 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
             mode="inline"
             placeholder="Label"
             onReady={() => setEditorReady((n) => n + 1)}
-            className="w-full text-center"
+            // no alignment of its own: the label box sets it, so typing looks like the finished label (left, centred, justified)
+            className="w-full"
           />
         ) : (
           <div className="whitespace-pre-wrap break-words">

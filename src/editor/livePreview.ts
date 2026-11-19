@@ -26,7 +26,8 @@ function touches(view: EditorView, from: number, to: number): boolean {
   return false
 }
 
-function build(view: EditorView): DecorationSet {
+/** `inline`: the text is shown with inline markdown only (text cards, labels), so `# ` and `> ` stay plain text here too */
+function build(view: EditorView, inline: boolean): DecorationSet {
   const ranges: Range<Decoration>[] = []
   const tree = syntaxTree(view.state)
   const doc = view.state.doc
@@ -81,6 +82,7 @@ function build(view: EditorView): DecorationSet {
           case 'ATXHeading4':
           case 'ATXHeading5':
           case 'ATXHeading6': {
+            if (inline) break
             const level = Number(n.name.slice(-1))
             const m = level === 1 ? marks.h1 : level === 2 ? marks.h2 : marks.h3
             ranges.push(m.range(n.from, n.to))
@@ -96,6 +98,7 @@ function build(view: EditorView): DecorationSet {
             break
           }
           case 'Blockquote':
+            if (inline) break
             ranges.push(marks.quote.range(n.from, n.to))
             if (!active) hideChildren(n.node, ['QuoteMark'])
             break
@@ -106,15 +109,16 @@ function build(view: EditorView): DecorationSet {
   return Decoration.set(ranges, true) // sorts; marks and replacements may overlap
 }
 
-export const livePreview = ViewPlugin.fromClass(
-  class {
-    decorations: DecorationSet
-    constructor(view: EditorView) {
-      this.decorations = build(view)
-    }
-    update(u: ViewUpdate) {
-      if (u.docChanged || u.selectionSet || u.viewportChanged) this.decorations = build(u.view)
-    }
-  },
-  { decorations: (v) => v.decorations },
-)
+export const livePreview = (inline = false) =>
+  ViewPlugin.fromClass(
+    class {
+      decorations: DecorationSet
+      constructor(view: EditorView) {
+        this.decorations = build(view, inline)
+      }
+      update(u: ViewUpdate) {
+        if (u.docChanged || u.selectionSet || u.viewportChanged) this.decorations = build(u.view, inline)
+      }
+    },
+    { decorations: (v) => v.decorations },
+  )

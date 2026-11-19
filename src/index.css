@@ -204,6 +204,11 @@ input:read-only, textarea:read-only { cursor: default; }
 .cm-md-strike { text-decoration: line-through; opacity: 0.75; }
 .cm-md-code { font-family: var(--font-mono); font-size: 0.9em; background: rgba(0,0,0,0.08); border-radius: 4px; padding: 0 0.2em; }
 .cm-md-link { text-decoration: underline; text-underline-offset: 2px; color: var(--color-frog-600); }
+/* text cards and labels are shown with plain inline markdown (see InlineMd): the editor draws bold, code and links
+   the same way there, so a line breaks in the same place while you type as it does once you are done */
+.md-inline .cm-md-strong { font-weight: bolder; }
+.md-inline .cm-md-code { font-size: 1em; background: none; border-radius: 0; padding: 0; }
+.md-inline .cm-md-link { color: inherit; }
 .cm-md-h1 { font-size: 1.35em; font-weight: 800; }
 .cm-md-h2 { font-size: 1.2em; font-weight: 800; }
 .cm-md-h3 { font-size: 1.05em; font-weight: 800; }

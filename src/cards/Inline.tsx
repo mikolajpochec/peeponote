@@ -61,6 +61,20 @@ export function linkMentions(line: string): string {
 }
 
 /**
+ * Keeps a line's block syntax as the text it was typed as. Markdown would otherwise read a leading `#`, `>`, `-`
+ * or `1.` as a heading, quote or list: the marker vanished, stray blank lines appeared, and indentation was
+ * swallowed, so the card showed something else than its editor. Returns the indentation (drawn as is) and the
+ * rest with its first marker escaped.
+ */
+export function literalBlock(line: string): [indent: string, rest: string] {
+  const indent = /^[ \t]*/.exec(line)![0]
+  let rest = line.slice(indent.length)
+  if (/^\d{1,9}[.)](\s|$)/.test(rest)) rest = rest.replace(/^(\d{1,9})([.)])/, '$1\\$2')
+  else if (/^(#{1,6}(\s|$)|>|[-+*](\s|$)|```|~~~|([-*_][ \t]*){3,}$)/.test(rest)) rest = `\\${rest}`
+  return [indent, rest]
+}
+
+/**
  * Inline-only markdown: **bold**, _italic_, ~~strike~~, `code`, [links](…). Block syntax is rendered as
  * literal text, newlines are kept (the container uses `white-space: pre-wrap`).
  */
@@ -70,12 +84,13 @@ export function InlineMd({ text }: { text: string }) {
   if (!text) return null
   // one Markdown run per line, joined with <br>: newlines behave exactly like in the textarea
   // (a single markdown pass would emit newline text nodes that pre-wrap containers double up)
-  const lines = text.split('\n')
+  const lines = text.split('\n').map(literalBlock)
   return (
     <>
-      {lines.map((line, i) => (
+      {lines.map(([indent, line], i) => (
         <Fragment key={i}>
           {i > 0 && <br />}
+          {indent}
           {line && (
             <Markdown
               allowedElements={INLINE}
