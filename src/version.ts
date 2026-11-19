@@ -6,7 +6,7 @@
  * minor = a new feature, patch = fixes and polish. Every release that reaches `main` bumps this and adds
  * an entry here, in plain words, written for the person using peeponote rather than for git.
  */
-export const APP_VERSION = '1.8.3'
+export const APP_VERSION = '1.8.4'
 
 export interface Release {
   version: string
@@ -19,6 +19,12 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: '1.8.4',
+    date: '2026-11-19',
+    title: 'Opening a comment thread no longer breaks',
+    notes: ['Clicking a mention or a comment in your notifications opens its thread again, instead of the "Something broke" screen.'],
+  },
   {
     version: '1.8.3',
     date: '2026-11-19',

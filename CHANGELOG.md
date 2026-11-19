@@ -3,6 +3,11 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
+## 1.8.4 — Opening a comment thread no longer breaks
+*2026-11-19*
+
+- Clicking a mention or a comment in your notifications opens its thread again, instead of the "Something broke" screen.
+
 ## 1.8.3 — An expired key no longer locks you out
 *2026-11-19*
 
