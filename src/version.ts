@@ -6,7 +6,7 @@
  * minor = a new feature, patch = fixes and polish. Every release that reaches `main` bumps this and adds
  * an entry here, in plain words, written for the person using peeponote rather than for git.
  */
-export const APP_VERSION = '1.8.4'
+export const APP_VERSION = '1.8.5'
 
 export interface Release {
   version: string
@@ -19,6 +19,12 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: '1.8.5',
+    date: '2026-11-19',
+    title: 'Shapes without an outline',
+    notes: ['Choosing "none" as the stroke colour of a shape now really removes its outline. Before, the shape quietly went back to the default line.'],
+  },
   {
     version: '1.8.4',
     date: '2026-11-19',

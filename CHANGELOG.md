@@ -3,6 +3,11 @@
 Versions are `MAJOR.MINOR.PATCH`: major = the repo format or the way you work changes, minor = a new feature,
 patch = fixes and polish. Written from `src/version.ts` by `bun scripts/changelog.ts`.
 
+## 1.8.5 — Shapes without an outline
+*2026-11-19*
+
+- Choosing "none" as the stroke colour of a shape now really removes its outline. Before, the shape quietly went back to the default line.
+
 ## 1.8.4 — Opening a comment thread no longer breaks
 *2026-11-19*
 
