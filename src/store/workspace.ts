@@ -861,9 +861,17 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     insert: (boardId, cards, connectors) => {
       mutateBoard(boardId, (b) => {
         const maxZ = b.cards.reduce((m, c) => Math.max(m, c.z), 0)
+        // the newcomers go on top of everything, but keep their own stacking: what lay above stays above
+        // (the list is in creation order, so numbering by position would put an older rectangle over newer text)
+        const rank = new Map(
+          cards
+            .map((c, i) => ({ i, z: c.z ?? 0 }))
+            .sort((x, y) => x.z - y.z || x.i - y.i)
+            .map((o, n) => [o.i, n]),
+        )
         return {
           ...b,
-          cards: [...b.cards, ...cards.map((c, i) => ({ ...c, z: maxZ + 1 + i }))],
+          cards: [...b.cards, ...cards.map((c, i) => ({ ...c, z: maxZ + 1 + rank.get(i)! }))],
           connectors: [...b.connectors, ...connectors],
         }
       })

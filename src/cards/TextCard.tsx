@@ -52,15 +52,21 @@ export function TextCard({ card, boardId, readOnly }: CardProps<TextCardT>) {
       // fractional measurement (offsetWidth rounds down → last word wraps), snapped to 0.1 px first so the
       // scale division can't flip a ceil by one between zoom levels (that dirtied boards just by opening them)
       const px = (v: number) => Math.ceil(Math.round((v / k) * 10) / 10)
+      // the editor's content box leaves out the padding around it (the hidden measurer has it built in):
+      // without adding it back the card is one padding too short while you type, and the last line is cut off
+      const frame = editing ? m.closest('.md-editor') : null
+      const cs = frame ? getComputedStyle(frame) : null
+      const padX = cs ? parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) : 0
+      const padY = cs ? parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) : 0
       if (c.autoSize !== false) {
-        const w = Math.max(60, px(r.width) + (editing ? 6 : 2))
-        const h = Math.max(32, px(r.height) + 1)
+        const w = Math.max(60, px(r.width) + Math.ceil(padX) + 2)
+        const h = Math.max(32, px(r.height) + Math.ceil(padY) + 1)
         // the view lays text out at its own natural width, so a few px of drift never wraps or clips —
         // only resize past that tolerance (fixes boards turning "unsaved" just by being opened)
         // while editing it's your edit; otherwise (mount, zoom, font load, another machine's fonts) it's a quiet correction
         if (Math.abs(w - c.w) > 3 || Math.abs(h - c.h) > 3) updateCard(boardId, card.id, { w, h }, { quiet: !editing, session: live.session })
       } else {
-        const needed = editing ? px(r.height) : Math.ceil(view.current?.scrollHeight ?? 0)
+        const needed = editing ? px(r.height) + Math.ceil(padY) : Math.ceil(view.current?.scrollHeight ?? 0)
         if (needed > c.h + 1) updateCard(boardId, card.id, { h: needed }, { quiet: !editing, session: live.session })
       }
     }

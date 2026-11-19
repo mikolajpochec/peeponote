@@ -3,23 +3,23 @@
 `main` deploys straight to https://mikolajpochec.github.io/peeponote/ and **real people use it**.
 
 ## Branches
-**Every** change lives on its own branch and reaches `main` through a pull request. Never commit on `main`, never push
-to it directly: it is protected on GitHub, and a merge there is a release to real people.
+Pull requests are optional. A finished, tested change may be committed and pushed straight to `main`; a branch and a
+pull request are there for when they help (bigger work, something to look over first), not a requirement. Either way a
+push to `main` is a release to real people, so the rules under **Releasing** apply to it in full.
 
-- `git switch -c <kind>/<short-name>` first, before the first edit. `feat/` a new capability, `fix/` a bug,
-  `ci/` or `chore/` the machinery around the app, `docs/` writing.
-- Commit on the branch as often as you like; the title is the one that will show up in the history, so keep it plain.
-- One branch = one coherent thing = one release. Two unrelated fixes are two branches, even on the same afternoon.
-- A hotfix for a live crash takes the same path, just quickly: branch, minimal change, test, PR.
+- Work that takes more than one sitting still belongs on a branch (`feat/`, `fix/`, `ci/`, `chore/`, `docs/`), so
+  `main` never holds half-built work.
+- Commit titles show up in the history, so keep them plain.
+- Several small repairs finished together may ship as one release, with one note each.
 
 ## Releasing
 - Push to `main` only a **complete, tested feature**. Never push half-built work or "let's see if it deploys".
-- Before opening the PR: `bunx tsc -b`, `bun run build`, and drive the real flow in the browser (dev server: `bun run dev -- --port 5199`;
+- Before pushing: `bunx tsc -b`, `bun run build`, and drive the real flow in the browser (dev server: `bun run dev -- --port 5199`;
   for two-person flows use two origins, e.g. ports 5298 and 5297 — separate IndexedDB/localStorage per origin).
-- The version bump and the changelog entry belong in that same PR (see **Versions**); CI refuses a PR where they
-  don't add up, and tags + publishes the release by itself once it is merged.
+- The version bump and the changelog entry belong in that same push (see **Versions**); run `bun scripts/release.ts`
+  first, since CI only tags + publishes the release when they add up.
 - **Ask before releasing.** When the work is finished and verified, say what the release contains and which version
-  it would be, and wait for a yes. Never merge a PR into `main` on your own initiative.
+  it would be, and wait for a yes. Never push or merge into `main` on your own initiative.
 
 ## Versions
 `MAJOR.MINOR.PATCH` (e.g. `1.12.3`) lives in `src/version.ts` — the one source of truth; `package.json` mirrors it and
@@ -32,10 +32,10 @@ so notes are written for the person using peeponote ("Pictures keep their shape"
 - **MAJOR**: the repo format changes (files under the workspace move or change meaning and older clients would
   misread them), or the way people work changes enough to break their habits.
 
-**Every merge into `main` bumps the version, without exception: at least the PATCH digit.** `main` deploys to real
+**Every push or merge into `main` bumps the version, without exception: at least the PATCH digit.** `main` deploys to real
 users, so there is no such thing as a free merge: a typo fix, a CI change, a refactor, even an edit to this file goes
-out as `0.0.x`. Nothing ever rides along with "the next release"; this *is* the next release. CI enforces it: a pull
-request whose version is already tagged is refused.
+out as `0.0.x`. Nothing ever rides along with "the next release"; this *is* the next release. CI checks it on pull
+requests (one whose version is already tagged is refused); on a direct push nothing stops you, so check it yourself.
 
 **Default to PATCH.** When the choice between patch and minor is not obvious, it is a patch: most merges are repairs,
 polish and machinery, and the version should stay calm. `0.x.0` is reserved for a bigger feature, something you would
@@ -44,8 +44,8 @@ minor digit for a small improvement to something that already works.
 
 Pick the bump **before** merging and put it in the feature's own commit: version + a new entry at the top of
 `CHANGELOG` (date = the day it ships) + the `package.json` mirror + `bun scripts/changelog.ts`. `bun scripts/release.ts`
-says whether those four agree, and CI runs it on every pull request. Tagging and the GitHub Release are **automatic**
-on merge (`.github/workflows/release.yml`): never create a tag or a release by hand.
+says whether those four agree; CI runs it on every pull request and on every push to `main`. Tagging and the GitHub
+Release are **automatic** on `main` (`.github/workflows/release.yml`): never create a tag or a release by hand.
 
 One release = one coherent thing you can describe in a sentence; two unrelated features ready at once are two releases,
 so two branches and two bumps. Every release carries at least one note, written for the person using peeponote: when

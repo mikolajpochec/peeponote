@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { ShapeCard as ShapeCardT, ShapeKind } from '../model/types'
 import { useWorkspace } from '../store/workspace'
 import { useEditRequest } from '../canvas/editRequest'
+import { useViewport } from '../canvas/viewport'
 import { contrast } from '../canvas/styles'
 import type { CardProps } from './CardView'
 import { InlineMd } from './Inline'
@@ -164,6 +165,30 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
     live.commit(draft, card.label)
   }
 
+  // While you type, the shape grows downwards to keep the whole label inside it: a label taller than its shape
+  // used to scroll inside the editor, so part of what you were writing was out of sight.
+  const labelBox = useRef<HTMLDivElement>(null)
+  // the editor is lazy-loaded; bump when it mounts so the effect can find .cm-content
+  const [editorReady, setEditorReady] = useState(0)
+  useLayoutEffect(() => {
+    if (!editing || readOnly) return
+    const box = labelBox.current
+    const m = box?.querySelector('.cm-content') as HTMLElement | null
+    if (!box || !m || m.closest('[data-preview]')) return
+    const fit = () => {
+      const c = useWorkspace.getState().boards[boardId]?.cards.find((x) => x.id === card.id)
+      if (!c || c.type !== 'shape') return
+      const k = useViewport.getState().get(boardId).scale || 1
+      const cs = getComputedStyle(box)
+      const needed = Math.ceil(Math.round((m.getBoundingClientRect().height / k) * 10) / 10) + Math.ceil(parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom))
+      if (needed > c.h + 1) updateCard(boardId, card.id, { h: needed }, { session: live.session })
+    }
+    fit()
+    const ro = new ResizeObserver(fit)
+    ro.observe(m)
+    return () => ro.disconnect()
+  }, [editing, readOnly, draft, boardId, card.id, card.w, card.style, updateCard, editorReady, live.session])
+
   return (
     <div className="relative h-full w-full">
       <svg className="absolute inset-0 h-full w-full overflow-visible" viewBox={`0 0 ${card.w} ${card.h}`} preserveAspectRatio="none">
@@ -178,7 +203,7 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
         />
         {detail && <path d={detail} fill="none" stroke={stroke} strokeWidth={sw} strokeDasharray={s.dashed ? `${sw * 3} ${sw * 2}` : undefined} strokeLinecap="round" />}
       </svg>
-      <div className="absolute inset-0 flex items-center justify-center p-3" style={{ color: ink, textAlign: s.align ?? 'center', padding: LABEL_PAD[card.shape] }}>
+      <div ref={labelBox} className="absolute inset-0 flex items-center justify-center p-3" style={{ color: ink, textAlign: s.align ?? 'center', padding: LABEL_PAD[card.shape] }}>
         {editing ? (
           <MdEditor
             value={draft}
@@ -188,7 +213,8 @@ export function ShapeCard({ card, boardId, readOnly }: CardProps<ShapeCardT>) {
             cardId={card.id}
             mode="inline"
             placeholder="Label"
-            className="max-h-full w-full overflow-auto text-center"
+            onReady={() => setEditorReady((n) => n + 1)}
+            className="w-full text-center"
           />
         ) : (
           <div className="whitespace-pre-wrap break-words">
